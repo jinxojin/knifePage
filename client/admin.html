@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MSKTF Admin Dashboard</title>
+  </head>
+  <body
+    class="bg-gray-100 font-[tinos] text-gray-900 dark:bg-gray-800 dark:text-gray-100"
+  >
+    <div class="container mx-auto p-4">
+      <!-- Main container for centering content -->
+
+      <div
+        id="login-form"
+        class="mx-auto mb-4 max-w-md rounded bg-white px-8 pt-6 pb-8 shadow-md dark:bg-gray-700"
+      >
+        <h2 class="mb-6 text-center text-2xl font-bold">Admin Login</h2>
+        <form>
+          <div class="mb-4">
+            <label
+              class="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300"
+              for="username"
+            >
+              Username
+            </label>
+            <input
+              class="focus:shadow-outline w-full appearance-none rounded border bg-gray-100 px-3 py-2 leading-tight text-gray-700 shadow focus:outline-none dark:bg-gray-600 dark:text-gray-100"
+              id="username"
+              type="text"
+              placeholder="Username"
+              required
+            />
+          </div>
+          <div class="mb-6">
+            <label
+              class="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300"
+              for="password"
+            >
+              Password
+            </label>
+            <input
+              class="focus:shadow-outline mb-3 w-full appearance-none rounded border bg-gray-100 px-3 py-2 leading-tight text-gray-700 shadow focus:outline-none dark:bg-gray-600 dark:text-gray-100"
+              id="password"
+              type="password"
+              placeholder="Password"
+              required
+            />
+          </div>
+          <div class="flex items-center justify-between">
+            <button
+              class="focus:shadow-outline rounded bg-blue-500 px-4 py-2 font-bold text-white hover:bg-blue-700 focus:outline-none"
+              type="submit"
+            >
+              Sign In
+            </button>
+          </div>
+        </form>
+        <div id="login-message" class="mt-2 text-sm text-red-500"></div>
+      </div>
+
+      <div id="article-list" class="hidden">
+        <div class="mb-4 flex items-center justify-between">
+          <h2 class="text-2xl font-bold">Articles</h2>
+          <button
+            id="create-article-button"
+            class="rounded bg-green-500 px-4 py-2 font-bold text-white hover:bg-green-700"
+          >
+            Create New Article
+          </button>
+        </div>
+
+        <div id="articles-container" class="space-y-4">
+          <!-- Articles will be dynamically added here -->
+        </div>
+      </div>
+
+      <div
+        id="article-form-container"
+        class="mx-auto hidden max-w-2xl rounded bg-white px-8 pt-6 pb-8 shadow-md dark:bg-gray-700"
+      >
+        <h2 class="mb-6 text-center text-2xl font-bold" id="form-heading">
+          Create/Edit Article
+        </h2>
+        <form id="article-form">
+          <input type="hidden" id="article-id" />
+
+          <div class="mb-4">
+            <label
+              class="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300"
+              for="article-title"
+            >
+              Title
+            </label>
+            <input
+              class="focus:shadow-outline w-full appearance-none rounded border bg-gray-100 px-3 py-2 leading-tight text-gray-700 shadow focus:outline-none dark:bg-gray-600 dark:text-gray-100"
+              id="article-title"
+              type="text"
+              placeholder="Article Title"
+              required
+            />
+          </div>
+
+          <div class="mb-4">
+            <label
+              class="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300"
+              for="article-content"
+            >
+              Content
+            </label>
+            <textarea
+              class="focus:shadow-outline h-40 w-full appearance-none rounded border bg-gray-100 px-3 py-2 leading-tight text-gray-700 shadow focus:outline-none dark:bg-gray-600 dark:text-gray-100"
+              id="article-content"
+              placeholder="Article Content"
+              required
+            ></textarea>
+          </div>
+
+          <div class="mb-4">
+            <label
+              class="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300"
+              for="article-category"
+            >
+              Category
+            </label>
+            <input
+              class="focus:shadow-outline w-full appearance-none rounded border bg-gray-100 px-3 py-2 leading-tight text-gray-700 shadow focus:outline-none dark:bg-gray-600 dark:text-gray-100"
+              id="article-category"
+              type="text"
+              placeholder="Category"
+              required
+            />
+          </div>
+
+          <div class="mb-4">
+            <label
+              class="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300"
+              for="article-author"
+            >
+              Author
+            </label>
+            <input
+              class="focus:shadow-outline w-full appearance-none rounded border bg-gray-100 px-3 py-2 leading-tight text-gray-700 shadow focus:outline-none dark:bg-gray-600 dark:text-gray-100"
+              id="article-author"
+              type="text"
+              placeholder="Author"
+              required
+            />
+          </div>
+
+          <div class="mb-4">
+            <label
+              class="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300"
+              for="article-image-url"
+            >
+              Image URL
+            </label>
+            <input
+              class="focus:shadow-outline w-full appearance-none rounded border bg-gray-100 px-3 py-2 leading-tight text-gray-700 shadow focus:outline-none dark:bg-gray-600 dark:text-gray-100"
+              id="article-image-url"
+              type="url"
+              placeholder="Image URL"
+            />
+          </div>
+
+          <div class="flex justify-end space-x-4">
+            <button
+              type="submit"
+              class="focus:shadow-outline rounded bg-blue-500 px-4 py-2 font-bold text-white hover:bg-blue-700 focus:outline-none"
+            >
+              Save Article
+            </button>
+            <button
+              type="button"
+              id="cancel-button"
+              class="focus:shadow-outline rounded bg-gray-500 px-4 py-2 font-bold text-white hover:bg-gray-700 focus:outline-none"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+        <div id="article-form-message" class="mt-2 text-sm text-red-500"></div>
+      </div>
+    </div>
+
+    <script type="module" src="./src/admin.js"></script>
+  </body>
+</html>

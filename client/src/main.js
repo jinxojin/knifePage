@@ -13,9 +13,8 @@ async function getMessage() {
   }
 }
 
-document.addEventListener("DOMContentLoaded", getMessage);
-
 document.addEventListener("DOMContentLoaded", () => {
+  getMessage();
   const burgerBtn = document.getElementById("burger-btn");
   const nav = document.querySelector("nav");
   const anchors = document.querySelectorAll("nav li a");
