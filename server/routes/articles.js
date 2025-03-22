@@ -3,45 +3,38 @@ const router = express.Router();
 const Article = require("../models/article");
 const ErrorHandler = require("../utils/errorHandler");
 
-// Get all articles
+// GET all articles
 router.get("/", async (req, res, next) => {
   try {
     const articles = await Article.findAll({
-      order: [["createdAt", "DESC"]], // Newest first
+      order: [["createdAt", "DESC"]],
     });
     res.json(articles);
   } catch (err) {
-    next(err); // Pass errors to the error handler
+    next(err);
   }
 });
 
-// Get a single article by ID
+// GET a single article by ID
 router.get("/:id", async (req, res, next) => {
   try {
     const article = await Article.findByPk(req.params.id);
     if (!article) {
-      throw new ErrorHandler("Article not found", 404);
+      return next(new ErrorHandler("Article not found", 404));
     }
     res.json(article);
   } catch (err) {
     next(err);
   }
 });
-// Get articles by category
-router.get("/category/:categoryName", async (req, res, next) => {
+
+// GET articles by category
+router.get("/category/:category", async (req, res, next) => {
   try {
     const articles = await Article.findAll({
-      where: {
-        category: req.params.categoryName,
-      },
+      where: { category: req.params.category },
       order: [["createdAt", "DESC"]],
     });
-
-    if (!articles || articles.length === 0) {
-      // Check if articles array is empty
-      throw new ErrorHandler("No articles found for this category", 404);
-    }
-
     res.json(articles);
   } catch (err) {
     next(err);

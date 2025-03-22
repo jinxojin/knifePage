@@ -1,333 +1,223 @@
 import "./style.css";
 
-// --- Helper function to get the JWT ---
-function getToken() {
-  return localStorage.getItem("adminToken");
+// --- DOM Elements ---
+const loginForm = document.getElementById("login-form");
+const articleForm = document.getElementById("article-form");
+const articlesList = document.getElementById("articles-list");
+const logoutButton = document.getElementById("logout-button");
+const adminPanel = document.getElementById("admin-panel");
+const loginPanel = document.getElementById("login-panel");
+
+// --- API URL ---
+const API_URL = "http://localhost:3000/api";
+
+// --- Authentication ---
+function isLoggedIn() {
+  return localStorage.getItem("adminToken") !== null;
 }
 
-// --- Login ---
-async function login(username, password) {
+function updateUI() {
+  if (isLoggedIn()) {
+    loginPanel.classList.add("hidden");
+    adminPanel.classList.remove("hidden");
+    fetchArticles();
+  } else {
+    loginPanel.classList.remove("hidden");
+    adminPanel.classList.add("hidden");
+  }
+}
+
+// --- Login Handler ---
+loginForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const username = document.getElementById("username").value;
+  const password = document.getElementById("password").value;
+  const messageElement = document.getElementById("login-message");
+
   try {
-    const response = await fetch("http://localhost:3000/api/admin/login", {
+    const response = await fetch(`${API_URL}/admin/login`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
     });
 
-    if (response.ok) {
-      const data = await response.json();
-      localStorage.setItem("adminToken", data.token);
-      showArticleList(); // Show the article list after successful login
-      document.getElementById("login-form").style.display = "none";
-    } else {
-      const errorData = await response.json();
-      console.error("Login failed:", errorData.message);
-      document.getElementById("login-message").textContent =
-        "Login Failed: " + errorData.message;
-    }
-  } catch (error) {
-    console.error("Error during login:", error);
-    document.getElementById("login-message").textContent =
-      "Login Failed: " + error;
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || "Login failed");
+
+    localStorage.setItem("adminToken", data.token);
+    messageElement.textContent = "Login successful!";
+    messageElement.classList.remove("text-red-500");
+    messageElement.classList.add("text-green-500");
+    updateUI();
+  } catch (err) {
+    messageElement.textContent = `Error: ${err.message}`;
+    messageElement.classList.remove("text-green-500");
+    messageElement.classList.add("text-red-500");
+  }
+});
+
+// --- Articles Management ---
+async function fetchArticles() {
+  try {
+    const response = await fetch(`${API_URL}/articles`);
+    const articles = await response.json();
+    renderArticles(articles);
+  } catch (err) {
+    console.error("Error fetching articles:", err);
   }
 }
 
-// --- Fetch Articles ---
-async function fetchArticles() {
-  try {
-    const token = getToken();
-    if (!token) {
-      // Not logged in; redirect to login or show login form
-      showLoginForm();
+function renderArticles(articles) {
+  const container = document.getElementById("articles-container");
+  container.innerHTML = articles
+    .map(
+      (article) => `
+    <div class="bg-white p-4 rounded shadow mb-4 dark:bg-gray-700">
+      <h3 class="text-lg font-bold">${article.title}</h3>
+      <p class="text-sm text-gray-500 dark:text-gray-300">Category: ${article.category}</p>
+      <p class="text-sm text-gray-500 dark:text-gray-300">Author: ${article.author}</p>
+      <div class="mt-4 flex space-x-2">
+        <button class="edit-article bg-blue-500 text-white px-3 py-1 rounded" data-id="${article.id}">Edit</button>
+        <button class="delete-article bg-red-500 text-white px-3 py-1 rounded" data-id="${article.id}">Delete</button>
+      </div>
+    </div>
+  `,
+    )
+    .join("");
+
+  async function deleteArticle(articleId) {
+    if (!confirm("Are you sure you want to delete this article?")) {
       return;
     }
 
-    const response = await fetch("http://localhost:3000/api/articles", {
-      headers: {
-        Authorization: `Bearer ${token}`, // Include the JWT
-      },
-    });
-
-    if (response.ok) {
-      const articles = await response.json();
-      displayArticles(articles); // Call a function to display the articles
-    } else if (response.status === 401 || response.status === 403) {
-      //Unauthorized
-      showLoginForm();
-    } else {
-      const errorData = await response.json();
-      console.error("Error fetching articles:", errorData.message);
-      document.getElementById("article-form-message").textContent =
-        "Error: " + errorData.message;
-    }
-  } catch (error) {
-    console.error("Error fetching articles:", error);
-    document.getElementById("article-form-message").textContent =
-      "Error: " + error;
-  }
-}
-
-// --- Display Articles (Example - Adapt to your HTML structure) ---
-function displayArticles(articles) {
-  const container = document.getElementById("articles-container");
-  container.innerHTML = ""; // Clear previous content
-
-  articles.forEach((article) => {
-    const articleDiv = document.createElement("div");
-    articleDiv.classList.add("article");
-
-    articleDiv.innerHTML = `
-      <h3>${article.title}</h3>
-      <p>${article.content}</p>
-      <p>Category: ${article.category}</p>
-       <p>Author: ${article.author}</p>
-       <img src="${article.imageUrl}" alt="${article.title}">
-      <button class="edit-button" data-id="${article.id}">Edit</button>
-      <button class="delete-button" data-id="${article.id}">Delete</button>
-      <hr>
-    `;
-
-    container.appendChild(articleDiv);
-  });
-  //Add event listener to edit buttons
-  document.querySelectorAll(".edit-button").forEach((button) => {
-    button.addEventListener("click", (event) => {
-      const articleId = event.target.dataset.id;
-      showEditArticleForm(articleId); // Implement this function
-    });
-  });
-
-  //Add event listener to delete buttons
-  document.querySelectorAll(".delete-button").forEach((button) => {
-    button.addEventListener("click", (event) => {
-      const articleId = event.target.dataset.id;
-      deleteArticle(articleId);
-    });
-  });
-}
-
-// --- Show Article List (and hide other sections) ---
-function showArticleList() {
-  document.getElementById("article-list").style.display = "block";
-  document.getElementById("article-form-container").style.display = "none";
-}
-
-// --- Show Login Form ---
-function showLoginForm() {
-  document.getElementById("login-form").style.display = "block";
-  document.getElementById("article-list").style.display = "none";
-  document.getElementById("article-form-container").style.display = "none";
-}
-
-// --- Show create article form ---
-function showCreateArticleForm() {
-  document.getElementById("article-form-container").style.display = "block";
-  document.getElementById("article-list").style.display = "none";
-  //Clear the form for new article
-  document.getElementById("article-form").reset();
-  document.getElementById("article-id").value = ""; // Important: clear the ID
-}
-// --- Show edit article form and populating ---
-async function showEditArticleForm(articleId) {
-  document.getElementById("article-form-container").style.display = "block";
-  document.getElementById("article-list").style.display = "none";
-
-  try {
-    const token = getToken();
-    const response = await fetch(
-      `http://localhost:3000/api/articles/${articleId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      },
-    );
-
-    if (response.ok) {
-      const article = await response.json();
-
-      //Populate form with data
-      document.getElementById("article-id").value = article.id;
-      document.getElementById("article-title").value = article.title;
-      document.getElementById("article-content").value = article.content;
-      document.getElementById("article-category").value = article.category;
-      document.getElementById("article-author").value = article.author;
-      document.getElementById("article-image-url").value = article.imageUrl;
-    } else {
-      const errorData = await response.json();
-      console.error("Error fetching article data for edit ", errorData.message);
-      document.getElementById("article-form-message").textContent =
-        "Error: " + errorData.message;
-    }
-  } catch (err) {
-    console.error("Error fetching article for edit: ", err);
-    document.getElementById("article-form-message").textContent =
-      "Error: " + err;
-  }
-}
-
-// --- Logout ---
-function logout() {
-  localStorage.removeItem("adminToken");
-  showLoginForm();
-}
-
-// --- Create Article---
-async function createArticle(title, content, category, author, imageUrl) {
-  try {
-    const token = localStorage.getItem("adminToken");
-
-    const response = await fetch("http://localhost:3000/api/admin/articles", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ title, content, category, author, imageUrl }),
-    });
-
-    if (response.ok) {
-      const newArticle = await response.json();
-      console.log("Article created ", newArticle);
-      // Refresh the article list or redirect
-      fetchArticles();
-      //Hide the create article form, and show the list
-      showArticleList();
-    } else {
-      const errorData = await response.json();
-      console.error("Error creating article", errorData.message);
-      document.getElementById("article-form-message").textContent =
-        "Error: " + errorData.message;
-    }
-  } catch (err) {
-    console.error("Error creating article: ", err);
-    document.getElementById("article-form-message").textContent =
-      "Error: " + error;
-  }
-}
-
-// --- Update Article ---
-async function updateArticle(id, title, content, category, author, imageUrl) {
-  try {
-    const token = localStorage.getItem("adminToken");
-    const response = await fetch(
-      `http://localhost:3000/api/admin/articles/${id}`,
-      {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ title, content, category, author, imageUrl }),
-      },
-    );
-
-    if (response.ok) {
-      const updatedArticle = await response.json();
-      console.log("Article updated ", updatedArticle);
-      // Refresh the article list or redirect
-      fetchArticles();
-      showArticleList();
-    } else {
-      const errorData = await response.json();
-      console.error("Error updating article", errorData.message);
-      document.getElementById("article-form-message").textContent =
-        "Error: " + errorData.message;
-    }
-  } catch (err) {
-    console.error("Error updating Article, ", err);
-    document.getElementById("article-form-message").textContent =
-      "Error: " + error;
-  }
-}
-
-// --- Delete Article ---
-async function deleteArticle(id) {
-  try {
-    const token = localStorage.getItem("adminToken");
-    const response = await fetch(
-      `http://localhost:3000/api/admin/articles/${id}`,
-      {
+    try {
+      const response = await fetch(`${API_URL}/admin/articles/${articleId}`, {
         method: "DELETE",
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
         },
-      },
-    );
+      });
 
-    if (response.ok) {
-      console.log("Article Deleted");
-      fetchArticles(); //refresh
-    } else {
-      const errorData = await response.json();
-      console.error("Error Deleting Article", errorData.message);
-      document.getElementById("article-form-message").textContent =
-        "Error: " + errorData.message;
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || "Failed to delete article");
+      }
+
+      // Refresh the articles list
+      fetchArticles();
+    } catch (err) {
+      console.error("Error deleting article:", err);
+      alert(`Failed to delete article: ${err.message}`);
     }
+  }
+  // Add event listeners
+  document.querySelectorAll(".edit-article").forEach((button) => {
+    button.addEventListener("click", () =>
+      loadArticleForEditing(button.dataset.id),
+    );
+  });
+
+  document.querySelectorAll(".delete-article").forEach((button) => {
+    button.addEventListener("click", () => deleteArticle(button.dataset.id));
+  });
+}
+
+async function loadArticleForEditing(articleId) {
+  try {
+    const response = await fetch(`${API_URL}/articles/${articleId}`);
+    const article = await response.json();
+
+    document.getElementById("article-id").value = article.id;
+    document.getElementById("article-title").value = article.title;
+    tinymce.get("article-content").setContent(article.content);
+    document.getElementById("article-category").value = article.category;
+    document.getElementById("article-author").value = article.author;
+    document.getElementById("article-image").value = article.imageUrl || "";
+
+    document.getElementById("article-submit").textContent = "Update Article";
+    document
+      .getElementById("article-form-container")
+      .classList.remove("hidden");
+    articleForm.scrollIntoView({ behavior: "smooth" });
   } catch (err) {
-    console.error("Error Deleting Article, ", err);
-    document.getElementById("article-form-message").textContent =
-      "Error: " + error;
+    console.error("Error loading article:", err);
   }
 }
 
-// --- Event Listeners ---
+// --- Form Handlers ---
+articleForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
 
-document.addEventListener("DOMContentLoaded", () => {
-  //Check if user is already logged in
-  const token = getToken();
-  if (token) {
-    showArticleList();
+  const articleId = document.getElementById("article-id").value;
+  const messageElement = document.getElementById("article-form-message");
+
+  const articleData = {
+    title: document.getElementById("article-title").value,
+    content: tinymce.get("article-content").getContent(),
+    category: document.getElementById("article-category").value,
+    author: document.getElementById("article-author").value,
+    imageUrl: document.getElementById("article-image").value,
+  };
+
+  try {
+    const url = articleId
+      ? `${API_URL}/admin/articles/${articleId}`
+      : `${API_URL}/admin/articles`;
+
+    const response = await fetch(url, {
+      method: articleId ? "PUT" : "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+      },
+      body: JSON.stringify(articleData),
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message);
+
+    messageElement.textContent = `Article ${articleId ? "updated" : "created"} successfully!`;
+    messageElement.classList.remove("text-red-500");
+    messageElement.classList.add("text-green-500");
+
+    // Reset form
+    articleForm.reset();
+    tinymce.get("article-content").setContent("");
+    document.getElementById("article-id").value = "";
+    document.getElementById("article-submit").textContent = "Create Article";
+
     fetchArticles();
-  } else {
-    showLoginForm();
-  }
-  // Login form submission
-  const loginForm = document.getElementById("login-form");
-  if (loginForm) {
-    loginForm.addEventListener("submit", (event) => {
-      event.preventDefault();
-      const username = document.getElementById("username").value;
-      const password = document.getElementById("password").value;
-      login(username, password);
-    });
-  }
-
-  // Create article form submission
-  const createArticleForm = document.getElementById("article-form");
-  if (createArticleForm) {
-    createArticleForm.addEventListener("submit", (event) => {
-      event.preventDefault();
-      const id = document.getElementById("article-id").value; // Hidden input for ID
-      const title = document.getElementById("article-title").value;
-      const content = document.getElementById("article-content").value;
-      const category = document.getElementById("article-category").value;
-      const author = document.getElementById("article-author").value;
-      const imageUrl = document.getElementById("article-image-url").value;
-
-      if (id) {
-        //Update Article
-        updateArticle(id, title, content, category, author, imageUrl);
-      } else {
-        //Create Article
-        createArticle(title, content, category, author, imageUrl);
-      }
-    });
-  }
-
-  //Event Listener for create article button
-  const createArticleButton = document.getElementById("create-article-button");
-  if (createArticleButton) {
-    createArticleButton.addEventListener("click", showCreateArticleForm);
-  }
-
-  //Event listener for cancel button on article form
-  const cancelButton = document.getElementById("cancel-button");
-  if (cancelButton) {
-    cancelButton.addEventListener("click", () => {
-      showArticleList();
-    });
+  } catch (err) {
+    messageElement.textContent = `Error: ${err.message}`;
+    messageElement.classList.remove("text-green-500");
+    messageElement.classList.add("text-red-500");
   }
 });
+
+// --- Event Listeners ---
+document.getElementById("new-article-button").addEventListener("click", () => {
+  articleForm.reset();
+  tinymce.get("article-content").setContent("");
+  document.getElementById("article-id").value = "";
+  document.getElementById("article-submit").textContent = "Create Article";
+  document.getElementById("article-form-message").textContent = "";
+  document.getElementById("article-form-container").classList.remove("hidden");
+  articleForm.scrollIntoView({ behavior: "smooth" });
+});
+
+document.getElementById("cancel-button").addEventListener("click", () => {
+  articleForm.reset();
+  tinymce.get("article-content").setContent("");
+  document.getElementById("article-id").value = "";
+  document.getElementById("article-submit").textContent = "Create Article";
+  document.getElementById("article-form-message").textContent = "";
+  document.getElementById("article-form-container").classList.add("hidden");
+});
+
+logoutButton.addEventListener("click", () => {
+  localStorage.removeItem("adminToken");
+  updateUI();
+});
+
+// --- Initialize ---
+document.addEventListener("DOMContentLoaded", updateUI);
