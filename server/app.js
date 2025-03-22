@@ -1,43 +1,68 @@
 // First import path
 const path = require("path");
+const express = require("express");
+const cors = require("cors");
+const morgan = require("morgan");
+const rateLimit = require("express-rate-limit");
+const winston = require("winston");
 
 // Load environment variables
 require("dotenv").config({ path: path.join(__dirname, ".env") });
 
-// Debug JWT_SECRET
-console.log("JWT_SECRET is set:", !!process.env.JWT_SECRET);
-console.log("JWT_SECRET value:", process.env.JWT_SECRET);
+// Configure logger
+const logger = winston.createLogger({
+  level: process.env.NODE_ENV === "production" ? "info" : "debug",
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console(),
+    new winston.transports.File({ filename: "error.log", level: "error" }),
+    new winston.transports.File({ filename: "combined.log" })
+  ]
+});
 
 // Validate required environment variables
 if (!process.env.JWT_SECRET) {
-  console.error("ERROR: JWT_SECRET is not defined in environment variables");
+  logger.error("JWT_SECRET is not defined in environment variables");
   process.exit(1);
 }
 
-// Import dependencies
-const express = require("express");
-const cors = require("cors");
-const sequelize = require("./config/database");
+// Import application modules
+const config = require("./config");
+const initializeDatabase = require("./config/initDb");
 const articleRoutes = require("./routes/articles");
 const adminRoutes = require("./routes/admin");
 const ErrorHandler = require("./utils/errorHandler");
-const seedAdminUser = require("./seeders/adminUser");
 
 // Initialize Express app
 const app = express();
-const PORT = process.env.PORT || 3000;
+
 
 // --- Middleware ---
-// Configure CORS
-const corsOptions = {
-  origin:
-    process.env.NODE_ENV === "production"
-      ? "https://your-production-domain.com"
-      : "http://localhost:5173", // Vite's default port
-  optionsSuccessStatus: 200,
-};
+// Request logging
+app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 
-app.use(cors(corsOptions));
+// Configure CORS
+
+
+
+
+
+
+
+app.use(cors(config.corsOptions));
+
+// Rate limiting
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: "Too many requests from this IP, please try again later"
+});
+app.use("/api/", apiLimiter);
+
+// Body parsers
 app.use(express.json()); // Parse JSON request bodies
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded request bodies
 
@@ -55,7 +80,7 @@ app.use(express.static(path.join(__dirname, "../client")));
 
 // --- Error Handling Middleware ---
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  logger.error(err.stack);
 
   // Set the status code (default to 500 if not provided)
   const statusCode = err.statusCode || 500;
@@ -67,18 +92,21 @@ app.use((err, req, res, next) => {
   });
 });
 
-// --- Database Sync and Server Start ---
-sequelize
-  .sync({ alter: true })
-  .then(() => {
-    console.log("Database connected and synced");
-    return seedAdminUser();
-  })
-  .then(() => {
-    app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
+// Start the server
+const startServer = async () => {
+  try {
+    // Initialize database
+    await initializeDatabase();
+    
+    // Start listening
+    app.listen(config.port, () => {
+      logger.info(`Server is running on port ${config.port}`);
     });
-  })
-  .catch((err) => {
-    console.error("Unable to connect to the database:", err);
-  });
+  } catch (err) {
+    logger.error("Failed to start server:", err);
+    process.exit(1);
+  }
+};
+
+// Start the application
+startServer();

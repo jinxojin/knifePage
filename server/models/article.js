@@ -1,3 +1,4 @@
+// server/models/Article.js
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
 
@@ -13,19 +14,9 @@ const Article = sequelize.define("Article", {
   category: {
     type: DataTypes.STRING,
     allowNull: false,
-    defaultValue: "general",
   },
   imageUrl: {
     type: DataTypes.STRING,
-    allowNull: true,
-  },
-  createdAt: {
-    type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW,
-  },
-  updatedAt: {
-    type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW,
   },
 });
 

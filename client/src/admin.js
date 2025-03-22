@@ -1,62 +1,53 @@
 import "./style.css";
+import { fetchArticlesByCategory } from "./articles.js";
 
 // --- DOM Elements ---
-const loginForm = document.getElementById("login-form");
-const articleForm = document.getElementById("article-form");
-const articlesList = document.getElementById("articles-list");
-const logoutButton = document.getElementById("logout-button");
-const adminPanel = document.getElementById("admin-panel");
-const loginPanel = document.getElementById("login-panel");
+const elements = {
+  loginForm: document.getElementById("login-form"),
+  articleForm: document.getElementById("article-form"),
+  articlesList: document.getElementById("articles-list"),
+  logoutButton: document.getElementById("logout-button"),
+  adminPanel: document.getElementById("admin-panel"),
+  loginPanel: document.getElementById("login-panel"),
+  newArticleButton: document.getElementById("new-article-button"),
+  cancelButton: document.getElementById("cancel-button"),
+  articleFormContainer: document.getElementById("article-form-container"),
+  articleContent: document.getElementById("article-content"),
+  editorContainer: document.getElementById("editor-container"),
+  articleId: document.getElementById("article-id"),
+  articleTitle: document.getElementById("article-title"),
+  articleCategory: document.getElementById("article-category"),
+  articleAuthor: document.getElementById("article-author"),
+  articleImage: document.getElementById("article-image"),
+  articleSubmit: document.getElementById("article-submit"),
+  articleFormMessage: document.getElementById("article-form-message"),
+  loginMessage: document.getElementById("login-message"),
+  articlesContainer: document.getElementById("articles-container"),
+};
 
 // --- API URL ---
 const API_URL = "http://localhost:3000/api";
 
-// --- Authentication ---
+// --- Quill Editor Setup ---
+let quill;
+
+// --- Authentication Functions ---
 function isLoggedIn() {
   return localStorage.getItem("adminToken") !== null;
 }
 
 function updateUI() {
   if (isLoggedIn()) {
-    loginPanel.classList.add("hidden");
-    adminPanel.classList.remove("hidden");
+    elements.loginPanel.classList.add("hidden");
+    elements.adminPanel.classList.remove("hidden");
     fetchArticles();
   } else {
-    loginPanel.classList.remove("hidden");
-    adminPanel.classList.add("hidden");
+    elements.loginPanel.classList.remove("hidden");
+    elements.adminPanel.classList.add("hidden");
   }
 }
 
-// --- Login Handler ---
-loginForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const username = document.getElementById("username").value;
-  const password = document.getElementById("password").value;
-  const messageElement = document.getElementById("login-message");
-
-  try {
-    const response = await fetch(`${API_URL}/admin/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    });
-
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.message || "Login failed");
-
-    localStorage.setItem("adminToken", data.token);
-    messageElement.textContent = "Login successful!";
-    messageElement.classList.remove("text-red-500");
-    messageElement.classList.add("text-green-500");
-    updateUI();
-  } catch (err) {
-    messageElement.textContent = `Error: ${err.message}`;
-    messageElement.classList.remove("text-green-500");
-    messageElement.classList.add("text-red-500");
-  }
-});
-
-// --- Articles Management ---
+// --- Article Management Functions ---
 async function fetchArticles() {
   try {
     const response = await fetch(`${API_URL}/articles`);
@@ -68,8 +59,7 @@ async function fetchArticles() {
 }
 
 function renderArticles(articles) {
-  const container = document.getElementById("articles-container");
-  container.innerHTML = articles
+  elements.articlesContainer.innerHTML = articles
     .map(
       (article) => `
     <div class="bg-white p-4 rounded shadow mb-4 dark:bg-gray-700">
@@ -77,39 +67,14 @@ function renderArticles(articles) {
       <p class="text-sm text-gray-500 dark:text-gray-300">Category: ${article.category}</p>
       <p class="text-sm text-gray-500 dark:text-gray-300">Author: ${article.author}</p>
       <div class="mt-4 flex space-x-2">
-        <button class="edit-article bg-blue-500 text-white px-3 py-1 rounded" data-id="${article.id}">Edit</button>
-        <button class="delete-article bg-red-500 text-white px-3 py-1 rounded" data-id="${article.id}">Delete</button>
+        <button class="edit-article btn btn-blue" data-id="${article.id}">Edit</button>
+        <button class="delete-article btn btn-red" data-id="${article.id}">Delete</button>
       </div>
     </div>
   `,
     )
     .join("");
 
-  async function deleteArticle(articleId) {
-    if (!confirm("Are you sure you want to delete this article?")) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`${API_URL}/admin/articles/${articleId}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
-        },
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || "Failed to delete article");
-      }
-
-      // Refresh the articles list
-      fetchArticles();
-    } catch (err) {
-      console.error("Error deleting article:", err);
-      alert(`Failed to delete article: ${err.message}`);
-    }
-  }
   // Add event listeners
   document.querySelectorAll(".edit-article").forEach((button) => {
     button.addEventListener("click", () =>
@@ -127,36 +92,97 @@ async function loadArticleForEditing(articleId) {
     const response = await fetch(`${API_URL}/articles/${articleId}`);
     const article = await response.json();
 
-    document.getElementById("article-id").value = article.id;
-    document.getElementById("article-title").value = article.title;
-    tinymce.get("article-content").setContent(article.content);
-    document.getElementById("article-category").value = article.category;
-    document.getElementById("article-author").value = article.author;
-    document.getElementById("article-image").value = article.imageUrl || "";
+    elements.articleId.value = article.id;
+    elements.articleTitle.value = article.title;
+    quill.root.innerHTML = article.content;
+    elements.articleCategory.value = article.category;
+    elements.articleAuthor.value = article.author;
+    elements.articleImage.value = article.imageUrl || "";
 
-    document.getElementById("article-submit").textContent = "Update Article";
-    document
-      .getElementById("article-form-container")
-      .classList.remove("hidden");
-    articleForm.scrollIntoView({ behavior: "smooth" });
+    elements.articleSubmit.textContent = "Update Article";
+    elements.articleFormContainer.classList.remove("hidden");
+    elements.articleForm.scrollIntoView({ behavior: "smooth" });
   } catch (err) {
     console.error("Error loading article:", err);
   }
 }
 
-// --- Form Handlers ---
-articleForm.addEventListener("submit", async (e) => {
+async function deleteArticle(articleId) {
+  if (!confirm("Are you sure you want to delete this article?")) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/admin/articles/${articleId}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+      },
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.message || "Failed to delete article");
+    }
+
+    fetchArticles();
+  } catch (err) {
+    console.error("Error deleting article:", err);
+    alert(`Failed to delete article: ${err.message}`);
+  }
+}
+
+function resetForm() {
+  elements.articleForm.reset();
+  quill.root.innerHTML = "";
+  elements.articleId.value = "";
+  elements.articleSubmit.textContent = "Create Article";
+  elements.articleFormMessage.textContent = "";
+}
+
+// --- Event Handlers ---
+function handleLogin(e) {
+  e.preventDefault();
+  const username = document.getElementById("username").value;
+  const password = document.getElementById("password").value;
+
+  loginUser(username, password);
+}
+
+async function loginUser(username, password) {
+  try {
+    const response = await fetch(`${API_URL}/admin/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || "Login failed");
+
+    localStorage.setItem("adminToken", data.token);
+    elements.loginMessage.textContent = "Login successful!";
+    elements.loginMessage.classList.remove("text-red-500");
+    elements.loginMessage.classList.add("text-green-500");
+    updateUI();
+  } catch (err) {
+    elements.loginMessage.textContent = `Error: ${err.message}`;
+    elements.loginMessage.classList.remove("text-green-500");
+    elements.loginMessage.classList.add("text-red-500");
+  }
+}
+
+async function handleArticleSubmit(e) {
   e.preventDefault();
 
-  const articleId = document.getElementById("article-id").value;
-  const messageElement = document.getElementById("article-form-message");
+  const articleId = elements.articleId.value;
 
   const articleData = {
-    title: document.getElementById("article-title").value,
-    content: tinymce.get("article-content").getContent(),
-    category: document.getElementById("article-category").value,
-    author: document.getElementById("article-author").value,
-    imageUrl: document.getElementById("article-image").value,
+    title: elements.articleTitle.value,
+    content: quill.root.innerHTML,
+    category: elements.articleCategory.value,
+    author: elements.articleAuthor.value,
+    imageUrl: elements.articleImage.value,
   };
 
   try {
@@ -176,48 +202,70 @@ articleForm.addEventListener("submit", async (e) => {
     const data = await response.json();
     if (!response.ok) throw new Error(data.message);
 
-    messageElement.textContent = `Article ${articleId ? "updated" : "created"} successfully!`;
-    messageElement.classList.remove("text-red-500");
-    messageElement.classList.add("text-green-500");
+    elements.articleFormMessage.textContent = `Article ${
+      articleId ? "updated" : "created"
+    } successfully!`;
+    elements.articleFormMessage.classList.remove("text-red-500");
+    elements.articleFormMessage.classList.add("text-green-500");
 
-    // Reset form
-    articleForm.reset();
-    tinymce.get("article-content").setContent("");
-    document.getElementById("article-id").value = "";
-    document.getElementById("article-submit").textContent = "Create Article";
-
+    resetForm();
     fetchArticles();
   } catch (err) {
-    messageElement.textContent = `Error: ${err.message}`;
-    messageElement.classList.remove("text-green-500");
-    messageElement.classList.add("text-red-500");
+    elements.articleFormMessage.textContent = `Error: ${err.message}`;
+    elements.articleFormMessage.classList.remove("text-green-500");
+    elements.articleFormMessage.classList.add("text-red-500");
   }
-});
+}
 
-// --- Event Listeners ---
-document.getElementById("new-article-button").addEventListener("click", () => {
-  articleForm.reset();
-  tinymce.get("article-content").setContent("");
-  document.getElementById("article-id").value = "";
-  document.getElementById("article-submit").textContent = "Create Article";
-  document.getElementById("article-form-message").textContent = "";
-  document.getElementById("article-form-container").classList.remove("hidden");
-  articleForm.scrollIntoView({ behavior: "smooth" });
-});
+function handleNewArticleClick() {
+  resetForm();
+  elements.articleFormContainer.classList.remove("hidden");
+  elements.articleForm.scrollIntoView({ behavior: "smooth" });
+}
 
-document.getElementById("cancel-button").addEventListener("click", () => {
-  articleForm.reset();
-  tinymce.get("article-content").setContent("");
-  document.getElementById("article-id").value = "";
-  document.getElementById("article-submit").textContent = "Create Article";
-  document.getElementById("article-form-message").textContent = "";
-  document.getElementById("article-form-container").classList.add("hidden");
-});
+function handleCancelClick() {
+  resetForm();
+  elements.articleFormContainer.classList.add("hidden");
+}
 
-logoutButton.addEventListener("click", () => {
+function handleLogout() {
   localStorage.removeItem("adminToken");
   updateUI();
-});
+}
 
 // --- Initialize ---
-document.addEventListener("DOMContentLoaded", updateUI);
+function initializeApp() {
+  // Initialize Quill if we're on the admin page
+  if (elements.editorContainer) {
+    quill = new Quill("#editor-container", {
+      theme: "snow",
+      modules: {
+        toolbar: [
+          [{ header: [1, 2, 3, false] }],
+          ["bold", "italic", "underline", "strike"],
+          [{ list: "ordered" }, { list: "bullet" }],
+          [{ color: [] }, { background: [] }],
+          ["link", "image"],
+          ["clean"],
+        ],
+      },
+      placeholder: "Write your article content here...",
+    });
+
+    // Update hidden input when Quill content changes
+    quill.on("text-change", function () {
+      elements.articleContent.value = quill.root.innerHTML;
+    });
+  }
+
+  // Add event listeners
+  elements.loginForm?.addEventListener("submit", handleLogin);
+  elements.articleForm?.addEventListener("submit", handleArticleSubmit);
+  elements.newArticleButton?.addEventListener("click", handleNewArticleClick);
+  elements.cancelButton?.addEventListener("click", handleCancelClick);
+  elements.logoutButton?.addEventListener("click", handleLogout);
+
+  updateUI();
+}
+
+document.addEventListener("DOMContentLoaded", initializeApp);

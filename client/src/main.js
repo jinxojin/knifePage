@@ -1,20 +1,75 @@
+// src/main.js
 import "./style.css";
 
-// client/main.js
-async function getMessage() {
-  try {
-    const response = await fetch("http://localhost:3000/api/hello");
-    const data = await response.json();
+// --- API Service ---
+const API_URL = "http://localhost:3000/api";
 
-    alert(data.message); // Display the message in an alert box
+async function fetchArticlesByCategory(category, limit = null) {
+  try {
+    let url = `${API_URL}/articles?category=${category}`;
+    if (limit) url += `&limit=${limit}`;
+
+    console.log(`Fetching from: ${url}`);
+    const response = await fetch(url);
+    const articles = await response.json();
+    console.log(`${category} articles received:`, articles);
+
+    return articles;
   } catch (error) {
-    console.error("Error fetching message:", error);
-    alert("Error fetching message from server"); // Display error in alert
+    console.error(`Error fetching ${category} articles:`, error);
+    return [];
   }
 }
 
+// Helper function to truncate HTML content safely
+function truncateHTML(html, maxLength) {
+  const div = document.createElement("div");
+  div.innerHTML = html;
+  const text = div.textContent || div.innerText || "";
+  return text.substring(0, maxLength) + "...";
+}
+
+// Update article card with fetched content
+function updateArticleCard(container, article) {
+  if (!container || !article) return;
+
+  const contentDiv = container.querySelector(".p-5");
+  if (contentDiv) {
+    // Update title
+    const titleElement = contentDiv.querySelector("h5");
+    if (titleElement) titleElement.textContent = article.title;
+
+    // Update content
+    const contentElement = contentDiv.querySelector("p");
+    if (contentElement)
+      contentElement.textContent = truncateHTML(article.content, 150);
+
+    // Update link
+    const linkElement = contentDiv.querySelector("a.bg-primary-700");
+    if (linkElement) linkElement.href = `article.html?id=${article.id}`;
+
+    // Update image if available
+    const imgContainer = container.querySelector("a");
+    const imgElement = imgContainer?.querySelector("img");
+    if (imgElement && article.imageUrl) {
+      imgElement.src = article.imageUrl;
+      imgElement.alt = article.title;
+    }
+  }
+}
+
+// Function to get welcome message (placeholder for your getMessage function)
+function getMessage() {
+  // Your existing getMessage implementation
+  console.log("Welcome message loaded");
+}
+
+// Initialize the application
 document.addEventListener("DOMContentLoaded", () => {
+  // Call getMessage function
   getMessage();
+
+  // --- Burger Menu Animation ---
   const burgerBtn = document.getElementById("burger-btn");
   const nav = document.querySelector("nav");
   const anchors = document.querySelectorAll("nav li a");
@@ -23,13 +78,14 @@ document.addEventListener("DOMContentLoaded", () => {
   // Create the dropdown menu
   const dropdown = document.createElement("div");
   dropdown.className =
-    "mx-auto absolute top-0 left-0 w-full transition-all duration-300 ease-in-out rounded-b-md dark:bg-blue-900/80 z-10 md:hidden backdrop-blur-sm";
+    "mx-auto absolute top-0 left-0 w-full transition-all duration-300 ease-in-out rounded-b-md dark:bg-primary-800/70 z-10 md:hidden backdrop-blur-sm";
 
   const list = document.createElement("ul");
   list.className =
     "flex flex-col justify-center items-evenly gap-6 text-center py-4 dark:text-white";
   dropdown.appendChild(list);
 
+  // Clone navigation links for mobile menu
   for (const anchor of anchors) {
     const listItem = document.createElement("li");
     const newAnchor = document.createElement("a");
@@ -89,4 +145,48 @@ document.addEventListener("DOMContentLoaded", () => {
   // Initial State: max-height 0, opacity 0, scale-y 0
   dropdown.classList.add("max-h-0", "opacity-0", "scale-y-0");
   dropdown.style.transformOrigin = "top";
+
+  // --- Language Button Functionality ---
+  const languageBtn = document.getElementById("language-btn");
+  if (languageBtn) {
+    languageBtn.addEventListener("click", () => {
+      // Toggle language logic here
+      console.log("Language toggle clicked");
+    });
+  }
+
+  // --- Fetch Latest Articles ---
+  // For homepage sections
+  if (document.getElementById("highlight-competitions")) {
+    fetchArticlesByCategory("competitions", 1).then((articles) => {
+      if (articles.length > 0) {
+        updateArticleCard(
+          document.getElementById("highlight-competitions"),
+          articles[0],
+        );
+      }
+    });
+  }
+
+  if (document.getElementById("highlight-news")) {
+    fetchArticlesByCategory("news", 1).then((articles) => {
+      if (articles.length > 0) {
+        updateArticleCard(
+          document.getElementById("highlight-news"),
+          articles[0],
+        );
+      }
+    });
+  }
+
+  if (document.getElementById("highlight-blogs")) {
+    fetchArticlesByCategory("blogs", 1).then((articles) => {
+      if (articles.length > 0) {
+        updateArticleCard(
+          document.getElementById("highlight-blogs"),
+          articles[0],
+        );
+      }
+    });
+  }
 });

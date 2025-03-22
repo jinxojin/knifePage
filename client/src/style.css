@@ -63,12 +63,56 @@
   }
 }
 
+/* Add component classes that match your existing styling */
 @layer components {
+  /* Input fields */
   .comp-navlink {
     @apply mx-2 transition-colors duration-200 hover:text-blue-500;
   }
 
   .comp-divider {
     @apply mb-2 w-[75%] border-1 bg-black;
+  }
+  .form-input {
+    @apply focus:shadow-outline w-full appearance-none rounded border bg-gray-100 px-3 py-2 leading-tight text-gray-700 shadow focus:outline-none dark:bg-gray-600 dark:text-gray-100;
+  }
+
+  /* Labels */
+  .form-label {
+    @apply mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300;
+  }
+
+  /* Buttons */
+  .btn {
+    @apply focus:shadow-outline rounded px-4 py-2 font-bold text-white focus:outline-none;
+  }
+
+  .btn-blue {
+    @apply bg-blue-500 hover:bg-blue-700;
+  }
+
+  .btn-red {
+    @apply bg-red-500 hover:bg-red-700;
+  }
+
+  .btn-green {
+    @apply bg-green-500 hover:bg-green-700;
+  }
+
+  .btn-gray {
+    @apply bg-gray-500 hover:bg-gray-700;
+  }
+
+  /* Quill editor styling */
+  .quill-editor .ql-editor {
+    @apply min-h-[200px] bg-white dark:bg-gray-600 dark:text-gray-100;
+  }
+
+  .quill-editor .ql-toolbar {
+    @apply rounded-t bg-white dark:bg-gray-600 dark:text-gray-100;
+  }
+
+  .quill-editor .ql-container {
+    @apply rounded-b;
   }
 }
