@@ -3,11 +3,12 @@ const express = require("express");
 const router = express.Router();
 const Article = require("../models/article");
 const User = require("../models/user");
-const bcrypt = require("bcrypt"); // USE BCRYPT
+const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { body, validationResult } = require("express-validator");
 const authenticateToken = require("../middleware/auth");
-const ErrorHandler = require("../utils/errorHandler"); // CORRECT import
+const ErrorHandler = require("../utils/errorHandler");
+const sanitizeHtml = require("sanitize-html"); // Import sanitize-html
 
 // --- Admin Login ---
 router.post(
@@ -18,10 +19,12 @@ router.post(
       .isLength({ min: 1 })
       .escape()
       .withMessage("Username is required"),
-    body("password").isLength({ min: 1 }).withMessage("Password is required"),
+    body("password")
+      .isLength({ min: 8 }) // Minimum password length
+      .withMessage("Password must be at least 8 characters long"),
   ],
   async (req, res, next) => {
-    console.log("--- Login Request Received ---"); // Marker
+    console.log("--- Login Request Received ---");
     console.log("Request Body:", req.body);
 
     try {
@@ -43,16 +46,14 @@ router.post(
         return next(new ErrorHandler("Invalid credentials", 401));
       }
 
-      // --- Verify password with bcrypt ---
       console.log("Stored Password (from DB):", user.password);
-      const match = await bcrypt.compare(password, user.password); // USE BCRYPT
+      const match = await bcrypt.compare(password, user.password);
       console.log("Password Match:", match);
 
       if (!match) {
         console.log("Password comparison failed");
         return next(new ErrorHandler("Invalid credentials", 401));
       }
-      // --- End bcrypt verification ---
 
       const token = jwt.sign(
         { userId: user.id, username: user.username },
@@ -75,27 +76,25 @@ router.post(
   [
     body("title")
       .trim()
-      .isLength({ min: 1 })
-      .escape()
-      .withMessage("Title is required"),
+      .isLength({ min: 5, max: 255 })
+      .escape() // Escape HTML characters
+      .withMessage("Title must be between 5 and 255 characters"),
     body("content")
       .trim()
-      .isLength({ min: 1 })
-      .escape()
-      .withMessage("Content is required"),
+      .isLength({ min: 10 })
+      .escape() // Escape HTML characters
+      .withMessage("Content must be at least 10 characters long"),
     body("category")
+      .isIn(["news", "competition", "blog"])
+      .withMessage("Invalid category"),
+    body("author")
       .trim()
-      .isLength({ min: 1 })
+      .isLength({ min: 1, max: 255 })
       .escape()
-      .withMessage("Category is required"),
-    body("author") // ADD THIS
-      .trim()
-      .isLength({ min: 1 })
-      .escape()
-      .withMessage("Author is required"),
+      .withMessage("Author is required and must be less than 255 chars"),
     body("imageUrl")
       .trim()
-      .isURL()
+      .isURL({ protocols: ["http", "https"] })
       .optional({ nullable: true, checkFalsy: true })
       .withMessage("Image URL must be a valid URL"),
   ],
@@ -106,12 +105,24 @@ router.post(
         return next(new ErrorHandler("Validation Error", 400, errors.array()));
       }
 
-      const { title, content, category, author, imageUrl } = req.body; //ADD AUTHOR
+      let { title, content, category, author, imageUrl } = req.body;
+
+      // Sanitize the content
+      content = sanitizeHtml(content, {
+        allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]), // Allow img tags
+        allowedAttributes: {
+          "*": ["class", "style"],
+          a: ["href", "name", "target"],
+          img: ["src", "alt", "title"],
+        },
+        allowedSchemes: ["http", "https", "data"],
+      });
+
       const newArticle = await Article.create({
         title,
-        content,
+        content, // Use sanitized content
         category,
-        author, //ADD THIS
+        author,
         imageUrl,
       });
       res.status(201).json(newArticle);
@@ -128,27 +139,25 @@ router.put(
   [
     body("title")
       .trim()
-      .isLength({ min: 1 })
+      .isLength({ min: 5, max: 255 })
       .escape()
-      .withMessage("Title is required"),
+      .withMessage("Title must be between 5 and 255 characters"),
     body("content")
       .trim()
-      .isLength({ min: 1 })
-      .escape()
-      .withMessage("Content is required"),
+      .isLength({ min: 10 })
+      .escape() // Escape HTML characters
+      .withMessage("Content must be at least 10 characters long"),
     body("category")
+      .isIn(["news", "competition", "blog"])
+      .withMessage("Invalid category"),
+    body("author")
       .trim()
-      .isLength({ min: 1 })
+      .isLength({ min: 1, max: 255 })
       .escape()
-      .withMessage("Category is required"),
-    body("author") // ADD THIS
-      .trim()
-      .isLength({ min: 1 })
-      .escape()
-      .withMessage("Author is required"),
+      .withMessage("Author is required and must be less than 255 chars"),
     body("imageUrl")
       .trim()
-      .isURL()
+      .isURL({ protocols: ["http", "https"] })
       .optional({ nullable: true, checkFalsy: true })
       .withMessage("Image URL must be a valid URL"),
   ],
@@ -158,18 +167,30 @@ router.put(
       if (!errors.isEmpty()) {
         return next(new ErrorHandler("Validation Error", 400, errors.array()));
       }
+
       const article = await Article.findByPk(req.params.id);
       if (!article) {
         return next(new ErrorHandler("Article not found", 404));
       }
 
-      const { title, content, category, author, imageUrl } = req.body; // ADD AUTHOR
+      let { title, content, category, author, imageUrl } = req.body;
+
+      // Sanitize the content
+      content = sanitizeHtml(content, {
+        allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]), // Allow img tags
+        allowedAttributes: {
+          "*": ["class", "style"],
+          a: ["href", "name", "target"],
+          img: ["src", "alt", "title"],
+        },
+        allowedSchemes: ["http", "https", "data"],
+      });
 
       await article.update({
         title,
-        content,
+        content, // Use sanitized content
         category,
-        author, // ADD THIS
+        author,
         imageUrl,
       });
       res.json(article);

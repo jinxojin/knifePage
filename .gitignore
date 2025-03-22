@@ -1,0 +1,39 @@
+# General
+.env
+node_modules/
+dist/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Editor-Specific
+.vscode/
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# SQLite Database (Server)
+server/data/database.sqlite
+# If you have a test database
+server/data/database.test.sqlite
+
+
+# OS Generated Files (macOS)
+._*
+.Spotlight-V100
+.Trashes
+
+# Optional: coverage reports
+coverage/
+
+# Optional: compiled output
+*.pyc
+__pycache__/

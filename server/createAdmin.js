@@ -12,7 +12,7 @@ async function createAdmin() {
     if (user) {
       console.log("Admin user already exists. Updating password...");
       // Update the password, using bcrypt.
-      const hashedPassword = await bcrypt.hash("adminpassword", 10); // USE BCRYPT
+      const hashedPassword = await bcrypt.hash("?hutg4Y4jSh1d3hW3", 10); // USE BCRYPT
       await User.update(
         { password: hashedPassword },
         { where: { username: "admin" } }
