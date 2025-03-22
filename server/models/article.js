@@ -1,6 +1,5 @@
-// server/models/Article.js
 const { DataTypes } = require("sequelize");
-const sequelize = require("../config/database");
+const { sequelize } = require("../config/database");
 
 const Article = sequelize.define("Article", {
   title: {
@@ -14,9 +13,21 @@ const Article = sequelize.define("Article", {
   category: {
     type: DataTypes.STRING,
     allowNull: false,
+    validate: {
+      isIn: [["news", "competition", "blog"]],
+    },
+  },
+  status: {
+    type: DataTypes.STRING,
+    defaultValue: "published",
+    validate: {
+      isIn: [["draft", "published"]],
+    },
   },
   imageUrl: {
+    //ADD THIS
     type: DataTypes.STRING,
+    allowNull: true,
   },
 });
 

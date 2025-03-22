@@ -1,192 +1,153 @@
-// src/main.js
+// client/src/main.js
 import "./style.css";
 
-// --- API Service ---
-const API_URL = "http://localhost:3000/api";
+// Constants
+const API_URL = "http://localhost:3000/api"; // Centralized API URL
+const CATEGORIES = ["competition", "news", "blog"];
 
-async function fetchArticlesByCategory(category, limit = null) {
+// DOM Elements
+const burgerBtn = document.getElementById("burger-btn");
+const languageBtn = document.getElementById("language-btn");
+
+/**
+ * Fetches the latest article for a category
+ * @param {string} category - Category to fetch
+ * @returns {Promise<Object|null>} Latest article or null if error
+ */
+async function fetchLatestArticle(category) {
   try {
-    let url = `${API_URL}/articles?category=${category}`;
-    if (limit) url += `&limit=${limit}`;
-
-    console.log(`Fetching from: ${url}`);
-    const response = await fetch(url);
+    console.log(`Fetching ${category} articles...`);
+    const response = await fetch(
+      `${API_URL}/articles/category/${category}?limit=1`,
+    );
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     const articles = await response.json();
     console.log(`${category} articles received:`, articles);
-
-    return articles;
+    return articles[0] || null;
   } catch (error) {
-    console.error(`Error fetching ${category} articles:`, error);
-    return [];
+    console.error(`Error fetching ${category} article:`, error);
+    // Consider re-throwing the error, or returning a specific error object
+    return null;
   }
 }
 
-// Helper function to truncate HTML content safely
-function truncateHTML(html, maxLength) {
-  const div = document.createElement("div");
-  div.innerHTML = html;
-  const text = div.textContent || div.innerText || "";
-  return text.substring(0, maxLength) + "...";
-}
+/**
+ * Updates a highlight card with article content
+ * @param {string} category - Category of the article
+ * @param {Object} article - Article data
+ */
+function updateHighlightCard(category, article) {
+  const container = document.getElementById(`highlight-${category}`);
+  if (!container) return;
 
-// Update article card with fetched content
-function updateArticleCard(container, article) {
-  if (!container || !article) return;
-
-  const contentDiv = container.querySelector(".p-5");
-  if (contentDiv) {
-    // Update title
-    const titleElement = contentDiv.querySelector("h5");
-    if (titleElement) titleElement.textContent = article.title;
-
-    // Update content
-    const contentElement = contentDiv.querySelector("p");
-    if (contentElement)
-      contentElement.textContent = truncateHTML(article.content, 150);
-
-    // Update link
-    const linkElement = contentDiv.querySelector("a.bg-primary-700");
-    if (linkElement) linkElement.href = `article.html?id=${article.id}`;
-
-    // Update image if available
-    const imgContainer = container.querySelector("a");
-    const imgElement = imgContainer?.querySelector("img");
-    if (imgElement && article.imageUrl) {
-      imgElement.src = article.imageUrl;
-      imgElement.alt = article.title;
-    }
+  if (!article) {
+    container.innerHTML = `
+                <div class="p-5">
+                    <h5 class="mb-2 text-xl font-medium">No ${category} article found</h5>
+                    <p class="mb-3 text-gray-700 dark:text-gray-400">Check back later for updates.</p>
+                </div>
+            `;
+    return;
   }
+  const excerpt = createArticleExcerpt(article.content, 150);
+
+  container.innerHTML = `
+            <a href="/article.html?id=${article.id}">
+                <img class="rounded-t-lg" src="${article.imageUrl || "./assets/comp-placeholder.jpg"}"
+                     alt="${category} image" />
+            </a>
+            <div class="p-5">
+                <a href="/article.html?id=${article.id}">
+                    <h5 class="mb-2 text-xl font-medium tracking-tight text-gray-900 dark:text-white">
+                        ${article.title}
+                    </h5>
+                </a>
+                <p class="mb-3 font-normal text-gray-700 dark:text-gray-400">
+                    ${excerpt}
+                </p>
+                <a href="/article.html?id=${article.id}"
+                   class="bg-primary-700 dark:bg-primary-400 inline-flex items-center rounded-lg px-3 py-2 text-center text-sm font-medium text-white hover:bg-blue-900 focus:ring-4 focus:ring-blue-300 focus:outline-none dark:hover:bg-blue-900 dark:focus:ring-blue-800">
+                    Read more
+                    <svg class="ms-2 h-3.5 w-3.5 rtl:rotate-180" aria-hidden="true"
+                         xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 10">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                              stroke-width="2" d="M1 5h12m0 0L9 1m4 4L9 9"/>
+                    </svg>
+                </a>
+            </div>
+        `;
 }
 
-// Function to get welcome message (placeholder for your getMessage function)
-function getMessage() {
-  // Your existing getMessage implementation
-  console.log("Welcome message loaded");
-}
-
-// Initialize the application
-document.addEventListener("DOMContentLoaded", () => {
-  // Call getMessage function
-  getMessage();
-
-  // --- Burger Menu Animation ---
-  const burgerBtn = document.getElementById("burger-btn");
-  const nav = document.querySelector("nav");
-  const anchors = document.querySelectorAll("nav li a");
-  let isBurgerActive = false;
-
-  // Create the dropdown menu
+/**
+ * Creates and manages the mobile dropdown menu
+ */
+function createMobileMenu() {
   const dropdown = document.createElement("div");
+  dropdown.id = "mobile-menu";
   dropdown.className =
-    "mx-auto absolute top-0 left-0 w-full transition-all duration-300 ease-in-out rounded-b-md dark:bg-primary-800/70 z-10 md:hidden backdrop-blur-sm";
+    "fixed left-0 w-full overflow-hidden transition-[max-height] duration-300 bg-white/80 backdrop-blur-sm dark:bg-primary-800/80";
+  dropdown.style.top = "32px";
+  dropdown.style.maxHeight = "0";
 
-  const list = document.createElement("ul");
-  list.className =
-    "flex flex-col justify-center items-evenly gap-6 text-center py-4 dark:text-white";
-  dropdown.appendChild(list);
+  const nav = document.querySelector("nav ul").cloneNode(true);
+  nav.className = "flex flex-col items-center py-4";
+  dropdown.appendChild(nav);
+  document.body.appendChild(dropdown);
 
-  // Clone navigation links for mobile menu
-  for (const anchor of anchors) {
-    const listItem = document.createElement("li");
-    const newAnchor = document.createElement("a");
-    newAnchor.textContent = anchor.textContent;
-    newAnchor.href = anchor.href;
-    // Add transition to the anchor for hover effect
-    newAnchor.className =
-      "font-md transition-colors duration-200 hover:text-blue-500";
-    listItem.appendChild(newAnchor);
-    list.appendChild(listItem);
-  }
-
-  // Insert dropdown before the first child of nav
-  nav.insertBefore(dropdown, nav.firstChild);
-
-  // Adjust z-index and transform-origin of original button
-  burgerBtn.style.position = "relative";
-  burgerBtn.style.zIndex = "20";
-  burgerBtn.style.transition = "transform 0.3s ease-in-out";
-  burgerBtn.style.transformOrigin = "center";
-
-  // Event listener for burger button
-  function toggleDropdown() {
-    isBurgerActive = !isBurgerActive;
-    dropdown.classList.toggle("max-h-0");
-    dropdown.classList.toggle("max-h-screen");
-
-    // Rotate the button
-    if (isBurgerActive) {
-      burgerBtn.style.transform = "rotate(180deg)";
-      burgerBtn.className = "text-white";
-    } else {
-      burgerBtn.style.transform = "rotate(0deg)";
-      burgerBtn.classList.remove("text-white");
-    }
-
-    if (isBurgerActive) {
-      dropdown.classList.add("opacity-100", "scale-y-100");
-    } else {
-      dropdown.classList.remove("opacity-100", "scale-y-100");
-    }
-  }
-
-  burgerBtn.addEventListener("click", toggleDropdown);
-
-  // Close dropdown when clicking outside
-  document.addEventListener("click", (event) => {
-    if (
-      isBurgerActive &&
-      !dropdown.contains(event.target) &&
-      !burgerBtn.contains(event.target)
-    ) {
-      toggleDropdown();
-    }
+  burgerBtn.addEventListener("click", () => {
+    const isOpen = dropdown.style.maxHeight !== "0px";
+    dropdown.style.maxHeight = isOpen ? "0" : "100vh";
+    burgerBtn.querySelector("i").style.transform = isOpen
+      ? "rotate(0deg)"
+      : "rotate(90deg)";
   });
 
-  // Initial State: max-height 0, opacity 0, scale-y 0
-  dropdown.classList.add("max-h-0", "opacity-0", "scale-y-0");
-  dropdown.style.transformOrigin = "top";
+  document.addEventListener("click", (e) => {
+    if (!dropdown.contains(e.target) && !burgerBtn.contains(e.target)) {
+      dropdown.style.maxHeight = "0";
+      burgerBtn.querySelector("i").style.transform = "rotate(0deg)";
+    }
+  });
+}
 
-  // --- Language Button Functionality ---
-  const languageBtn = document.getElementById("language-btn");
-  if (languageBtn) {
-    languageBtn.addEventListener("click", () => {
-      // Toggle language logic here
-      console.log("Language toggle clicked");
-    });
-  }
+/**
+ * Initializes the page content
+ */
+async function initializePage() {
+  try {
+    // Fetch latest articles for all categories concurrently
+    const articlePromises = CATEGORIES.map((category) =>
+      fetchLatestArticle(category),
+    );
+    const articles = await Promise.all(articlePromises);
 
-  // --- Fetch Latest Articles ---
-  // For homepage sections
-  if (document.getElementById("highlight-competitions")) {
-    fetchArticlesByCategory("competitions", 1).then((articles) => {
-      if (articles.length > 0) {
-        updateArticleCard(
-          document.getElementById("highlight-competitions"),
-          articles[0],
-        );
-      }
+    // Update highlight cards
+    CATEGORIES.forEach((category, index) => {
+      updateHighlightCard(category, articles[index]);
     });
+  } catch (error) {
+    console.error("Error initializing page:", error);
+    // Display a user-friendly error message on the page, perhaps in a dedicated error section
+    const errorContainer = document.getElementById("error-message"); // Assuming you have an element with this ID
+    if (errorContainer) {
+      errorContainer.textContent =
+        "Failed to load featured articles. Please refresh the page.";
+      errorContainer.classList.remove("hidden"); // Make sure the error message is visible
+    }
   }
+}
 
-  if (document.getElementById("highlight-news")) {
-    fetchArticlesByCategory("news", 1).then((articles) => {
-      if (articles.length > 0) {
-        updateArticleCard(
-          document.getElementById("highlight-news"),
-          articles[0],
-        );
-      }
-    });
-  }
+// Initialize when DOM is loaded
+document.addEventListener("DOMContentLoaded", () => {
+  createMobileMenu();
+  initializePage();
 
-  if (document.getElementById("highlight-blogs")) {
-    fetchArticlesByCategory("blogs", 1).then((articles) => {
-      if (articles.length > 0) {
-        updateArticleCard(
-          document.getElementById("highlight-blogs"),
-          articles[0],
-        );
-      }
-    });
-  }
+  // Language button functionality (placeholder)
+  languageBtn?.addEventListener("click", () => {
+    console.log("Language toggle clicked");
+  });
 });
+
+// Export functions for use in other modules
+export { fetchLatestArticle, updateHighlightCard, createArticleExcerpt };
+import { createArticleExcerpt } from "./articles.js"; // Import

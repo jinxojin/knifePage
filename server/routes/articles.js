@@ -1,56 +1,84 @@
 // server/routes/articles.js
 const express = require("express");
 const router = express.Router();
-const Article = require("../models/Article");
+const { Article } = require("../models");
+const { Op } = require("sequelize");
+const { body, validationResult } = require("express-validator");
+const { ErrorHandler } = require("../utils/errorHandler");
+
+// GET articles by category with limit
+router.get("/category/:category", async (req, res, next) => {
+  try {
+    const { category } = req.params;
+    const limit = parseInt(req.query.limit) || 3;
+
+    console.log("Fetching articles with params:", { category, limit });
+
+    const articles = await Article.findAll({
+      where: {
+        category: category,
+        status: "published",
+      },
+      order: [["createdAt", "DESC"]],
+      limit: limit,
+    });
+
+    console.log(`Found ${articles.length} articles for category: ${category}`);
+
+    res.json(articles);
+  } catch (error) {
+    console.error("Error fetching articles by category:", error);
+    next(
+      new ErrorHandler("Failed to fetch articles. Please try again later.", 500)
+    );
+  }
+});
 
 // GET /api/articles/all
-router.get("/all", async (req, res) => {
+router.get("/all", async (req, res, next) => {
   try {
     const articles = await Article.findAll({
-      attributes: ["id", "title", "category", "createdAt"],
+      attributes: ["id", "title", "category", "createdAt", "imageUrl"],
     });
     res.json(articles);
   } catch (error) {
     console.error("Error fetching all articles:", error);
-    res.status(500).json({ message: "Server error" });
+    next(new ErrorHandler("Server error", 500));
   }
 });
 
 // GET /api/articles
-router.get("/", async (req, res) => {
+router.get("/", async (req, res, next) => {
   try {
     const { category, limit } = req.query;
-
-    console.log("Request query:", req.query); // Add this line to log the query parameters
-
-    // Create query options
     const queryOptions = {
       where: {},
       order: [["createdAt", "DESC"]],
     };
 
-    // Add category filter if provided
     if (category) {
       queryOptions.where.category = category;
     }
 
-    console.log("Query options:", JSON.stringify(queryOptions)); // Add this line to log the query options
-
-    // Add limit if provided
     if (limit) {
       queryOptions.limit = parseInt(limit);
     }
 
-    // Execute query
     const articles = await Article.findAll(queryOptions);
-
-    console.log(`Found ${articles.length} articles for category: ${category}`); // Add this line to log the results
-
     res.json(articles);
   } catch (error) {
     console.error("Error fetching articles:", error);
-    res.status(500).json({ message: "Server error" });
+    next(new ErrorHandler("Server error", 500));
   }
 });
+
+const validateArticle = [
+  body("title").isString().trim().notEmpty().withMessage("Title is required"),
+  body("content").isString().notEmpty().withMessage("Content is required"),
+  body("category")
+    .isIn(["news", "competition", "blog"])
+    .withMessage("Invalid category"),
+  body("author").isString().trim().notEmpty().withMessage("Author is required"),
+];
 
 module.exports = router;

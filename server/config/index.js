@@ -1,14 +1,11 @@
-// Configuration settings for the application
+const corsOptions = {
+  origin: "http://localhost:5173", // Replace with your client's origin
+  optionsSuccessStatus: 200, // For legacy browser support
+};
+
 module.exports = {
   port: process.env.PORT || 3000,
-  corsOptions: {
-    origin:
-      process.env.NODE_ENV === "production"
-        ? "https://your-production-domain.com"
-        : "http://localhost:5173", // Vite's default port
-    optionsSuccessStatus: 200,
-  },
-  database: {
-    // Database configuration settings can go here
-  }
+  jwtSecret: process.env.JWT_SECRET,
+  nodeEnv: process.env.NODE_ENV,
+  corsOptions,
 };

@@ -1,0 +1,14 @@
+{
+  "development": {
+    "dialect": "sqlite",
+    "storage": "/Users/chinkhuslenerdenebileg/code/knife-page/server/data/database.sqlite"
+  },
+  "test": {
+    "dialect": "sqlite",
+    "storage": "./data/database.test.sqlite"
+  },
+  "production": {
+    "dialect": "sqlite",
+    "storage": "./data/database.sqlite"
+  }
+}

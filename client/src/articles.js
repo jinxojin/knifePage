@@ -1,157 +1,206 @@
-// src/articles.js
-const API_URL = "http://localhost:3000/api";
+// client/src/articles.js
 
-async function fetchArticlesByCategory(category, limit = null) {
+// Constants for API endpoints and configuration
+const API_URL = "http://localhost:3000/api"; // Centralized API URL
+const ARTICLE_ENDPOINT = `${API_URL}/articles`;
+
+// Cache for articles to improve performance
+const articleCache = new Map();
+
+/**
+ * Fetches an article by ID
+ * @param {string} id - The article ID
+ * @returns {Promise<Object>} The article data
+ * @throws {Error} If the article cannot be fetched
+ */
+export async function getArticleById(id) {
   try {
-    let url = `${API_URL}/articles?category=${category}`;
-    if (limit) url += `&limit=${limit}`;
+    // Check cache first
+    if (articleCache.has(id)) {
+      return articleCache.get(id);
+    }
+    const response = await fetch(`${ARTICLE_ENDPOINT}/${id}`);
 
-    const response = await fetch(url);
-    const articles = await response.json();
-    return articles;
-  } catch (error) {
-    console.error("Error fetching articles:", error);
-    return [];
-  }
-}
+    if (!response.ok) {
+      throw new Error(`Failed to fetch article: ${response.statusText}`);
+    }
 
-async function fetchArticleById(id) {
-  try {
-    const response = await fetch(`${API_URL}/articles/${id}`);
     const article = await response.json();
+    articleCache.set(id, article);
     return article;
   } catch (error) {
     console.error("Error fetching article:", error);
-    return null;
+    throw error; // Re-throw the error so the caller can handle it
   }
 }
 
-function renderArticles(articles, containerId) {
-  const container = document.getElementById(containerId);
-  if (!container) return;
+/**
+ * Fetches articles by category
+ * @param {string} category - The category to filter by
+ * @returns {Promise<Array>} Array of articles
+ * @throws {Error} If articles cannot be fetched
+ */
+export async function getArticlesByCategory(category) {
+  try {
+    const response = await fetch(`${ARTICLE_ENDPOINT}/category/${category}`);
 
-  if (articles.length === 0) {
-    container.innerHTML =
-      '<p class="text-center py-4">No articles available at this time.</p>';
+    if (!response.ok) {
+      throw new Error(`Failed to fetch articles: ${response.statusText}`);
+    }
+    const articles = await response.json();
+    return articles;
+  } catch (error) {
+    console.error("Error fetching articles by category:", error);
+    throw error; // Re-throw for caller handling
+  }
+}
+
+/**
+ * Renders an article to the specified container
+ * @param {Object} article - The article data
+ * @param {HTMLElement} container - The container element
+ */
+export function renderArticle(article, container) {
+  const articleDate = new Date(article.createdAt).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  const articleHTML = `
+        <article class="bg-white rounded-lg shadow-md overflow-hidden">
+            ${article.imageUrl ? `<img src="${article.imageUrl}" alt="${article.title}" class="w-full h-auto">` : ""}
+            <div class="p-6">
+                <h1 class="text-3xl font-bold text-gray-900 mb-4">${article.title}</h1>
+                <div class="flex items-center text-gray-500 text-sm mb-4">
+                    <span>${articleDate}</span>
+                    <span class="mx-2">•</span>
+                    <span class="capitalize">${article.category}</span>
+      </div>
+                <div class="prose max-w-none">
+          ${article.content}
+        </div>
+            </div>
+      </article>
+    `;
+
+  container.innerHTML = articleHTML;
+}
+
+/**
+ * Renders a list of articles
+ * @param {Array} articles - Array of article objects
+ * @param {HTMLElement} container - The container element
+ */
+export function renderArticleList(articles, container) {
+  // Handle empty article list
+  if (!articles || articles.length === 0) {
+    container.innerHTML = `<p class="text-center py-4">No articles found.</p>`;
     return;
   }
 
-  container.innerHTML = articles
+  const articlesHTML = articles
     .map(
       (article) => `
-    <article class="bg-white p-4 rounded shadow mb-4 dark:bg-gray-700">
-      <h2 class="text-2xl font-bold mb-2">${article.title}</h2>
-      ${article.imageUrl ? `<img src="${article.imageUrl}" alt="${article.title}" class="w-full h-48 object-cover mb-4 rounded">` : ""}
-      <div class="prose prose-sm max-w-none mb-4">
-        ${truncateHTML(article.content, 150)}...
-      </div>
-      <div class="flex justify-between items-center">
-        <div class="text-sm text-gray-500 dark:text-gray-300">
-          By ${article.author} | ${new Date(article.createdAt).toLocaleDateString()}
-        </div>
-        <a href="/article.html?id=${article.id}" class="text-blue-600 hover:underline">Read more</a>
-      </div>
-    </article>
+      <article class="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+          ${article.imageUrl ? `<img src="${article.imageUrl}" alt="${article.title}" class="w-full h-48 object-cover">` : ""}
+          <div class="p-6">
+              <h2 class="text-xl font-semibold text-gray-900 mb-2">
+                  <a href="/article.html?id=${article.id}" class="hover:text-blue-600 transition-colors">
+                      ${article.title}
+                  </a>
+              </h2>
+              <div class="flex items-center text-gray-500 text-sm mb-3">
+                  <span>${new Date(article.createdAt).toLocaleDateString()}</span>
+                  <span class="mx-2">•</span>
+                  <span class="capitalize">${article.category}</span>
+              </div>
+              <p class="text-gray-600 line-clamp-3">
+                  ${createArticleExcerpt(article.content)}
+              </p>
+              <a href="/article.html?id=${article.id}"
+                 class="inline-block mt-4 text-blue-600 hover:text-blue-800 transition-colors">
+                  Read more →
+              </a>
+          </div>
+      </article>
   `,
     )
     .join("");
+
+  container.innerHTML = articlesHTML;
 }
 
-function renderLatestArticles() {
-  // For homepage - fetch latest from each category
-  Promise.all([
-    fetchArticlesByCategory("news", 1),
-    fetchArticlesByCategory("blogs", 1),
-    fetchArticlesByCategory("competitions", 1),
-  ]).then(([news, blogs, competitions]) => {
-    if (document.getElementById("latest-news")) {
-      renderArticles(news, "latest-news");
-    }
+/**
+ * Initializes the article page
+ */
+export async function initArticlePage() {
+  const container = document.getElementById("article-container");
+  const urlParams = new URLSearchParams(window.location.search);
+  const articleId = urlParams.get("id");
 
-    if (document.getElementById("latest-blogs")) {
-      renderArticles(blogs, "latest-blogs");
-    }
-
-    if (document.getElementById("latest-competitions")) {
-      renderArticles(competitions, "latest-competitions");
-    }
-  });
-}
-
-function renderSingleArticle(articleId, containerId) {
-  const container = document.getElementById(containerId);
-  if (!container) return;
-
-  fetchArticleById(articleId).then((article) => {
-    if (!article) {
-      container.innerHTML = '<p class="text-center py-8">Article not found</p>';
-      return;
-    }
-
-    container.innerHTML = `
-      <article class="bg-white p-6 rounded shadow dark:bg-gray-700">
-        <h1 class="text-3xl font-bold mb-2">${article.title}</h1>
-        <div class="text-sm text-gray-500 dark:text-gray-300 mb-6">
-          By ${article.author} | ${new Date(article.createdAt).toLocaleDateString()} | Category: ${article.category}
-        </div>
-        
-        ${article.imageUrl ? `<img src="${article.imageUrl}" alt="${article.title}" class="w-full max-h-96 object-cover mb-6 rounded">` : ""}
-        
-        <div class="prose prose-lg max-w-none">
-          ${article.content}
-        </div>
-      </article>
-    `;
-  });
-}
-
-// Helper function to truncate HTML content safely
-function truncateHTML(html, maxLength) {
-  const div = document.createElement("div");
-  div.innerHTML = html;
-  const text = div.textContent || div.innerText || "";
-  return text.substring(0, maxLength);
-}
-
-// Initialize based on page
-document.addEventListener("DOMContentLoaded", () => {
-  // For category pages
-  if (document.getElementById("news-container")) {
-    fetchArticlesByCategory("news").then((articles) =>
-      renderArticles(articles, "news-container"),
-    );
+  if (!container) {
+    console.error("Article container not found");
+    return;
   }
 
-  if (document.getElementById("blogs-container")) {
-    fetchArticlesByCategory("blogs").then((articles) =>
-      renderArticles(articles, "blogs-container"),
-    );
-  }
-
-  if (document.getElementById("competitions-container")) {
-    fetchArticlesByCategory("competitions").then((articles) =>
-      renderArticles(articles, "competitions-container"),
-    );
-  }
-
-  // For homepage
-  if (
-    document.getElementById("latest-news") ||
-    document.getElementById("latest-blogs") ||
-    document.getElementById("latest-competitions")
-  ) {
-    renderLatestArticles();
-  }
-
-  // For single article page
-  if (document.getElementById("article-container")) {
-    const urlParams = new URLSearchParams(window.location.search);
-    const articleId = urlParams.get("id");
+  try {
     if (articleId) {
-      renderSingleArticle(articleId, "article-container");
+      // Single article view
+      const article = await getArticleById(articleId);
+      renderArticle(article, container);
+    } else {
+      // List view - default to latest articles
+      const articles = await getArticlesByCategory("latest");
+      renderArticleList(articles, container);
     }
+  } catch (error) {
+    // Display a user-friendly error message
+    container.innerHTML = `
+            <div class="bg-red-50 border-l-4 border-red-500 p-4">
+                <p class="text-red-700">${error.message || "Failed to load article(s). Please try again later."}</p>
+            </div>
+        `;
+  }
+}
+
+/**
+ * Formats the article date
+ * @param {string} dateString - ISO date string
+ * @returns {string} Formatted date
+ */
+export function formatArticleDate(dateString) {
+  return new Date(dateString).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+/**
+ * Creates article excerpt
+ * @param {string} content - Article content
+ * @param {number} length - Excerpt length
+ * @returns {string} Article excerpt
+ */
+export function createArticleExcerpt(content, length = 150) {
+  // Remove HTML tags and trim to length
+  const plainText = content.replace(/<[^>]+>/g, "");
+  return plainText.length > length
+    ? `${plainText.substring(0, length)}...`
+    : plainText;
+}
+
+// Initialize article functionality when DOM is loaded
+document.addEventListener("DOMContentLoaded", () => {
+  // Check if we're on an article page
+  if (window.location.pathname.includes("article.html")) {
+    initArticlePage();
   }
 });
 
-// Export functions for use in other files
-export { fetchArticlesByCategory, renderArticles };
+// Export utility functions for use in other modules
+export const utils = {
+  formatArticleDate,
+  createArticleExcerpt,
+};

@@ -11,11 +11,9 @@
       rel="stylesheet"
       href="https://cdn-uicons.flaticon.com/2.6.0/uicons-bold-rounded/css/uicons-bold-rounded.css"
     />
-    <link rel="stylesheet" href="./style.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mongolian Sports Knife Throwing Federation</title>
   </head>
-
   <body
     class="bg-gray-100 font-[tinos] text-gray-900 dark:bg-gray-800 dark:text-gray-100"
   >
@@ -29,24 +27,14 @@
           MSKTF
         </i>
         <ul class="hidden md:flex md:items-center md:justify-between">
-          <li class="comp-navlink">
-            <a href="index.html">Home</a>
-          </li>
+          <li class="comp-navlink"><a href="index.html">Home</a></li>
           <li class="comp-navlink">
             <a href="competitions.html">Competitions</a>
           </li>
-          <li class="comp-navlink">
-            <a href="article.html">News & Blog</a>
-          </li>
-          <li class="comp-navlink">
-            <a href="mission.html">Mission</a>
-          </li>
-          <li class="comp-navlink">
-            <a href="contact.html">Contact</a>
-          </li>
-          <li class="comp-navlink">
-            <a href="admin.html">Admin</a>
-          </li>
+          <li class="comp-navlink"><a href="article.html">News & Blog</a></li>
+          <li class="comp-navlink"><a href="mission.html">Mission</a></li>
+          <li class="comp-navlink"><a href="contact.html">Contact</a></li>
+          <li class="comp-navlink"><a href="admin.html">Admin</a></li>
         </ul>
         <button
           class="hidden transition-colors duration-200 hover:text-blue-500 md:block"
@@ -61,7 +49,9 @@
         </button>
       </nav>
     </header>
+
     <main class="flex flex-col items-center">
+      <!-- Welcome Section -->
       <section class="mx-auto md:max-w-[80vw]">
         <h1 class="mt-8 w-[100%] pt-7 text-center text-2xl">Welcome!</h1>
         <h2 class="w-[100%] text-center text-xl">
@@ -69,168 +59,48 @@
         </h2>
       </section>
 
-      <!-- Latest Competition Section -->
-      <section
-        id="highlight-competitions"
-        class="mt-4 flex max-w-[90%] flex-col items-start"
-      >
-        <h3 class="text-2xl">Latest Competition</h3>
-        <div class="comp-divider"></div>
-        <div
-          class="dark:bg-primary-800 dark:border-primary-400 max-w-[100%] rounded-lg border border-gray-200 bg-white shadow-sm"
-        >
-          <a href="#">
-            <img
-              class="rounded-t-lg"
-              src="./assets/comp-placeholder.jpg"
-              alt="Competition image"
-            />
-          </a>
-          <div class="p-5">
-            <a href="#">
-              <h5
-                class="mb-2 text-xl font-medium tracking-tight text-gray-900 dark:text-white"
-              >
-                Loading competition...
-              </h5>
-            </a>
-            <p class="mb-3 font-normal text-gray-700 dark:text-gray-400">
-              Loading competition details...
-            </p>
-            <a
-              href="#"
-              class="bg-primary-700 dark:bg-primary-400 inline-flex items-center rounded-lg px-3 py-2 text-center text-sm font-medium text-white hover:bg-blue-900 focus:ring-4 focus:ring-blue-300 focus:outline-none dark:hover:bg-blue-900 dark:focus:ring-blue-800"
-            >
-              Read more
-              <svg
-                class="ms-2 h-3.5 w-3.5 rtl:rotate-180"
-                aria-hidden="true"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 14 10"
-              >
-                <path
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M1 5h12m0 0L9 1m4 4L9 9"
-                />
-              </svg>
-            </a>
+      <!-- Featured Articles -->
+      <section id="featured-articles" class="mt-4 w-full max-w-[90%]">
+        <!-- Latest Competition -->
+        <div class="mb-8">
+          <h3 class="text-2xl">Latest Competition</h3>
+          <div class="comp-divider"></div>
+          <div
+            id="highlight-competition"
+            class="dark:bg-primary-800 dark:border-primary-400 rounded-lg border border-gray-200 bg-white shadow-sm"
+          >
+            <!-- Content will be dynamically updated -->
           </div>
         </div>
-      </section>
-
-      <!-- Latest News Section -->
-      <section
-        id="highlight-news"
-        class="mt-4 flex max-w-[90%] flex-col items-start"
-      >
-        <h3 class="text-2xl">Latest News</h3>
-        <div class="comp-divider"></div>
-        <div
-          class="dark:bg-primary-800 dark:border-primary-400 max-w-[100%] rounded-lg border border-gray-200 bg-white shadow-sm"
-        >
-          <a href="#">
-            <img
-              class="rounded-t-lg"
-              src="./assets/comp-placeholder.jpg"
-              alt="News image"
-            />
-          </a>
-          <div class="p-5">
-            <a href="#">
-              <h5
-                class="mb-2 text-xl font-medium tracking-tight text-gray-900 dark:text-white"
-              >
-                Loading news...
-              </h5>
-            </a>
-            <p class="mb-3 font-normal text-gray-700 dark:text-gray-400">
-              Loading news details...
-            </p>
-            <a
-              href="#"
-              class="bg-primary-700 dark:bg-primary-400 inline-flex items-center rounded-lg px-3 py-2 text-center text-sm font-medium text-white hover:bg-blue-900 focus:ring-4 focus:ring-blue-300 focus:outline-none dark:hover:bg-blue-900 dark:focus:ring-blue-800"
-            >
-              Read more
-              <svg
-                class="ms-2 h-3.5 w-3.5 rtl:rotate-180"
-                aria-hidden="true"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 14 10"
-              >
-                <path
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M1 5h12m0 0L9 1m4 4L9 9"
-                />
-              </svg>
-            </a>
+        <!-- Latest News -->
+        <div class="mb-8">
+          <h3 class="text-2xl">Latest News</h3>
+          <div class="comp-divider"></div>
+          <div
+            id="highlight-news"
+            class="dark:bg-primary-800 dark:border-primary-400 rounded-lg border border-gray-200 bg-white shadow-sm"
+          >
+            <!-- Content will be dynamically updated -->
           </div>
         </div>
-      </section>
-
-      <!-- Latest Blog Section -->
-      <section
-        id="highlight-blogs"
-        class="mt-4 flex max-w-[90%] flex-col items-start"
-      >
-        <h3 class="text-2xl">Latest Blog Post</h3>
-        <div class="comp-divider"></div>
-        <div
-          class="dark:bg-primary-800 dark:border-primary-400 max-w-[100%] rounded-lg border border-gray-200 bg-white shadow-sm"
-        >
-          <a href="#">
-            <img
-              class="rounded-t-lg"
-              src="./assets/comp-placeholder.jpg"
-              alt="Blog image"
-            />
-          </a>
-          <div class="p-5">
-            <a href="#">
-              <h5
-                class="mb-2 text-xl font-medium tracking-tight text-gray-900 dark:text-white"
-              >
-                Loading blog post...
-              </h5>
-            </a>
-            <p class="mb-3 font-normal text-gray-700 dark:text-gray-400">
-              Loading blog details...
-            </p>
-            <a
-              href="#"
-              class="bg-primary-700 dark:bg-primary-400 inline-flex items-center rounded-lg px-3 py-2 text-center text-sm font-medium text-white hover:bg-blue-900 focus:ring-4 focus:ring-blue-300 focus:outline-none dark:hover:bg-blue-900 dark:focus:ring-blue-800"
-            >
-              Read more
-              <svg
-                class="ms-2 h-3.5 w-3.5 rtl:rotate-180"
-                aria-hidden="true"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 14 10"
-              >
-                <path
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M1 5h12m0 0L9 1m4 4L9 9"
-                />
-              </svg>
-            </a>
+        <!-- Latest Blog -->
+        <div class="mb-8">
+          <h3 class="text-2xl">Latest Blog Post</h3>
+          <div class="comp-divider"></div>
+          <div
+            id="highlight-blog"
+            class="dark:bg-primary-800 dark:border-primary-400 rounded-lg border border-gray-200 bg-white shadow-sm"
+          >
+            <!-- Content will be dynamically updated -->
           </div>
         </div>
       </section>
     </main>
+
     <footer class="mt-8 p-4 text-center">
       <p>Copyrights © 2025 Mongolian Sports Knife Throwing Federation</p>
     </footer>
+
     <script type="module" src="./src/main.js"></script>
   </body>
 </html>

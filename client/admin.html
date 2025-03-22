@@ -4,27 +4,92 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MSKTF Admin Dashboard</title>
-    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet" />
+    <link
+      rel="stylesheet"
+      href="https://cdn-uicons.flaticon.com/2.6.0/uicons-regular-rounded/css/uicons-regular-rounded.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn-uicons.flaticon.com/2.6.0/uicons-bold-rounded/css/uicons-bold-rounded.css"
+    />
+    <link
+      href="https://cdn.quilljs.com/1.3.6/quill.snow.css"
+      rel="stylesheet"
+    />
+    <style>
+      .ql-editor {
+        min-height: 200px;
+        background-color: white;
+      }
+      .ql-toolbar {
+        background-color: white;
+        border-top-left-radius: 0.375rem;
+        border-top-right-radius: 0.375rem;
+      }
+      .ql-container {
+        border-bottom-left-radius: 0.375rem;
+        border-bottom-right-radius: 0.375rem;
+      }
+      .dark .ql-toolbar {
+        background-color: #4b5563;
+        color: white;
+      }
+      .dark .ql-editor {
+        background-color: #4b5563;
+        color: white;
+      }
+    </style>
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
-    <link rel="stylesheet" href="./style.css">
   </head>
-  <body class="bg-gray-100 font-[tinos] text-gray-900 dark:bg-gray-800 dark:text-gray-100">
+  <body
+    class="bg-gray-100 font-[tinos] text-gray-900 dark:bg-gray-800 dark:text-gray-100"
+  >
     <!-- Login Panel -->
     <div class="container mx-auto p-4">
       <div id="login-panel">
-        <div id="login-form" class="mx-auto mb-4 max-w-md rounded bg-white px-8 pt-6 pb-8 shadow-md dark:bg-gray-700">
+        <div
+          id="login-form"
+          class="dark:bg-primary-800 dark:border-primary-400 mx-auto mb-4 max-w-md rounded border border-gray-200 bg-white px-8 pt-6 pb-8 shadow-md"
+        >
           <h2 class="mb-6 text-center text-2xl font-bold">Admin Login</h2>
-          <form>
+          <form id="login-form">
             <div class="mb-4">
-              <label class="form-label" for="username">Username</label>
-              <input class="form-input" id="username" type="text" placeholder="Username" required />
+              <label
+                class="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300"
+                for="username"
+              >
+                Username
+              </label>
+              <input
+                class="form-input"
+                id="username"
+                type="text"
+                placeholder="Username"
+                required
+              />
             </div>
             <div class="mb-6">
-              <label class="form-label" for="password">Password</label>
-              <input class="form-input mb-3" id="password" type="password" placeholder="Password" required />
+              <label
+                class="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300"
+                for="password"
+              >
+                Password
+              </label>
+              <input
+                class="form-input"
+                id="password"
+                type="password"
+                placeholder="Password"
+                required
+              />
             </div>
             <div class="flex items-center justify-between">
-              <button class="btn btn-blue" type="submit">Sign In</button>
+              <button
+                class="bg-primary-700 dark:bg-primary-400 rounded px-4 py-2 font-bold text-white hover:bg-blue-900 focus:ring-4 focus:ring-blue-300 focus:outline-none"
+                type="submit"
+              >
+                Sign In
+              </button>
             </div>
           </form>
           <div id="login-message" class="mt-2 text-sm text-red-500"></div>
@@ -35,14 +100,24 @@
       <div id="admin-panel" class="hidden">
         <!-- Logout Button -->
         <div class="mb-4 flex justify-end">
-          <button id="logout-button" class="btn btn-red">Logout</button>
+          <button
+            id="logout-button"
+            class="bg-primary-700 dark:bg-primary-400 rounded px-4 py-2 font-bold text-white hover:bg-blue-900"
+          >
+            Logout
+          </button>
         </div>
 
         <!-- Articles List -->
         <div id="articles-list" class="mb-8">
           <div class="mb-4 flex items-center justify-between">
             <h2 class="text-2xl font-bold">Articles</h2>
-            <button id="new-article-button" class="btn btn-green">Create New Article</button>
+            <button
+              id="new-article-button"
+              class="bg-primary-700 dark:bg-primary-400 rounded px-4 py-2 font-bold text-white hover:bg-blue-900"
+            >
+              Create New Article
+            </button>
           </div>
           <div id="articles-container" class="space-y-4">
             <!-- Articles will be dynamically added here -->
@@ -50,50 +125,106 @@
         </div>
 
         <!-- Article Form -->
-        <div id="article-form-container" class="mx-auto max-w-2xl rounded bg-white px-8 pt-6 pb-8 shadow-md dark:bg-gray-700 hidden">
-          <h2 class="mb-6 text-center text-2xl font-bold" id="form-heading">Create/Edit Article</h2>
+        <div
+          id="article-form-container"
+          class="dark:bg-primary-800 dark:border-primary-400 mx-auto max-w-2xl rounded border border-gray-200 bg-white px-8 pt-6 pb-8 shadow-md"
+        >
+          <h2 class="mb-6 text-center text-2xl font-bold" id="form-heading">
+            Create/Edit Article
+          </h2>
           <form id="article-form">
             <input type="hidden" id="article-id" />
-
             <div class="mb-4">
-              <label class="form-label" for="article-title">Title</label>
-              <input class="form-input" id="article-title" type="text" placeholder="Article Title" required />
+              <label
+                class="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300"
+                for="article-title"
+              >
+                Title
+              </label>
+              <input
+                class="form-input"
+                id="article-title"
+                type="text"
+                placeholder="Article Title"
+                required
+              />
             </div>
-            
             <div class="mb-4">
-              <label class="form-label" for="editor-container">Content</label>
-              <div id="editor-container" class="quill-editor overflow-hidden rounded">
+              <label
+                class="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300"
+                for="editor-container"
+              >
+                Content
+              </label>
+              <div id="editor-container" class="overflow-hidden rounded">
                 <!-- This div will become the Quill editor -->
               </div>
               <input type="hidden" id="article-content" />
             </div>
-            
             <div class="mb-4">
-              <label class="form-label" for="article-category">Category</label>
+              <label
+                class="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300"
+                for="article-category"
+              >
+                Category
+              </label>
               <select class="form-input" id="article-category" required>
                 <option value="">Select a category</option>
                 <option value="news">News</option>
-                <option value="blogs">Blogs</option>
-                <option value="competitions">Competitions</option>
+                <option value="competition">Competition</option>
+                <option value="blog">Blog</option>
               </select>
             </div>
-
             <div class="mb-4">
-              <label class="form-label" for="article-author">Author</label>
-              <input class="form-input" id="article-author" type="text" placeholder="Author" required />
+              <label
+                class="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300"
+                for="article-author"
+              >
+                Author
+              </label>
+              <input
+                class="form-input"
+                id="article-author"
+                type="text"
+                placeholder="Author"
+                required
+              />
             </div>
-
             <div class="mb-4">
-              <label class="form-label" for="article-image">Image URL</label>
-              <input class="form-input" id="article-image" type="url" placeholder="Image URL (optional)" />
+              <label
+                class="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300"
+                for="article-image"
+              >
+                Image URL
+              </label>
+              <input
+                class="form-input"
+                id="article-image"
+                type="url"
+                placeholder="Image URL (optional)"
+              />
             </div>
-
             <div class="flex justify-end space-x-4">
-              <button id="article-submit" type="submit" class="btn btn-blue">Create Article</button>
-              <button type="button" id="cancel-button" class="btn btn-gray">Cancel</button>
+              <button
+                type="button"
+                id="cancel-button"
+                class="rounded bg-gray-500 px-4 py-2 font-bold text-white hover:bg-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                id="article-submit"
+                type="submit"
+                class="bg-primary-700 dark:bg-primary-400 rounded px-4 py-2 font-bold text-white hover:bg-blue-900"
+              >
+                Create Article
+              </button>
             </div>
           </form>
-          <div id="article-form-message" class="mt-2 text-sm text-red-500"></div>
+          <div
+            id="article-form-message"
+            class="mt-2 text-sm text-red-500"
+          ></div>
         </div>
       </div>
     </div>

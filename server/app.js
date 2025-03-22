@@ -1,4 +1,5 @@
-// First import path
+// server/app.js
+
 const path = require("path");
 const express = require("express");
 const cors = require("cors");
@@ -6,10 +7,15 @@ const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
 const winston = require("winston");
 
-// Load environment variables
-require("dotenv").config({ path: path.join(__dirname, ".env") });
+// --- Load Environment Variables (Correctly) ---
+console.log("Loading dotenv...");
+const dotenvResult = require("dotenv").config({
+  path: path.join(__dirname, ".env"),
+});
+console.log("dotenv Result:", dotenvResult); // Check for errors
+console.log("JWT_SECRET after dotenv:", process.env.JWT_SECRET);
 
-// Configure logger
+// --- Configure Winston Logger ---
 const logger = winston.createLogger({
   level: process.env.NODE_ENV === "production" ? "info" : "debug",
   format: winston.format.combine(
@@ -19,86 +25,98 @@ const logger = winston.createLogger({
   transports: [
     new winston.transports.Console(),
     new winston.transports.File({ filename: "error.log", level: "error" }),
-    new winston.transports.File({ filename: "combined.log" })
-  ]
+    new winston.transports.File({ filename: "combined.log" }),
+  ],
 });
 
-// Validate required environment variables
-if (!process.env.JWT_SECRET) {
+// --- Centralized Configuration ---
+const config = require("./config"); // Import from index.js
+console.log("config.jwtSecret:", config.jwtSecret);
+
+if (!config.jwtSecret) {
   logger.error("JWT_SECRET is not defined in environment variables");
-  process.exit(1);
+  process.exit(1); // Exit if JWT_SECRET is not defined
 }
 
-// Import application modules
-const config = require("./config");
+// --- Database Initialization ---
 const initializeDatabase = require("./config/initDb");
+
+// --- Import Route Handlers ---
 const articleRoutes = require("./routes/articles");
 const adminRoutes = require("./routes/admin");
-const ErrorHandler = require("./utils/errorHandler");
 
-// Initialize Express app
+// --- Import Custom Error Handler ---
+const { ErrorHandler } = require("./utils/errorHandler");
+
+// --- Sequelize Instance (for logging the DB path) ---
+const { sequelize } = require("./config/database");
+
+// --- Initialize Express App ---
 const app = express();
 
-
 // --- Middleware ---
-// Request logging
-app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 
-// Configure CORS
+// Request Logging (Morgan)
+app.use(morgan(config.nodeEnv === "production" ? "combined" : "dev"));
 
-
-
-
-
-
-
+// CORS (Cross-Origin Resource Sharing)
 app.use(cors(config.corsOptions));
 
-// Rate limiting
+// Rate Limiting (Prevent Brute-Force Attacks)
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: "Too many requests from this IP, please try again later"
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: "Too many requests from this IP, please try again later.",
 });
 app.use("/api/", apiLimiter);
 
-// Body parsers
+// Body Parsers (CRUCIAL - Must be BEFORE routes)
 app.use(express.json()); // Parse JSON request bodies
-app.use(express.urlencoded({ extended: true })); // Parse URL-encoded request bodies
+app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
 
 // --- Routes ---
-app.use("/api/articles", articleRoutes); // Public article routes
-app.use("/api/admin", adminRoutes); // Admin routes
+app.use("/api/articles", articleRoutes);
+app.use("/api/admin", adminRoutes);
 
-// Add a simple hello endpoint
+// --- Simple Hello Endpoint (for testing) ---
 app.get("/api/hello", (req, res) => {
   res.json({ message: "Hello from the server!" });
 });
 
-// --- Serve Static files ---
+// --- Serve Static Files (from the 'client' directory) ---
 app.use(express.static(path.join(__dirname, "../client")));
 
-// --- Error Handling Middleware ---
+// --- Log Database Path (for debugging) ---
+console.log("Resolved DB Path (app.js):", sequelize.options.storage);
+
+// --- Error Handling Middleware (MUST be last) ---
 app.use((err, req, res, next) => {
   logger.error(err.stack);
-
-  // Set the status code (default to 500 if not provided)
   const statusCode = err.statusCode || 500;
+  const message = err.message || "Internal Server Error";
+  const errorDetails = process.env.NODE_ENV === "production" ? {} : err.stack;
 
-  // Send the error response
+  if (err.name === "SequelizeValidationError") {
+    const validationErrors = err.errors.map((e) => ({
+      field: e.path,
+      message: e.message,
+    }));
+    return res
+      .status(400)
+      .json({ message: "Validation Error", errors: validationErrors });
+  }
+
   res.status(statusCode).json({
-    message: err.message,
-    error: process.env.NODE_ENV === "production" ? {} : err.stack,
+    message: message,
+    error: errorDetails,
   });
 });
 
-// Start the server
+// --- Start the Server ---
 const startServer = async () => {
   try {
-    // Initialize database
     await initializeDatabase();
-    
-    // Start listening
+    await sequelize.sync({ alter: true }); // ADD THIS
     app.listen(config.port, () => {
       logger.info(`Server is running on port ${config.port}`);
     });
@@ -108,5 +126,4 @@ const startServer = async () => {
   }
 };
 
-// Start the application
 startServer();

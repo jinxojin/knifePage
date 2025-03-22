@@ -1,119 +1,84 @@
+// client/src/admin.js
 import "./style.css";
-import { fetchArticlesByCategory } from "./articles.js";
 
-// --- DOM Elements ---
-const elements = {
-  loginForm: document.getElementById("login-form"),
-  articleForm: document.getElementById("article-form"),
-  articlesList: document.getElementById("articles-list"),
-  logoutButton: document.getElementById("logout-button"),
-  adminPanel: document.getElementById("admin-panel"),
-  loginPanel: document.getElementById("login-panel"),
-  newArticleButton: document.getElementById("new-article-button"),
-  cancelButton: document.getElementById("cancel-button"),
-  articleFormContainer: document.getElementById("article-form-container"),
-  articleContent: document.getElementById("article-content"),
-  editorContainer: document.getElementById("editor-container"),
-  articleId: document.getElementById("article-id"),
-  articleTitle: document.getElementById("article-title"),
-  articleCategory: document.getElementById("article-category"),
-  articleAuthor: document.getElementById("article-author"),
-  articleImage: document.getElementById("article-image"),
-  articleSubmit: document.getElementById("article-submit"),
-  articleFormMessage: document.getElementById("article-form-message"),
-  loginMessage: document.getElementById("login-message"),
-  articlesContainer: document.getElementById("articles-container"),
-};
+// --- API Service ---
+const ApiService = {
+  baseUrl: "http://localhost:3000/api",
 
-// --- API URL ---
-const API_URL = "http://localhost:3000/api";
+  async login(username, password) {
+    const url = `${this.baseUrl}/admin/login`; // Log URL
+    console.log("Login URL:", url); // Log the URL
+    const body = JSON.stringify({ username, password });
+    console.log("Login Body:", body); //Log the body
 
-// --- Quill Editor Setup ---
-let quill;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: body,
+    });
 
-// --- Authentication Functions ---
-function isLoggedIn() {
-  return localStorage.getItem("adminToken") !== null;
-}
+    console.log("Login Response Status:", response.status); // Log status
+    console.log("Login Response Headers:", response.headers); //Log headers
 
-function updateUI() {
-  if (isLoggedIn()) {
-    elements.loginPanel.classList.add("hidden");
-    elements.adminPanel.classList.remove("hidden");
-    fetchArticles();
-  } else {
-    elements.loginPanel.classList.remove("hidden");
-    elements.adminPanel.classList.add("hidden");
-  }
-}
+    if (!response.ok) {
+      const data = await response.json();
+      console.log("Login Response Data (Error):", data); // Log error data
+      throw new Error(data.message || "Login failed");
+    }
 
-// --- Article Management Functions ---
-async function fetchArticles() {
-  try {
-    const response = await fetch(`${API_URL}/articles`);
-    const articles = await response.json();
-    renderArticles(articles);
-  } catch (err) {
-    console.error("Error fetching articles:", err);
-  }
-}
+    const data = await response.json(); // Parse JSON *before* checking .ok
+    console.log("Login Response Data (Success):", data); //Log success
+    return data;
+  },
 
-function renderArticles(articles) {
-  elements.articlesContainer.innerHTML = articles
-    .map(
-      (article) => `
-    <div class="bg-white p-4 rounded shadow mb-4 dark:bg-gray-700">
-      <h3 class="text-lg font-bold">${article.title}</h3>
-      <p class="text-sm text-gray-500 dark:text-gray-300">Category: ${article.category}</p>
-      <p class="text-sm text-gray-500 dark:text-gray-300">Author: ${article.author}</p>
-      <div class="mt-4 flex space-x-2">
-        <button class="edit-article btn btn-blue" data-id="${article.id}">Edit</button>
-        <button class="delete-article btn btn-red" data-id="${article.id}">Delete</button>
-      </div>
-    </div>
-  `,
-    )
-    .join("");
+  async getArticles() {
+    const response = await fetch(`${this.baseUrl}/articles`);
+    return response.json();
+  },
 
-  // Add event listeners
-  document.querySelectorAll(".edit-article").forEach((button) => {
-    button.addEventListener("click", () =>
-      loadArticleForEditing(button.dataset.id),
-    );
-  });
+  async getArticle(id) {
+    const response = await fetch(`${this.baseUrl}/articles/${id}`);
+    return response.json();
+  },
 
-  document.querySelectorAll(".delete-article").forEach((button) => {
-    button.addEventListener("click", () => deleteArticle(button.dataset.id));
-  });
-}
+  async createArticle(articleData) {
+    const response = await fetch(`${this.baseUrl}/admin/articles`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+      },
+      body: JSON.stringify(articleData),
+    });
 
-async function loadArticleForEditing(articleId) {
-  try {
-    const response = await fetch(`${API_URL}/articles/${articleId}`);
-    const article = await response.json();
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.message || "Failed to create article");
+    }
 
-    elements.articleId.value = article.id;
-    elements.articleTitle.value = article.title;
-    quill.root.innerHTML = article.content;
-    elements.articleCategory.value = article.category;
-    elements.articleAuthor.value = article.author;
-    elements.articleImage.value = article.imageUrl || "";
+    return response.json();
+  },
 
-    elements.articleSubmit.textContent = "Update Article";
-    elements.articleFormContainer.classList.remove("hidden");
-    elements.articleForm.scrollIntoView({ behavior: "smooth" });
-  } catch (err) {
-    console.error("Error loading article:", err);
-  }
-}
+  async updateArticle(id, articleData) {
+    const response = await fetch(`${this.baseUrl}/admin/articles/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+      },
+      body: JSON.stringify(articleData),
+    });
 
-async function deleteArticle(articleId) {
-  if (!confirm("Are you sure you want to delete this article?")) {
-    return;
-  }
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.message || "Failed to update article");
+    }
 
-  try {
-    const response = await fetch(`${API_URL}/admin/articles/${articleId}`, {
+    return response.json();
+  },
+
+  async deleteArticle(id) {
+    const response = await fetch(`${this.baseUrl}/admin/articles/${id}`, {
       method: "DELETE",
       headers: {
         Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
@@ -125,147 +90,278 @@ async function deleteArticle(articleId) {
       throw new Error(data.message || "Failed to delete article");
     }
 
-    fetchArticles();
-  } catch (err) {
-    console.error("Error deleting article:", err);
-    alert(`Failed to delete article: ${err.message}`);
-  }
-}
+    return true;
+  },
+};
 
-function resetForm() {
-  elements.articleForm.reset();
-  quill.root.innerHTML = "";
-  elements.articleId.value = "";
-  elements.articleSubmit.textContent = "Create Article";
-  elements.articleFormMessage.textContent = "";
-}
+// --- Auth Service ---
+const AuthService = {
+  isLoggedIn() {
+    return localStorage.getItem("adminToken") !== null;
+  },
 
-// --- Event Handlers ---
-function handleLogin(e) {
-  e.preventDefault();
-  const username = document.getElementById("username").value;
-  const password = document.getElementById("password").value;
+  setToken(token) {
+    localStorage.setItem("adminToken", token);
+  },
 
-  loginUser(username, password);
-}
+  clearToken() {
+    localStorage.removeItem("adminToken");
+  },
+};
 
-async function loginUser(username, password) {
-  try {
-    const response = await fetch(`${API_URL}/admin/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
+// --- UI Controller ---
+const AdminUI = {
+  elements: {
+    loginForm: document.getElementById("login-form"),
+    articleForm: document.getElementById("article-form"),
+    articlesList: document.getElementById("articles-list"),
+    logoutButton: document.getElementById("logout-button"),
+    adminPanel: document.getElementById("admin-panel"),
+    loginPanel: document.getElementById("login-panel"),
+    newArticleButton: document.getElementById("new-article-button"),
+    cancelButton: document.getElementById("cancel-button"),
+    articleFormContainer: document.getElementById("article-form-container"),
+    articleContent: document.getElementById("article-content"),
+    articleId: document.getElementById("article-id"),
+    articleTitle: document.getElementById("article-title"),
+    articleCategory: document.getElementById("article-category"),
+    articleAuthor: document.getElementById("article-author"),
+    articleImage: document.getElementById("article-image"),
+    articleSubmit: document.getElementById("article-submit"),
+    articleFormMessage: document.getElementById("article-form-message"),
+    loginMessage: document.getElementById("login-message"),
+    articlesContainer: document.getElementById("articles-container"),
+  },
+
+  quill: null,
+
+  initialize() {
+    this.initQuillEditor();
+    this.setupEventListeners();
+    this.updateUI();
+  },
+
+  initQuillEditor() {
+    if (document.getElementById("editor-container")) {
+      this.quill = new Quill("#editor-container", {
+        theme: "snow",
+        modules: {
+          toolbar: [
+            [{ header: [1, 2, 3, false] }],
+            ["bold", "italic", "underline", "strike"],
+            [{ list: "ordered" }, { list: "bullet" }],
+            [{ color: [] }, { background: [] }],
+            ["link", "image"],
+            ["clean"],
+          ],
+        },
+        placeholder: "Write your article content here...",
+      });
+
+      this.quill.on("text-change", () => {
+        this.elements.articleContent.value = this.quill.root.innerHTML;
+      });
+    }
+  },
+
+  setupEventListeners() {
+    this.elements.loginForm?.addEventListener(
+      "submit",
+      this.handleLogin.bind(this),
+    );
+    this.elements.articleForm?.addEventListener(
+      "submit",
+      this.handleArticleSubmit.bind(this),
+    );
+    this.elements.newArticleButton?.addEventListener(
+      "click",
+      this.handleNewArticleClick.bind(this),
+    );
+    this.elements.cancelButton?.addEventListener(
+      "click",
+      this.handleCancelClick.bind(this),
+    );
+    this.elements.logoutButton?.addEventListener(
+      "click",
+      this.handleLogout.bind(this),
+    );
+  },
+
+  updateUI() {
+    if (AuthService.isLoggedIn()) {
+      this.elements.loginPanel.classList.add("hidden");
+      this.elements.adminPanel.classList.remove("hidden");
+      this.loadArticles();
+    } else {
+      this.elements.loginPanel.classList.remove("hidden");
+      this.elements.adminPanel.classList.add("hidden");
+    }
+  },
+
+  async loadArticles() {
+    try {
+      const articles = await ApiService.getArticles();
+      this.renderArticles(articles);
+    } catch (err) {
+      console.error("Error loading articles:", err);
+    }
+  },
+
+  renderArticles(articles) {
+    this.elements.articlesContainer.innerHTML = articles
+      .map(
+        (article) => `
+        <div class="article-card">
+          <h3 class="text-lg font-bold">${article.title}</h3>
+          <p class="text-sm text-gray-500 dark:text-gray-300">Category: ${article.category}</p>
+          <p class="text-sm text-gray-500 dark:text-gray-300">Author: ${article.author}</p>
+          <div class="mt-4 flex space-x-2">
+            <button class="edit-article btn btn-blue" data-id="${article.id}">Edit</button>
+            <button class="delete-article btn btn-red" data-id="${article.id}">Delete</button>
+          </div>
+        </div>
+      `,
+      )
+      .join("");
+
+    // Add event listeners
+    document.querySelectorAll(".edit-article").forEach((button) => {
+      button.addEventListener("click", () =>
+        this.loadArticleForEditing(button.dataset.id),
+      );
     });
 
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.message || "Login failed");
-
-    localStorage.setItem("adminToken", data.token);
-    elements.loginMessage.textContent = "Login successful!";
-    elements.loginMessage.classList.remove("text-red-500");
-    elements.loginMessage.classList.add("text-green-500");
-    updateUI();
-  } catch (err) {
-    elements.loginMessage.textContent = `Error: ${err.message}`;
-    elements.loginMessage.classList.remove("text-green-500");
-    elements.loginMessage.classList.add("text-red-500");
-  }
-}
-
-async function handleArticleSubmit(e) {
-  e.preventDefault();
-
-  const articleId = elements.articleId.value;
-
-  const articleData = {
-    title: elements.articleTitle.value,
-    content: quill.root.innerHTML,
-    category: elements.articleCategory.value,
-    author: elements.articleAuthor.value,
-    imageUrl: elements.articleImage.value,
-  };
-
-  try {
-    const url = articleId
-      ? `${API_URL}/admin/articles/${articleId}`
-      : `${API_URL}/admin/articles`;
-
-    const response = await fetch(url, {
-      method: articleId ? "PUT" : "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
-      },
-      body: JSON.stringify(articleData),
+    document.querySelectorAll(".delete-article").forEach((button) => {
+      button.addEventListener("click", () =>
+        this.handleDeleteArticle(button.dataset.id),
+      );
     });
+  },
 
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.message);
+  async loadArticleForEditing(articleId) {
+    try {
+      const article = await ApiService.getArticle(articleId);
 
-    elements.articleFormMessage.textContent = `Article ${
-      articleId ? "updated" : "created"
-    } successfully!`;
-    elements.articleFormMessage.classList.remove("text-red-500");
-    elements.articleFormMessage.classList.add("text-green-500");
+      this.elements.articleId.value = article.id;
+      this.elements.articleTitle.value = article.title;
+      this.quill.root.innerHTML = article.content;
+      this.elements.articleCategory.value = article.category;
+      this.elements.articleAuthor.value = article.author;
+      this.elements.articleImage.value = article.imageUrl || "";
 
-    resetForm();
-    fetchArticles();
-  } catch (err) {
-    elements.articleFormMessage.textContent = `Error: ${err.message}`;
-    elements.articleFormMessage.classList.remove("text-green-500");
-    elements.articleFormMessage.classList.add("text-red-500");
-  }
-}
+      this.elements.articleSubmit.textContent = "Update Article";
+      this.elements.articleFormContainer.classList.remove("hidden");
+      this.elements.articleForm.scrollIntoView({ behavior: "smooth" });
+    } catch (err) {
+      console.error("Error loading article for editing:", err);
+    }
+  },
 
-function handleNewArticleClick() {
-  resetForm();
-  elements.articleFormContainer.classList.remove("hidden");
-  elements.articleForm.scrollIntoView({ behavior: "smooth" });
-}
+  resetForm() {
+    this.elements.articleForm.reset();
+    this.quill.root.innerHTML = "";
+    this.elements.articleId.value = "";
+    this.elements.articleSubmit.textContent = "Create Article";
+    this.elements.articleFormMessage.textContent = "";
+  },
 
-function handleCancelClick() {
-  resetForm();
-  elements.articleFormContainer.classList.add("hidden");
-}
+  // Event Handlers
+  async handleLogin(e) {
+    e.preventDefault();
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
 
-function handleLogout() {
-  localStorage.removeItem("adminToken");
-  updateUI();
-}
+    console.log("--- handleLogin Start ---"); // Clear marker
+    console.log("Username (from input):", username);
+    console.log("Password (from input):", password);
+    console.log("Username (trimmed):", username.trim()); // Trimmed
+    console.log("Password (trimmed):", password.trim()); // Trimmed
 
-// --- Initialize ---
-function initializeApp() {
-  // Initialize Quill if we're on the admin page
-  if (elements.editorContainer) {
-    quill = new Quill("#editor-container", {
-      theme: "snow",
-      modules: {
-        toolbar: [
-          [{ header: [1, 2, 3, false] }],
-          ["bold", "italic", "underline", "strike"],
-          [{ list: "ordered" }, { list: "bullet" }],
-          [{ color: [] }, { background: [] }],
-          ["link", "image"],
-          ["clean"],
-        ],
-      },
-      placeholder: "Write your article content here...",
-    });
+    try {
+      const data = await ApiService.login(username, password);
+      AuthService.setToken(data.token);
 
-    // Update hidden input when Quill content changes
-    quill.on("text-change", function () {
-      elements.articleContent.value = quill.root.innerHTML;
-    });
-  }
+      this.elements.loginMessage.textContent = "Login successful!";
+      this.elements.loginMessage.classList.remove("text-red-500");
+      this.elements.loginMessage.classList.add("text-green-500");
 
-  // Add event listeners
-  elements.loginForm?.addEventListener("submit", handleLogin);
-  elements.articleForm?.addEventListener("submit", handleArticleSubmit);
-  elements.newArticleButton?.addEventListener("click", handleNewArticleClick);
-  elements.cancelButton?.addEventListener("click", handleCancelClick);
-  elements.logoutButton?.addEventListener("click", handleLogout);
+      this.updateUI();
+    } catch (err) {
+      console.error("Login Error:", err); // Log the error object
+      this.elements.loginMessage.textContent = `Error: ${err.message}`;
+      this.elements.loginMessage.classList.remove("text-green-500");
+      this.elements.loginMessage.classList.add("text-red-500");
+    }
+    console.log("--- handleLogin End ---"); // Clear marker
+  },
 
-  updateUI();
-}
+  async handleArticleSubmit(e) {
+    e.preventDefault();
 
-document.addEventListener("DOMContentLoaded", initializeApp);
+    const articleId = this.elements.articleId.value;
+    const articleData = {
+      title: this.elements.articleTitle.value,
+      content: this.quill.root.innerHTML,
+      category: this.elements.articleCategory.value,
+      author: this.elements.articleAuthor.value,
+      imageUrl: this.elements.articleImage.value,
+    };
+
+    try {
+      if (articleId) {
+        await ApiService.updateArticle(articleId, articleData);
+        this.elements.articleFormMessage.textContent =
+          "Article updated successfully!";
+      } else {
+        await ApiService.createArticle(articleData);
+        this.elements.articleFormMessage.textContent =
+          "Article created successfully!";
+      }
+
+      this.elements.articleFormMessage.classList.remove("text-red-500");
+      this.elements.articleFormMessage.classList.add("text-green-500");
+
+      this.resetForm();
+      this.loadArticles();
+    } catch (err) {
+      this.elements.articleFormMessage.textContent = `Error: ${err.message}`;
+      this.elements.articleFormMessage.classList.remove("text-green-500");
+      this.elements.articleFormMessage.classList.add("text-red-500");
+    }
+  },
+
+  async handleDeleteArticle(articleId) {
+    if (!confirm("Are you sure you want to delete this article?")) {
+      return;
+    }
+
+    try {
+      await ApiService.deleteArticle(articleId);
+      this.loadArticles();
+    } catch (err) {
+      console.error("Error deleting article:", err);
+      alert(`Failed to delete article: ${err.message}`);
+    }
+  },
+
+  handleNewArticleClick() {
+    this.resetForm();
+    this.elements.articleFormContainer.classList.remove("hidden");
+    this.elements.articleForm.scrollIntoView({ behavior: "smooth" });
+  },
+
+  handleCancelClick() {
+    this.resetForm();
+    this.elements.articleFormContainer.classList.add("hidden");
+  },
+
+  handleLogout() {
+    AuthService.clearToken();
+    this.updateUI();
+  },
+};
+
+// Initialize the application
+document.addEventListener("DOMContentLoaded", () => {
+  AdminUI.initialize();
+});

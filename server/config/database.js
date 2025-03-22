@@ -1,10 +1,16 @@
 const { Sequelize } = require("sequelize");
+const path = require("path");
+const config = require("./index.js"); // Import config
 
-// Database connection
+// Construct absolute path using __dirname
+const dbPath = path.resolve(__dirname, "../data/database.sqlite"); // Use path.resolve
+console.log("Database path:", dbPath); // Log absolute path
+console.log("Current working directory:", process.cwd());
+
 const sequelize = new Sequelize({
-  dialect: "sqlite", // Using SQLite for simplicity
-  storage: "./database.sqlite", // File where data will be stored
-  logging: false, // Set to true if you want to see SQL queries in console
+  dialect: "sqlite",
+  storage: dbPath, // Use the absolute path
+  logging: console.log, // Enable logging
 });
 
-module.exports = sequelize;
+module.exports = { sequelize };

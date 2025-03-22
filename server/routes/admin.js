@@ -1,18 +1,18 @@
+// server/routes/admin.js
 const express = require("express");
 const router = express.Router();
 const Article = require("../models/article");
 const User = require("../models/user");
-const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { body, validationResult } = require("express-validator");
 const authenticateToken = require("../middleware/auth");
-const ErrorHandler = require("../utils/errorHandler");
+const { ErrorHandler } = require("../utils/errorHandler"); // CORRECT import
+const { scryptSync, timingSafeEqual } = require("crypto");
 
 // --- Admin Login ---
 router.post(
   "/login",
   [
-    // Input validation
     body("username")
       .trim()
       .isLength({ min: 1 })
@@ -21,28 +21,53 @@ router.post(
     body("password").isLength({ min: 1 }).withMessage("Password is required"),
   ],
   async (req, res, next) => {
+    console.log("--- Login Request Received ---"); // Marker
+    console.log("Request Body:", req.body);
+
     try {
       const errors = validationResult(req);
+      console.log("Validation Errors:", errors.array());
       if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
+        return next(new ErrorHandler("Validation Error", 400, errors.array())); // CORRECT usage
       }
 
       const { username, password } = req.body;
+      console.log("Extracted Username:", username);
+      console.log("Extracted Password:", password);
 
-      // Find user in database
       const user = await User.findOne({ where: { username } });
+      console.log("User Found:", user); // Log the entire user object
 
       if (!user) {
-        return next(new ErrorHandler("Invalid credentials", 401));
+        console.log("User not found"); // Log if user is not found
+        return next(new ErrorHandler("Invalid credentials", 401)); // CORRECT usage
       }
 
-      // Check password
-      const passwordMatch = await bcrypt.compare(password, user.passwordHash);
-      if (!passwordMatch) {
-        return next(new ErrorHandler("Invalid credentials", 401));
-      }
+      // --- Verify password with scrypt ---
+      console.log("Stored Password (from DB):", user.password); // Log stored password
+      const [salt, key] = user.password.split(":"); // Split into salt and hash
+      console.log("Extracted Salt:", salt);
+      console.log("Extracted Key (Hash):", key);
 
-      // Generate token
+      // Hash the entered password using scrypt and the extracted salt
+      const hashedBuffer = scryptSync(password, salt, 64);
+      const hashedHex = hashedBuffer.toString("hex"); // Convert to hex string
+      console.log("Hashed Buffer (from entered password):", hashedHex); // Log as hex
+
+      // Convert stored hash to buffer
+      const keyBuffer = Buffer.from(key, "hex");
+      console.log("Key Buffer (from stored hash):", keyBuffer.toString("hex"));
+
+      // Use timingSafeEqual for secure comparison
+      const match = timingSafeEqual(Buffer.from(hashedHex, "hex"), keyBuffer); // Correct comparison
+      console.log("Password Match:", match);
+
+      if (!match) {
+        console.log("Password comparison failed"); // Log comparison failure
+        return next(new ErrorHandler("Invalid credentials", 401)); // CORRECT usage
+      }
+      // --- End scrypt verification ---
+
       const token = jwt.sign(
         { userId: user.id, username: user.username },
         process.env.JWT_SECRET,
@@ -51,6 +76,7 @@ router.post(
 
       res.json({ token });
     } catch (err) {
+      console.error("Login Error:", err);
       next(err);
     }
   }
@@ -88,12 +114,12 @@ router.post(
       .withMessage("Image URL must be a valid URL"),
   ],
   async (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
     try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return next(new ErrorHandler("Validation Error", 400, errors.array()));
+      }
+
       const { title, content, category, author, imageUrl } = req.body;
       const newArticle = await Article.create({
         title,
@@ -104,7 +130,7 @@ router.post(
       });
       res.status(201).json(newArticle);
     } catch (err) {
-      next(err); // Pass errors to the error handling middleware
+      next(err);
     }
   }
 );
@@ -141,15 +167,14 @@ router.put(
       .withMessage("Image URL must be a valid URL"),
   ],
   async (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
     try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return next(new ErrorHandler("Validation Error", 400, errors.array()));
+      }
       const article = await Article.findByPk(req.params.id);
       if (!article) {
-        throw new ErrorHandler("Article not found", 404);
+        return next(new ErrorHandler("Article not found", 404));
       }
 
       const { title, content, category, author, imageUrl } = req.body;
@@ -173,7 +198,7 @@ router.delete("/articles/:id", authenticateToken, async (req, res, next) => {
   try {
     const article = await Article.findByPk(req.params.id);
     if (!article) {
-      throw new ErrorHandler("Article not found", 404);
+      return next(new ErrorHandler("Article not found", 404));
     }
 
     await article.destroy();
