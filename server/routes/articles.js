@@ -38,7 +38,14 @@ router.get("/category/:category", async (req, res, next) => {
 router.get("/all", async (req, res, next) => {
   try {
     const articles = await Article.findAll({
-      attributes: ["id", "title", "category", "createdAt", "imageUrl"],
+      attributes: [
+        "id",
+        "title",
+        "category",
+        "createdAt",
+        "imageUrl",
+        "author",
+      ],
     });
     res.json(articles);
   } catch (error) {
@@ -78,7 +85,7 @@ const validateArticle = [
   body("category")
     .isIn(["news", "competition", "blog"])
     .withMessage("Invalid category"),
-  body("author").isString().trim().notEmpty().withMessage("Author is required"),
+  body("author").isString().trim().notEmpty().withMessage("Author is required"), // ADD THIS
 ];
 
 module.exports = router;

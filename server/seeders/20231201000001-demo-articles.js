@@ -11,15 +11,17 @@ module.exports = {
           title: "Latest Championship Results",
           content: "The recent championship saw incredible performances...",
           category: "news",
+          author: "Chinkhuslen", // ADD THIS
           status: "published",
           createdAt: new Date(),
           updatedAt: new Date(),
-          imageUrl: "https://example.com/image1.jpg", //ADD IMAGES
+          imageUrl: "https://example.com/image1.jpg",
         },
         {
           title: "New Training Facility Opening",
           content: "The federation is proud to announce...",
           category: "news",
+          author: "Chinkhuslen", // ADD THIS
           status: "published",
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -29,6 +31,7 @@ module.exports = {
           title: "Federation Updates",
           content: "Important updates from the federation...",
           category: "news",
+          author: "Chinkhuslen", // ADD THIS
           status: "published",
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -40,6 +43,7 @@ module.exports = {
           title: "Summer Championship 2023",
           content: "The Summer Championship 2023 will be held...",
           category: "competition",
+          author: "Chinkhuslen", // ADD THIS
           status: "published",
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -49,6 +53,7 @@ module.exports = {
           title: "Regional Tournament Results",
           content: "The Eastern Regional Tournament concluded...",
           category: "competition",
+          author: "Chinkhuslen", // ADD THIS
           status: "published",
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -58,6 +63,7 @@ module.exports = {
           title: "Upcoming Winter Competition",
           content: "Registration is now open for the Winter Competition...",
           category: "competition",
+          author: "Chinkhuslen", // ADD THIS
           status: "published",
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -69,6 +75,7 @@ module.exports = {
           title: "Knife Throwing Techniques",
           content: "Master the art of knife throwing...",
           category: "blog",
+          author: "Chinkhuslen", // ADD THIS
           status: "published",
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -78,6 +85,7 @@ module.exports = {
           title: "Training Tips for Beginners",
           content: "Essential tips for those starting...",
           category: "blog",
+          author: "Chinkhuslen", // ADD THIS
           status: "published",
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -87,6 +95,7 @@ module.exports = {
           title: "Mental Preparation in Sports",
           content: "The importance of mental preparation...",
           category: "blog",
+          author: "Chinkhuslen", // ADD THIS
           status: "published",
           createdAt: new Date(),
           updatedAt: new Date(),

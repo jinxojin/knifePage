@@ -3,11 +3,11 @@ const express = require("express");
 const router = express.Router();
 const Article = require("../models/article");
 const User = require("../models/user");
+const bcrypt = require("bcrypt"); // USE BCRYPT
 const jwt = require("jsonwebtoken");
 const { body, validationResult } = require("express-validator");
 const authenticateToken = require("../middleware/auth");
-const { ErrorHandler } = require("../utils/errorHandler"); // CORRECT import
-const { scryptSync, timingSafeEqual } = require("crypto");
+const ErrorHandler = require("../utils/errorHandler"); // CORRECT import
 
 // --- Admin Login ---
 router.post(
@@ -28,7 +28,7 @@ router.post(
       const errors = validationResult(req);
       console.log("Validation Errors:", errors.array());
       if (!errors.isEmpty()) {
-        return next(new ErrorHandler("Validation Error", 400, errors.array())); // CORRECT usage
+        return next(new ErrorHandler("Validation Error", 400, errors.array()));
       }
 
       const { username, password } = req.body;
@@ -36,37 +36,23 @@ router.post(
       console.log("Extracted Password:", password);
 
       const user = await User.findOne({ where: { username } });
-      console.log("User Found:", user); // Log the entire user object
+      console.log("User Found:", user);
 
       if (!user) {
-        console.log("User not found"); // Log if user is not found
-        return next(new ErrorHandler("Invalid credentials", 401)); // CORRECT usage
+        console.log("User not found");
+        return next(new ErrorHandler("Invalid credentials", 401));
       }
 
-      // --- Verify password with scrypt ---
-      console.log("Stored Password (from DB):", user.password); // Log stored password
-      const [salt, key] = user.password.split(":"); // Split into salt and hash
-      console.log("Extracted Salt:", salt);
-      console.log("Extracted Key (Hash):", key);
-
-      // Hash the entered password using scrypt and the extracted salt
-      const hashedBuffer = scryptSync(password, salt, 64);
-      const hashedHex = hashedBuffer.toString("hex"); // Convert to hex string
-      console.log("Hashed Buffer (from entered password):", hashedHex); // Log as hex
-
-      // Convert stored hash to buffer
-      const keyBuffer = Buffer.from(key, "hex");
-      console.log("Key Buffer (from stored hash):", keyBuffer.toString("hex"));
-
-      // Use timingSafeEqual for secure comparison
-      const match = timingSafeEqual(Buffer.from(hashedHex, "hex"), keyBuffer); // Correct comparison
+      // --- Verify password with bcrypt ---
+      console.log("Stored Password (from DB):", user.password);
+      const match = await bcrypt.compare(password, user.password); // USE BCRYPT
       console.log("Password Match:", match);
 
       if (!match) {
-        console.log("Password comparison failed"); // Log comparison failure
-        return next(new ErrorHandler("Invalid credentials", 401)); // CORRECT usage
+        console.log("Password comparison failed");
+        return next(new ErrorHandler("Invalid credentials", 401));
       }
-      // --- End scrypt verification ---
+      // --- End bcrypt verification ---
 
       const token = jwt.sign(
         { userId: user.id, username: user.username },
@@ -102,7 +88,7 @@ router.post(
       .isLength({ min: 1 })
       .escape()
       .withMessage("Category is required"),
-    body("author")
+    body("author") // ADD THIS
       .trim()
       .isLength({ min: 1 })
       .escape()
@@ -120,12 +106,12 @@ router.post(
         return next(new ErrorHandler("Validation Error", 400, errors.array()));
       }
 
-      const { title, content, category, author, imageUrl } = req.body;
+      const { title, content, category, author, imageUrl } = req.body; //ADD AUTHOR
       const newArticle = await Article.create({
         title,
         content,
         category,
-        author,
+        author, //ADD THIS
         imageUrl,
       });
       res.status(201).json(newArticle);
@@ -155,7 +141,7 @@ router.put(
       .isLength({ min: 1 })
       .escape()
       .withMessage("Category is required"),
-    body("author")
+    body("author") // ADD THIS
       .trim()
       .isLength({ min: 1 })
       .escape()
@@ -177,13 +163,13 @@ router.put(
         return next(new ErrorHandler("Article not found", 404));
       }
 
-      const { title, content, category, author, imageUrl } = req.body;
+      const { title, content, category, author, imageUrl } = req.body; // ADD AUTHOR
 
       await article.update({
         title,
         content,
         category,
-        author,
+        author, // ADD THIS
         imageUrl,
       });
       res.json(article);

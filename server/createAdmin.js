@@ -1,38 +1,36 @@
 // server/createAdmin.js
 const { sequelize } = require("./config/database");
 const User = require("./models/user");
-const { scryptSync, randomBytes } = require("crypto"); // Import scryptSync
+const bcrypt = require("bcrypt"); // USE BCRYPT
 
 async function createAdmin() {
   try {
-    // await sequelize.sync(); // Ensure tables exist // REMOVE THIS
+    // Do NOT call sequelize.sync() here!  Let app.js handle database setup.
 
-    const existingAdmin = await User.findOne({ where: { username: "admin" } });
+    let user = await User.findOne({ where: { username: "admin" } });
 
-    if (existingAdmin) {
+    if (user) {
       console.log("Admin user already exists. Updating password...");
-      const salt = randomBytes(16).toString("hex"); // Generate salt
-      const hashedPassword = scryptSync("adminpassword", salt, 64).toString(
-        "hex"
-      ); // Hash
-      existingAdmin.password = `${salt}:${hashedPassword}`; // Store salt:hash
-      await existingAdmin.save();
+      // Update the password, using bcrypt.
+      const hashedPassword = await bcrypt.hash("adminpassword", 10); // USE BCRYPT
+      await User.update(
+        { password: hashedPassword },
+        { where: { username: "admin" } }
+      );
       console.log("Admin password updated.");
     } else {
       console.log("Creating admin user...");
-      const salt = randomBytes(16).toString("hex"); // Generate salt
-      const hashedPassword = scryptSync("adminpassword", salt, 64).toString(
-        "hex"
-      ); // Hash
+      const hashedPassword = await bcrypt.hash("adminpassword", 10); // USE BCRYPT
       const newAdmin = await User.create({
         username: "admin",
-        password: `${salt}:${hashedPassword}`, // Store salt:hash
+        password: hashedPassword,
       });
       console.log("Admin user created:", newAdmin.username);
     }
   } catch (error) {
     console.error("Error creating/updating admin user:", error);
   }
-  // REMOVED FINALLY BLOCK
+  // NO FINALLY BLOCK - Let app.js manage the connection.
 }
+
 createAdmin();

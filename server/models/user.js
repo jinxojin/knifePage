@@ -1,7 +1,7 @@
 // server/models/user.js
 const { DataTypes } = require("sequelize");
 const { sequelize } = require("../config/database");
-const { scryptSync, randomBytes, timingSafeEqual } = require("crypto"); // Import scryptSync
+const bcrypt = require("bcrypt"); // USE BCRYPT
 
 const User = sequelize.define("User", {
   username: {
@@ -21,17 +21,15 @@ const User = sequelize.define("User", {
 
 // Hash the password before creating a user
 User.beforeCreate(async (user) => {
-  const salt = randomBytes(16).toString("hex"); // Generate a random salt
-  const hashedPassword = scryptSync(user.password, salt, 64).toString("hex"); // Hash with scrypt
-  user.password = `${salt}:${hashedPassword}`; // Store salt and hash together
+  const hashedPassword = await bcrypt.hash(user.password, 10); // USE BCRYPT
+  user.password = hashedPassword;
 });
 
 // Hash the password before updating a user, but ONLY if it's changed.
 User.beforeUpdate(async (user) => {
   if (user.changed("password")) {
-    const salt = randomBytes(16).toString("hex");
-    const hashedPassword = scryptSync(user.password, salt, 64).toString("hex");
-    user.password = `${salt}:${hashedPassword}`;
+    const hashedPassword = await bcrypt.hash(user.password, 10); // USE BCRYPT
+    user.password = hashedPassword;
   }
 });
 

@@ -17,6 +17,10 @@ const Article = sequelize.define("Article", {
       isIn: [["news", "competition", "blog"]],
     },
   },
+  author: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
   status: {
     type: DataTypes.STRING,
     defaultValue: "published",
@@ -25,7 +29,6 @@ const Article = sequelize.define("Article", {
     },
   },
   imageUrl: {
-    //ADD THIS
     type: DataTypes.STRING,
     allowNull: true,
   },

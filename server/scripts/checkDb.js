@@ -21,7 +21,7 @@ async function checkArticles() {
     for (const { category } of categories) {
       const articles = await Article.findAll({
         where: { category },
-        attributes: ["id", "title", "category", "imageUrl"],
+        attributes: ["id", "title", "category", "imageUrl", "author"],
         raw: true,
       });
 

@@ -116,7 +116,7 @@ app.use((err, req, res, next) => {
 const startServer = async () => {
   try {
     await initializeDatabase();
-    await sequelize.sync({ alter: true }); // ADD THIS
+    await sequelize.sync({ alter: true }); // Add this line
     app.listen(config.port, () => {
       logger.info(`Server is running on port ${config.port}`);
     });
