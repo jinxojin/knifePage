@@ -1,5 +1,3 @@
-// server/app.js
-
 const path = require("path");
 const express = require("express");
 const cors = require("cors");
@@ -116,7 +114,7 @@ app.use((err, req, res, next) => {
 const startServer = async () => {
   try {
     await initializeDatabase();
-    await sequelize.sync({ alter: true }); // Add this line
+    await sequelize.sync({ alter: true });
     app.listen(config.port, () => {
       logger.info(`Server is running on port ${config.port}`);
     });

@@ -98,3 +98,5 @@
 {"level":"error","message":"Error: Invalid credentials\n    at /Users/chinkhuslenerdenebileg/code/knife-page/server/routes/admin.js:53:21","timestamp":"2025-03-22T18:09:39.248Z"}
 {"level":"info","message":"Server is running on port 3000","timestamp":"2025-03-22T18:12:36.652Z"}
 {"level":"info","message":"Server is running on port 3000","timestamp":"2025-03-22T19:06:03.526Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2025-03-22T23:11:05.598Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2025-03-22T23:14:51.506Z"}

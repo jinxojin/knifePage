@@ -18,6 +18,11 @@ module.exports = {
         type: Sequelize.STRING,
         allowNull: false,
       },
+      refreshToken: {
+        //ADD THIS
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
       role: {
         type: Sequelize.STRING,
         defaultValue: "admin",
