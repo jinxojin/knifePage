@@ -1,6 +1,6 @@
 // client/src/articles.js
 
-const API_URL = "http://localhost:3000/api";
+const API_URL = "https://localhost:3000/api";
 const ARTICLE_ENDPOINT = `${API_URL}/articles`;
 
 const articleCache = new Map();

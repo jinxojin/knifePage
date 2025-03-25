@@ -2,7 +2,7 @@ import "./style.css";
 
 // --- API Service ---
 const ApiService = {
-  baseUrl: "http://localhost:3000/api",
+  baseUrl: "https://localhost:3000/api",
 
   async getArticlesByCategory(category) {
     const response = await fetch(

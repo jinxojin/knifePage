@@ -1,7 +1,7 @@
 // client/src/main.js
 import "./style.css";
 
-const API_URL = "http://localhost:3000/api";
+const API_URL = "https://localhost:3000/api";
 const CATEGORIES = ["competition", "news", "blog"];
 
 const burgerBtn = document.getElementById("burger-btn");

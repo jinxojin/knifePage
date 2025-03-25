@@ -1,11 +1,14 @@
+// server/app.js (Modified for HTTPS, without CSRF)
 const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
 const winston = require("winston");
+const https = require("https"); // Import the https module
+const fs = require("fs"); // Import the fs module
 
-// --- Load Environment Variables (Correctly) ---
+// --- Load Environment Variables ---
 console.log("Loading dotenv...");
 const dotenvResult = require("dotenv").config({
   path: path.join(__dirname, ".env"),
@@ -29,6 +32,7 @@ const logger = winston.createLogger({
 
 // --- Centralized Configuration ---
 const config = require("./config"); // Import from index.js
+config.corsOptions.origin = "https://localhost:5173"; // Update for HTTPS
 console.log("config.jwtSecret:", config.jwtSecret);
 
 if (!config.jwtSecret) {
@@ -110,13 +114,20 @@ app.use((err, req, res, next) => {
   });
 });
 
-// --- Start the Server ---
+// --- HTTPS Setup ---
+const httpsOptions = {
+  key: fs.readFileSync(path.resolve(__dirname, "../localhost+2-key.pem")),
+  cert: fs.readFileSync(path.resolve(__dirname, "../localhost+2.pem")),
+};
+
+// --- Start the Server (HTTPS) ---
 const startServer = async () => {
   try {
     await initializeDatabase();
     await sequelize.sync({ alter: true });
-    app.listen(config.port, () => {
-      logger.info(`Server is running on port ${config.port}`);
+    https.createServer(httpsOptions, app).listen(config.port, () => {
+      // Use https.createServer
+      logger.info(`HTTPS Server is running on port ${config.port}`);
     });
   } catch (err) {
     logger.error("Failed to start server:", err);

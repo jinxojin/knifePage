@@ -1,6 +1,8 @@
+// server/config/index.js
 const corsOptions = {
-  origin: "http://localhost:5173", // Replace with your client's origin
+  origin: "https://localhost:5173", // Replace with your client's HTTPS origin
   optionsSuccessStatus: 200, // For legacy browser support
+  credentials: true, // Important for sending cookies, though we aren't using them *yet*
 };
 
 module.exports = {
