@@ -1,19 +1,12 @@
 // client/src/main.js
 import "./style.css";
 
-// Constants
-const API_URL = "http://localhost:3000/api"; // Centralized API URL
+const API_URL = "http://localhost:3000/api";
 const CATEGORIES = ["competition", "news", "blog"];
 
-// DOM Elements
 const burgerBtn = document.getElementById("burger-btn");
 const languageBtn = document.getElementById("language-btn");
 
-/**
- * Fetches the latest article for a category
- * @param {string} category - Category to fetch
- * @returns {Promise<Object|null>} Latest article or null if error
- */
 async function fetchLatestArticle(category) {
   try {
     console.log(`Fetching ${category} articles...`);
@@ -26,16 +19,10 @@ async function fetchLatestArticle(category) {
     return articles[0] || null;
   } catch (error) {
     console.error(`Error fetching ${category} article:`, error);
-    // Consider re-throwing the error, or returning a specific error object
     return null;
   }
 }
 
-/**
- * Updates a highlight card with article content
- * @param {string} category - Category of the article
- * @param {Object} article - Article data
- */
 function updateHighlightCard(category, article) {
   const container = document.getElementById(`highlight-${category}`);
   if (!container) return;
@@ -53,7 +40,9 @@ function updateHighlightCard(category, article) {
 
   container.innerHTML = `
             <a href="/article.html?id=${article.id}">
-                <img class="rounded-t-lg" src="${article.imageUrl || "./assets/comp-placeholder.jpg"}"
+                <img class="rounded-t-lg" src="${
+                  article.imageUrl || "./assets/comp-placeholder.jpg"
+                }"
                      alt="${category} image" />
             </a>
             <div class="p-5">
@@ -78,9 +67,6 @@ function updateHighlightCard(category, article) {
         `;
 }
 
-/**
- * Creates and manages the mobile dropdown menu
- */
 function createMobileMenu() {
   const dropdown = document.createElement("div");
   dropdown.id = "mobile-menu";
@@ -110,44 +96,35 @@ function createMobileMenu() {
   });
 }
 
-/**
- * Initializes the page content
- */
 async function initializePage() {
   try {
-    // Fetch latest articles for all categories concurrently
     const articlePromises = CATEGORIES.map((category) =>
       fetchLatestArticle(category),
     );
     const articles = await Promise.all(articlePromises);
 
-    // Update highlight cards
     CATEGORIES.forEach((category, index) => {
       updateHighlightCard(category, articles[index]);
     });
   } catch (error) {
     console.error("Error initializing page:", error);
-    // Display a user-friendly error message on the page, perhaps in a dedicated error section
-    const errorContainer = document.getElementById("error-message"); // Assuming you have an element with this ID
+    const errorContainer = document.getElementById("error-message");
     if (errorContainer) {
       errorContainer.textContent =
         "Failed to load featured articles. Please refresh the page.";
-      errorContainer.classList.remove("hidden"); // Make sure the error message is visible
+      errorContainer.classList.remove("hidden");
     }
   }
 }
 
-// Initialize when DOM is loaded
 document.addEventListener("DOMContentLoaded", () => {
   createMobileMenu();
   initializePage();
 
-  // Language button functionality (placeholder)
   languageBtn?.addEventListener("click", () => {
     console.log("Language toggle clicked");
   });
 });
 
-// Export functions for use in other modules
 export { fetchLatestArticle, updateHighlightCard, createArticleExcerpt };
 import { createArticleExcerpt } from "./articles.js"; // Import

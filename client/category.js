@@ -55,13 +55,19 @@ const CategoryController = {
       .map(
         (article) => `
       <article class="article-card mb-6">
-        ${article.imageUrl ? `<img src="${article.imageUrl}" alt="${article.title}" class="w-full h-48 object-cover mb-4 rounded">` : ""}
+        ${
+          article.imageUrl
+            ? `<img src="${article.imageUrl}" alt="${article.title}" class="w-full h-48 object-cover mb-4 rounded">`
+            : ""
+        }
         <h2 class="text-xl font-bold mb-2">${article.title}</h2>
         <p class="text-sm text-gray-600 mb-2">By ${article.author}</p>
         <div class="prose prose-sm max-w-none mb-4">
           ${this.truncateHTML(article.content, 200)}...
         </div>
-        <a href="/article.html?id=${article.id}" class="text-blue-600 hover:underline">Read more</a>
+        <a href="/article.html?id=${
+          article.id
+        }" class="text-blue-600 hover:underline">Read more</a>
       </article>
     `,
       )

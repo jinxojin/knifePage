@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const { ErrorHandler } = require("../utils/errorHandler");
+const ErrorHandler = require("../utils/errorHandler");
 const config = require("../config"); // Import config
 
 function authenticateToken(req, res, next) {
@@ -9,7 +9,6 @@ function authenticateToken(req, res, next) {
   if (!token) {
     return next(new ErrorHandler("Unauthorized: No token provided", 401));
   }
-  // Use config.jwtSecret here
   jwt.verify(token, config.jwtSecret, (err, user) => {
     if (err) {
       return next(new ErrorHandler("Forbidden: Invalid token", 403));

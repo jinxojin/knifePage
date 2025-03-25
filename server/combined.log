@@ -110,3 +110,6 @@
 {"level":"error","message":"Error: Invalid credentials\n    at /Users/chinkhuslenerdenebileg/code/knife-page/server/routes/admin.js:65:21","timestamp":"2025-03-24T11:31:51.750Z"}
 {"level":"error","message":"Error: Invalid credentials\n    at /Users/chinkhuslenerdenebileg/code/knife-page/server/routes/admin.js:65:21","timestamp":"2025-03-24T11:32:09.974Z"}
 {"level":"error","message":"Error: Invalid credentials\n    at /Users/chinkhuslenerdenebileg/code/knife-page/server/routes/admin.js:65:21","timestamp":"2025-03-24T11:32:48.293Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2025-03-25T14:57:46.328Z"}
+{"level":"error","message":"Error: Invalid credentials\n    at /Users/chinkhuslenerdenebileg/code/knife-page/server/routes/admin.js:65:21","timestamp":"2025-03-25T14:59:33.458Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2025-03-25T15:15:18.186Z"}

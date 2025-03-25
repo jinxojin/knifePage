@@ -8,7 +8,7 @@ async function initializeDatabase() {
     logger.info("Database models ready (no auto-sync).");
   } catch (error) {
     logger.error("Unable to connect to the database:", error);
-    throw error;
+    throw error; // Re-throw to be caught in app.js
   }
 }
 

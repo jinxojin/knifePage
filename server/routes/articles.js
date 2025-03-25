@@ -78,6 +78,18 @@ router.get("/", async (req, res, next) => {
     next(new ErrorHandler("Server error", 500));
   }
 });
+// GET /api/articles/:id
+router.get("/:id", async (req, res, next) => {
+  try {
+    const article = await Article.findByPk(req.params.id);
+    if (!article) {
+      return next(new ErrorHandler("Article Not Found", 404));
+    }
+    res.json(article);
+  } catch (error) {
+    next(error);
+  }
+});
 
 const validateArticle = [
   body("title").isString().trim().notEmpty().withMessage("Title is required"),
