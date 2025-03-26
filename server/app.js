@@ -1,20 +1,30 @@
-// server/app.js (Modified for HTTPS, without CSRF)
+// server/app.js (Corrected)
+
+// --- Load Environment Variables (FIRST!) ---
 const path = require("path");
+const dotenvResult = require("dotenv").config({
+  path: path.join(__dirname, ".env"),
+});
+if (dotenvResult.error) {
+  // Check for .env loading errors
+  console.error("Error loading .env file:", dotenvResult.error);
+  process.exit(1); // Exit if loading fails
+}
+console.log("CSRF_SECRET after dotenv:", process.env.CSRF_SECRET);
+
 const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
 const winston = require("winston");
-const https = require("https"); // Import the https module
-const fs = require("fs"); // Import the fs module
-
-// --- Load Environment Variables ---
-console.log("Loading dotenv...");
-const dotenvResult = require("dotenv").config({
-  path: path.join(__dirname, ".env"),
-});
-console.log("dotenv Result:", dotenvResult); // Check for errors
-console.log("JWT_SECRET after dotenv:", process.env.JWT_SECRET);
+const https = require("https");
+const fs = require("fs");
+const cookieParser = require("cookie-parser");
+const {
+  doubleCsrfProtection,
+  generateToken,
+  invalidCsrfTokenError,
+} = require("./middleware/csrfMiddleware"); // Import CSRF
 
 // --- Configure Winston Logger ---
 const logger = winston.createLogger({
@@ -31,13 +41,13 @@ const logger = winston.createLogger({
 });
 
 // --- Centralized Configuration ---
-const config = require("./config"); // Import from index.js
-config.corsOptions.origin = "https://localhost:5173"; // Update for HTTPS
+const config = require("./config");
+config.corsOptions.origin = "https://localhost:5173";
 console.log("config.jwtSecret:", config.jwtSecret);
 
 if (!config.jwtSecret) {
   logger.error("JWT_SECRET is not defined in environment variables");
-  process.exit(1); // Exit if JWT_SECRET is not defined
+  process.exit(1);
 }
 
 // --- Database Initialization ---
@@ -72,9 +82,20 @@ const apiLimiter = rateLimit({
 });
 app.use("/api/", apiLimiter);
 
-// Body Parsers (CRUCIAL - Must be BEFORE routes)
-app.use(express.json()); // Parse JSON request bodies
-app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
+// Body Parsers
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser()); // Use cookie-parser
+
+// --- CSRF Protection ---
+// 1. Route to get the CSRF token (must be BEFORE the middleware)
+app.get("/api/csrf-token", (req, res) => {
+  const csrfToken = generateToken(req, res); // Generate and set the cookie
+  res.json({ csrfToken }); // Send the token in the response
+});
+
+// 2. Apply the CSRF middleware
+app.use(doubleCsrfProtection);
 
 // --- Routes ---
 app.use("/api/articles", articleRoutes);
@@ -94,6 +115,12 @@ console.log("Resolved DB Path (app.js):", sequelize.options.storage);
 // --- Error Handling Middleware (MUST be last) ---
 app.use((err, req, res, next) => {
   logger.error(err.stack);
+
+  if (err === invalidCsrfTokenError) {
+    // Use the exported error
+    return res.status(403).json({ message: "Invalid CSRF token" });
+  }
+
   const statusCode = err.statusCode || 500;
   const message = err.message || "Internal Server Error";
   const errorDetails = process.env.NODE_ENV === "production" ? {} : err.stack;
@@ -126,7 +153,6 @@ const startServer = async () => {
     await initializeDatabase();
     await sequelize.sync({ alter: true });
     https.createServer(httpsOptions, app).listen(config.port, () => {
-      // Use https.createServer
       logger.info(`HTTPS Server is running on port ${config.port}`);
     });
   } catch (err) {

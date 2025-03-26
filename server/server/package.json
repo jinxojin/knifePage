@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "csurf": "^1.10.0",
+    "express-session": "^1.18.1"
+  }
+}
