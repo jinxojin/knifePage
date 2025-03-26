@@ -1,20 +1,16 @@
 // client/src/main.js
 import "./style.css";
-// Import necessary functions from date-fns
 import { formatDistanceToNow, format, differenceInHours } from "date-fns";
-// Import only needed utils from articles.js
-import { utils } from "./articles.js";
-const { createArticleExcerpt } = utils; // Get the excerpt function
 
 // --- Constants ---
 const API_URL = "https://localhost:3000/api";
-const CATEGORIES = ["competition", "news", "blog"];
+const CATEGORIES = ["competition", "news", "blog"]; // Categories for the homepage highlights
 
 // --- DOM Elements ---
 const burgerBtn = document.getElementById("burger-btn");
 const languageBtn = document.getElementById("language-btn");
 
-// --- Helper Function (Copied from articles.js - consider refactoring to a shared utils file later) ---
+// --- Helper Function ---
 /**
  * Generates the display string and hover string for timestamps based on age.
  * @param {Date} dateObj - The date object for the article's creation time.
@@ -33,11 +29,9 @@ function getConditionalTimestampStrings(dateObj) {
     }); // e.g., about 5 hours ago
 
     if (hoursDifference < 24) {
-      // Less than 24 hours old: Display relative time, show full date on hover
       displayString = relativeTimeFormat;
       hoverString = fullDateFormat;
     } else {
-      // 24 hours or older: Display full date, show relative time on hover
       displayString = fullDateFormat;
       hoverString = relativeTimeFormat;
     }
@@ -60,6 +54,7 @@ function getConditionalTimestampStrings(dateObj) {
  */
 async function fetchLatestArticle(category) {
   try {
+    // console.log(`Fetching latest ${category} article...`);
     const response = await fetch(
       `${API_URL}/articles/category/${category}?limit=1`,
     );
@@ -71,10 +66,11 @@ async function fetchLatestArticle(category) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const articles = await response.json();
-    return articles[0] || null; // Return the first article or null
+    // console.log(`Latest ${category} article received:`, articles[0]?.id);
+    return articles[0] || null;
   } catch (error) {
     console.error(`Error fetching latest ${category} article:`, error);
-    return null; // Return null on error
+    return null;
   }
 }
 
@@ -103,8 +99,8 @@ function updateHighlightCard(category, article) {
   }
 
   // --- Prepare Data for Rendering ---
-  // Generate excerpt using existing function
-  const excerpt = createArticleExcerpt(article.content, 150);
+  // Use the excerpt field from the database, default to empty string
+  const excerptToDisplay = article.excerpt || "";
 
   // Use Conditional Timestamp Logic
   const dateObj = new Date(article.createdAt);
@@ -132,7 +128,7 @@ function updateHighlightCard(category, article) {
             </a>
 
             <p class="mb-4 font-normal text-gray-700 dark:text-gray-300 line-clamp-3">
-                ${excerpt}
+                ${excerptToDisplay}
             </p>
 
             <div class="flex justify-between items-center mt-4">

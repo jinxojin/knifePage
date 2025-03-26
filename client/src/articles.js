@@ -11,23 +11,6 @@ const articleCache = new Map();
 // --- Helper Functions ---
 
 /**
- * Creates a plain text excerpt from HTML content.
- * Used as a fallback if article.excerpt is not available.
- * @param {string} content - The HTML content string.
- * @param {number} [length=150] - The maximum length of the excerpt.
- * @returns {string} The plain text excerpt.
- */
-export function createArticleExcerpt(content, length = 150) {
-  if (!content) return "";
-  const div = document.createElement("div");
-  div.innerHTML = content;
-  const plainText = div.textContent || div.innerText || "";
-  return plainText.length > length
-    ? `${plainText.substring(0, length)}...`
-    : plainText;
-}
-
-/**
  * Generates the display string and hover string for timestamps based on age.
  * @param {Date} dateObj - The date object for the article's creation time.
  * @returns {{displayString: string, hoverString: string}}
@@ -75,7 +58,7 @@ function getConditionalTimestampStrings(dateObj) {
  */
 export async function getArticleById(id) {
   try {
-    // Optional: Check cache first (might show stale view count initially if implemented later)
+    // Optional: Check cache first
     // if (articleCache.has(id)) {
     //   return articleCache.get(id);
     // }
@@ -148,6 +131,7 @@ export function renderArticle(article, container) {
                     <span title="${hoverString}">${displayString}</span>
                     <span class="mx-2">•</span>
                     <span class="capitalize">${article.category}</span>
+                    <!-- View count placeholder -->
                 </div>
                 <div class="prose dark:prose-invert max-w-none">
                     ${article.content}
@@ -174,7 +158,9 @@ export function renderArticleList(articles, container) {
       const dateObj = new Date(article.createdAt);
       const { displayString, hoverString } =
         getConditionalTimestampStrings(dateObj);
-      const excerpt = createArticleExcerpt(article.content); // Using generated excerpt
+
+      // Use the excerpt field from the database, default to empty string
+      const excerptToDisplay = article.excerpt || "";
 
       return `
             <article class="bg-white dark:bg-gray-700 rounded-lg shadow-md overflow-hidden mb-6">
@@ -193,9 +179,10 @@ export function renderArticleList(articles, container) {
                         <span title="${hoverString}">${displayString}</span>
                         <span class="mx-2">•</span>
                         <span class="capitalize">${article.category}</span>
+                        <!-- View count placeholder -->
                     </div>
                     <p class="text-gray-600 dark:text-gray-300 line-clamp-3">
-                        ${excerpt}
+                        ${excerptToDisplay}
                     </p>
                     <a href="/article.html?id=${article.id}" class="inline-block mt-4 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors">
                         Read more →
@@ -216,7 +203,7 @@ export function renderArticleList(articles, container) {
  */
 export async function initArticlePage() {
   const container = document.getElementById("article-container");
-  const loadingIndicator = document.getElementById("article-loading");
+  const loadingIndicator = document.getElementById("article-loading"); // Assumes you might add this ID to the pulse animation div
   const urlParams = new URLSearchParams(window.location.search);
   const articleId = urlParams.get("id");
 
@@ -224,14 +211,14 @@ export async function initArticlePage() {
     console.error("Article container not found");
     return;
   }
-  if (loadingIndicator) loadingIndicator.classList.remove("hidden");
+  if (loadingIndicator) loadingIndicator.style.display = "block"; // Show loading
 
   try {
     if (!articleId) {
       throw new Error("No article ID specified in the URL.");
     }
     const article = await getArticleById(articleId);
-    document.title = `${article.title} - MSKTF`;
+    document.title = `${article.title} - MSKTF`; // Set page title based on article
     renderArticle(article, container);
   } catch (error) {
     container.innerHTML = `
@@ -241,22 +228,18 @@ export async function initArticlePage() {
             </div>
             `;
   } finally {
-    if (loadingIndicator) loadingIndicator.classList.add("hidden");
+    if (loadingIndicator) loadingIndicator.style.display = "none"; // Hide loading
   }
 }
 
 // --- Event Listener for Article Page ---
 document.addEventListener("DOMContentLoaded", () => {
-  // Only run initArticlePage if we are on article.html (check for specific container)
+  // Only run initArticlePage if we are on a page with the article container
   if (document.getElementById("article-container")) {
     initArticlePage();
   }
 });
 
 // --- Exports ---
-// Exporting excerpt function as it's still used temporarily by main.js
-// Exporting other utils if needed later (like formatViews)
-export const utils = {
-  createArticleExcerpt,
-  // formatViews, // Add later when view count is implemented
-};
+// No utils exported now as createArticleExcerpt was removed
+// export const utils = {};

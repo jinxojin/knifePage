@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MSKTF Admin Dashboard</title>
+    <!-- Icons -->
     <link
       rel="stylesheet"
       href="https://cdn-uicons.flaticon.com/2.6.0/uicons-regular-rounded/css/uicons-regular-rounded.css"
@@ -12,135 +13,148 @@
       rel="stylesheet"
       href="https://cdn-uicons.flaticon.com/2.6.0/uicons-bold-rounded/css/uicons-bold-rounded.css"
     />
+    <!-- Quill Snow Theme -->
     <link
       href="https://cdn.quilljs.com/1.3.6/quill.snow.css"
       rel="stylesheet"
     />
+    <!-- Custom Quill Styles (Keep these) -->
     <style>
       .ql-editor {
         min-height: 200px;
-        background-color: white;
+        background-color: white; /* Default background */
       }
       .ql-toolbar {
-        background-color: white;
-        border-top-left-radius: 0.375rem;
+        background-color: white; /* Default background */
+        border-top-left-radius: 0.375rem; /* Tailwind rounded-md */
         border-top-right-radius: 0.375rem;
       }
       .ql-container {
         border-bottom-left-radius: 0.375rem;
         border-bottom-right-radius: 0.375rem;
       }
+      /* Dark mode styles for Quill */
       .dark .ql-toolbar {
-        background-color: #4b5563;
-        color: white;
+        background-color: #4b5563; /* gray-600 */
+        border-color: #6b7280; /* gray-500 */
+        color: #f3f4f6; /* gray-100 */
       }
       .dark .ql-editor {
-        background-color: #4b5563;
-        color: white;
+        background-color: #4b5563; /* gray-600 */
+        color: #f3f4f6; /* gray-100 */
+      }
+      .dark .ql-picker-label {
+        color: #f3f4f6 !important; /* Ensure dropdown text is visible */
+      }
+      .dark .ql-stroke {
+        stroke: #f3f4f6 !important; /* Ensure icon strokes are visible */
+      }
+      .dark .ql-fill {
+        fill: #f3f4f6 !important; /* Ensure icon fills are visible */
+      }
+      .dark .ql-picker-options {
+        background-color: #374151; /* gray-700 */
+        color: #f3f4f6;
       }
     </style>
+    <!-- Quill JS -->
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+    <!-- Main CSS (Tailwind processed) -->
+    <!-- Vite will inject this link during dev/build -->
   </head>
   <body
     class="bg-gray-100 font-[tinos] text-gray-900 dark:bg-gray-800 dark:text-gray-100"
   >
-    <!-- Login Panel -->
+    <!-- Main Container -->
     <div class="container mx-auto p-4">
+      <!-- Login Panel (Visible initially) -->
       <div id="login-panel">
         <div
-          id="login-form"
-          class="dark:bg-primary-800 dark:border-primary-400 mx-auto mb-4 max-w-md rounded border border-gray-200 bg-white px-8 pt-6 pb-8 shadow-md"
+          class="mx-auto mb-4 max-w-md rounded border border-gray-200 bg-white px-8 pt-6 pb-8 shadow-md dark:border-gray-600 dark:bg-gray-700"
         >
-          <h2 class="mb-6 text-center text-2xl font-bold">Admin Login</h2>
+          <h2 class="mb-6 text-center text-2xl font-bold dark:text-white">
+            Admin Login
+          </h2>
+          <!-- Login Form uses GET initially, JS prevents default -->
           <form id="login-form">
             <div class="mb-4">
-              <label
-                class="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300"
-                for="username"
-              >
-                Username
-              </label>
+              <label class="form-label" for="username"> Username </label>
               <input
                 class="form-input"
                 id="username"
                 type="text"
                 placeholder="Username"
                 required
+                autocomplete="username"
               />
             </div>
             <div class="mb-6">
-              <label
-                class="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300"
-                for="password"
-              >
-                Password
-              </label>
+              <label class="form-label" for="password"> Password </label>
               <input
                 class="form-input"
                 id="password"
                 type="password"
                 placeholder="Password"
                 required
+                autocomplete="current-password"
               />
             </div>
             <div class="flex items-center justify-between">
               <button
-                class="bg-primary-700 dark:bg-primary-400 rounded px-4 py-2 font-bold text-white hover:bg-blue-900 focus:ring-4 focus:ring-blue-300 focus:outline-none"
+                class="btn btn-blue focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-800"
                 type="submit"
               >
                 Sign In
               </button>
             </div>
           </form>
-          <div id="login-message" class="mt-2 text-sm text-red-500"></div>
+          <div id="login-message" class="mt-4 text-center text-sm"></div>
         </div>
       </div>
 
-      <!-- Admin Panel -->
+      <!-- Admin Panel (Hidden initially) -->
       <div id="admin-panel" class="hidden">
         <!-- Logout Button -->
         <div class="mb-4 flex justify-end">
-          <button
-            id="logout-button"
-            class="bg-primary-700 dark:bg-primary-400 rounded px-4 py-2 font-bold text-white hover:bg-blue-900"
-          >
-            Logout
-          </button>
+          <button id="logout-button" class="btn btn-red">Logout</button>
         </div>
 
-        <!-- Articles List -->
+        <!-- Articles Management Section -->
         <div id="articles-list" class="mb-8">
-          <div class="mb-4 flex items-center justify-between">
-            <h2 class="text-2xl font-bold">Articles</h2>
-            <button
-              id="new-article-button"
-              class="bg-primary-700 dark:bg-primary-400 rounded px-4 py-2 font-bold text-white hover:bg-blue-900"
-            >
+          <div class="mb-4 flex flex-wrap items-center justify-between gap-4">
+            <h2 class="text-2xl font-bold dark:text-white">Manage Articles</h2>
+            <button id="new-article-button" class="btn btn-green">
               Create New Article
             </button>
           </div>
-          <div id="articles-container" class="space-y-4">
-            <!-- Articles will be dynamically added here -->
+          <!-- Container where article cards will be listed -->
+          <div
+            id="articles-container"
+            class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
+          >
+            <!-- Loading indicator or article cards go here -->
+            <p class="col-span-full p-4 text-center">Loading articles...</p>
           </div>
         </div>
 
-        <!-- Article Form -->
+        <!-- Article Create/Edit Form (Hidden initially within Admin Panel) -->
         <div
           id="article-form-container"
-          class="dark:bg-primary-800 dark:border-primary-400 mx-auto max-w-2xl rounded border border-gray-200 bg-white px-8 pt-6 pb-8 shadow-md"
+          class="mx-auto mb-8 hidden max-w-3xl rounded border border-gray-200 bg-white p-6 shadow-md dark:border-gray-600 dark:bg-gray-700"
         >
-          <h2 class="mb-6 text-center text-2xl font-bold" id="form-heading">
+          <h2
+            class="mb-6 text-center text-2xl font-bold dark:text-white"
+            id="form-heading"
+          >
             Create/Edit Article
           </h2>
           <form id="article-form">
+            <!-- Hidden field to store ID when editing -->
             <input type="hidden" id="article-id" />
+
+            <!-- Title -->
             <div class="mb-4">
-              <label
-                class="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300"
-                for="article-title"
-              >
-                Title
-              </label>
+              <label class="form-label" for="article-title"> Title </label>
               <input
                 class="form-input"
                 id="article-title"
@@ -149,23 +163,25 @@
                 required
               />
             </div>
+
+            <!-- Content (Quill Editor) -->
             <div class="mb-4">
-              <label
-                class="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300"
-                for="editor-container"
+              <label class="form-label" for="editor-container"> Content </label>
+              {/* Container where Quill will mount */}
+              <div
+                id="editor-container"
+                class="quill-editor overflow-hidden rounded border border-gray-300 dark:border-gray-500"
               >
-                Content
-              </label>
-              <div id="editor-container" class="overflow-hidden rounded">
-                <!-- This div will become the Quill editor -->
+                {/* Quill editor will replace this */}
               </div>
+              {/* Hidden input to store Quill's HTML content for form submission
+              */}
               <input type="hidden" id="article-content" />
             </div>
+
+            <!-- Category Dropdown -->
             <div class="mb-4">
-              <label
-                class="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300"
-                for="article-category"
-              >
+              <label class="form-label" for="article-category">
                 Category
               </label>
               <select class="form-input" id="article-category" required>
@@ -175,13 +191,33 @@
                 <option value="blog">Blog</option>
               </select>
             </div>
+            <!-- End Category Dropdown -->
+
+            <!-- ========================== -->
+            <!-- ADD EXCERPT TEXTAREA START -->
+            <!-- ========================== -->
             <div class="mb-4">
-              <label
-                class="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300"
-                for="article-author"
-              >
-                Author
+              <label class="form-label" for="article-excerpt">
+                Excerpt (Optional)
+                <span class="ml-1 text-xs text-gray-500 dark:text-gray-400"
+                  >(Short summary for list views, max 500 chars)</span
+                >
               </label>
+              <textarea
+                class="form-input"
+                id="article-excerpt"
+                rows="3"
+                placeholder="Enter a brief summary for article cards..."
+                maxlength="500"
+              ></textarea>
+            </div>
+            <!-- ======================== -->
+            <!-- ADD EXCERPT TEXTAREA END -->
+            <!-- ======================== -->
+
+            <!-- Author Input -->
+            <div class="mb-4">
+              <label class="form-label" for="article-author"> Author </label>
               <input
                 class="form-input"
                 id="article-author"
@@ -190,44 +226,45 @@
                 required
               />
             </div>
+            <!-- End Author Input -->
+
+            <!-- Image URL Input -->
             <div class="mb-4">
-              <label
-                class="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300"
-                for="article-image"
-              >
-                Image URL
+              <label class="form-label" for="article-image">
+                Image URL (Optional)
               </label>
               <input
                 class="form-input"
                 id="article-image"
                 type="url"
-                placeholder="Image URL (optional)"
+                placeholder="https://example.com/image.jpg"
               />
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Enter the full URL of an image hosted elsewhere.
+              </p>
             </div>
+            <!-- End Image URL Input -->
+
+            <!-- Form Action Buttons -->
             <div class="flex justify-end space-x-4">
-              <button
-                type="button"
-                id="cancel-button"
-                class="rounded bg-gray-500 px-4 py-2 font-bold text-white hover:bg-gray-700"
-              >
+              <button type="button" id="cancel-button" class="btn btn-gray">
                 Cancel
               </button>
-              <button
-                id="article-submit"
-                type="submit"
-                class="bg-primary-700 dark:bg-primary-400 rounded px-4 py-2 font-bold text-white hover:bg-blue-900"
-              >
+              <button id="article-submit" type="submit" class="btn btn-blue">
                 Create Article
               </button>
             </div>
           </form>
-          <div
-            id="article-form-message"
-            class="mt-2 text-sm text-red-500"
-          ></div>
+          <!-- Message area for form success/error -->
+          <div id="article-form-message" class="mt-4 text-center text-sm"></div>
         </div>
+        <!-- End Article Form Container -->
       </div>
+      <!-- End Admin Panel -->
     </div>
+    <!-- End Main Container -->
+
+    <!-- Main Admin Script -->
     <script type="module" src="./src/admin.js"></script>
   </body>
 </html>
