@@ -1,14 +1,32 @@
 {
   "development": {
-    "dialect": "sqlite",
-    "storage": "/Users/chinkhuslenerdenebileg/code/knife-page/server/data/database.sqlite"
+    "username": "knife_app_user",
+    "password": "_4nhniM44n1W3bs1t3!",
+    "database": "knife_app_dev",
+    "host": "127.0.0.1",
+    "port": 5432,
+    "dialect": "postgres",
+    "dialectOptions": {
+      "ssl": false
+    }
   },
   "test": {
-    "dialect": "sqlite",
-    "storage": "./data/database.test.sqlite"
+    "username": "knife_test_user",
+    "password": "_4nhniM44n1W3bs1t3!",
+    "database": "knife_app_test",
+    "host": "127.0.0.1",
+    "port": 5432,
+    "dialect": "postgres",
+    "logging": false
   },
   "production": {
-    "dialect": "sqlite",
-    "storage": "./data/database.sqlite"
+    "use_env_variable": "DATABASE_URL",
+    "dialect": "postgres",
+    "dialectOptions": {
+      "ssl": {
+        "require": true,
+        "rejectUnauthorized": false
+      }
+    }
   }
 }

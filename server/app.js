@@ -151,7 +151,6 @@ const httpsOptions = {
 const startServer = async () => {
   try {
     await initializeDatabase();
-    await sequelize.sync({ alter: true });
     https.createServer(httpsOptions, app).listen(config.port, () => {
       logger.info(`HTTPS Server is running on port ${config.port}`);
     });
