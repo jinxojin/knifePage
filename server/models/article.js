@@ -46,13 +46,13 @@ const Article = sequelize.define(
     },
     // ------------------------
 
-    // --- View Count Field (Add this later in Feature #3) ---
-    // views: {
-    //   type: DataTypes.INTEGER,
-    //   allowNull: false,
-    //   defaultValue: 0,
-    // },
-    // -----------------------------------------------------
+    // --- View Count Field ---
+    views: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    // ------------------------
   },
   {
     // Optional: Add table options here if needed

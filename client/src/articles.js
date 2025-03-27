@@ -131,7 +131,11 @@ export function renderArticle(article, container) {
                     <span title="${hoverString}">${displayString}</span>
                     <span class="mx-2">•</span>
                     <span class="capitalize">${article.category}</span>
-                    <!-- View count placeholder -->
+                    <span class="mx-2">•</span>
+                    <span class="flex items-center">
+                        <svg class="w-4 h-4 mr-1.5 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 14"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 10.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7a9.99 9.99 0 0 1-1.774 5.318A9.956 9.956 0 0 1 10 13.5a9.956 9.956 0 0 1-8.226-1.182A9.99 9.99 0 0 1 0 7a9.99 9.99 0 0 1 1.774-5.318A9.956 9.956 0 0 1 10 0.5a9.956 9.956 0 0 1 8.226 1.182A9.99 9.99 0 0 1 20 7Z"/></svg>
+                        ${article.views ?? 0} views
+                    </span>
                 </div>
                 <div class="prose dark:prose-invert max-w-none">
                     ${article.content}
@@ -179,7 +183,11 @@ export function renderArticleList(articles, container) {
                         <span title="${hoverString}">${displayString}</span>
                         <span class="mx-2">•</span>
                         <span class="capitalize">${article.category}</span>
-                        <!-- View count placeholder -->
+                        <span class="mx-2">•</span>
+                        <span class="flex items-center">
+                            <svg class="w-3 h-3 mr-1 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 14"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 10.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7a9.99 9.99 0 0 1-1.774 5.318A9.956 9.956 0 0 1 10 13.5a9.956 9.956 0 0 1-8.226-1.182A9.99 9.99 0 0 1 0 7a9.99 9.99 0 0 1 1.774-5.318A9.956 9.956 0 0 1 10 0.5a9.956 9.956 0 0 1 8.226 1.182A9.99 9.99 0 0 1 20 7Z"/></svg>
+                            ${article.views ?? 0}
+                        </span>
                     </div>
                     <p class="text-gray-600 dark:text-gray-300 line-clamp-3">
                         ${excerptToDisplay}

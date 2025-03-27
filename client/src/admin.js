@@ -481,9 +481,8 @@ const AdminUI = {
                   <h3 class="text-lg font-bold mb-1 dark:text-white flex-grow">${article.title}</h3>
                   <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Category: ${article.category}</p>
                   <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">Author: ${article.author}</p>
-                  {/* Add excerpt display if desired */}
-                  {/* <p class="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 mb-2">Excerpt: ${article.excerpt || "N/A"}</p> */}
-                  <div class="mt-auto pt-2 flex space-x-2"> {/* Buttons at the bottom */}
+
+                  <div class="mt-auto pt-2 flex space-x-2">
                       <button class="edit-article btn btn-blue text-sm py-1 px-3" data-id="${article.id}">Edit</button>
                       <button class="delete-article btn btn-red text-sm py-1 px-3" data-id="${article.id}">Delete</button>
                   </div>

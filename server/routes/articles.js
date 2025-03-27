@@ -74,6 +74,7 @@ router.get(
           "createdAt",
           "updatedAt",
           "excerpt", // <-- Include excerpt
+          "views",   // <-- Include views
         ],
       });
 
@@ -101,6 +102,7 @@ router.get("/all", async (req, res, next) => {
         "author",
         "status",
         "excerpt", // <-- Include excerpt
+        "views",   // <-- Include views
       ],
       order: [["createdAt", "DESC"]],
     });
@@ -138,11 +140,12 @@ router.get("/", validateGetArticlesQuery, async (req, res, next) => {
         "category",
         "author",
         "imageUrl",
-        "createdAt",
-        "updatedAt",
-        "excerpt", // <-- Include excerpt
-      ],
-    };
+          "createdAt",
+          "updatedAt",
+          "excerpt", // <-- Include excerpt
+          "views",   // <-- Include views
+        ],
+      };
 
     if (category) {
       queryOptions.where.category = category;
@@ -179,9 +182,13 @@ router.get("/:id", validateArticleIdParam, async (req, res, next) => {
       return next(new ErrorHandler("Article Not Found", 404));
     }
 
-    // *** View Count Increment Logic Will Go Here Later ***
+    // Increment the view count (fire-and-forget, no need to wait for it to complete before sending response)
+    article.increment('views').catch(err => {
+      // Log error if increment fails, but don't block the response
+      console.error(`Failed to increment view count for article ${articleId}:`, err);
+    });
 
-    res.json(article); // This will now include the 'excerpt' field automatically
+    res.json(article); // Send the article data (including the *previous* view count)
   } catch (error) {
     console.error(`Error fetching article by ID (${req.params.id}):`, error);
     next(error);

@@ -118,7 +118,13 @@ function updateHighlightCard(category, article) {
         <div class="p-5">
             <div class="flex justify-between items-center text-gray-500 dark:text-gray-400 text-xs mb-2">
                 <span class="inline-block bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 px-2 py-0.5 rounded text-xs font-medium capitalize">${article.category}</span>
-                <span title="${hoverString}">${displayString}</span>
+                <div class="flex items-center space-x-2">
+                    <span title="${hoverString}">${displayString}</span>
+                    <span class="flex items-center" title="${article.views ?? 0} views">
+                        <svg class="w-3 h-3 mr-1 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 14"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 10.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7a9.99 9.99 0 0 1-1.774 5.318A9.956 9.956 0 0 1 10 13.5a9.956 9.956 0 0 1-8.226-1.182A9.99 9.99 0 0 1 0 7a9.99 9.99 0 0 1 1.774-5.318A9.956 9.956 0 0 1 10 0.5a9.956 9.956 0 0 1 8.226 1.182A9.99 9.99 0 0 1 20 7Z"/></svg>
+                        ${article.views ?? 0}
+                    </span>
+                </div>
             </div>
 
             <a href="/article.html?id=${article.id}" class="block focus:outline-none">
@@ -139,7 +145,7 @@ function updateHighlightCard(category, article) {
                         <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 5h12m0 0L9 1m4 4L9 9"/>
                     </svg>
                 </a>
-                <span class="text-sm text-gray-500 dark:text-gray-400" id="views-${article.id}"></span>
+
             </div>
         </div>
         `;
