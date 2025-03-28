@@ -1,6 +1,7 @@
 // client/vite.config.js
 import { defineConfig } from "vite";
 import tailwindcss from "@tailwindcss/vite";
+// Removed typography import
 import { readFileSync } from "fs";
 import path from "path";
 
@@ -9,6 +10,7 @@ export default defineConfig(({ command }) => {
   const isProduction = command === "build"; // Check if running 'vite build'
 
   return {
+    // Reverted to simple plugin usage
     plugins: [tailwindcss()],
     server: {
       https: {

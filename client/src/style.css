@@ -1,6 +1,7 @@
 /* client/src/style.css */
 
 @import "tailwindcss";
+/* Removed direct CSS import again */
 @import url("https://fonts.googleapis.com/css2?family=Tinos:ital,wght@0,400;0,700;1,400;1,700&display=swap");
 
 /* --- Global Variables --- */
@@ -51,10 +52,6 @@
 
   footer {
     @apply bg-primary-500 mx-auto min-h-[20vh] text-xl text-white dark:bg-white dark:text-black;
-  }
-
-  h1 {
-    @apply size-12 leading-0.5;
   }
 
   button {
@@ -141,4 +138,88 @@
 
 /* Index Page */
 /* Add styles specific to index.html here */
+
+/* --- Prose / Rendered Content Overrides --- */
+@layer components {
+
+  /* --- Manual Prose Styles (Alternative to Typography Plugin) --- */
+  .prose h1 { /* Targeting h1 within .prose */
+    @apply mb-4 mt-8 border-b border-gray-200 pb-2 text-3xl font-bold dark:border-gray-700; 
+    /* Example: Adjust size, weight, margin, border */
+  }
+  .prose h2 {
+    @apply mb-3 mt-6 border-b border-gray-200 pb-1 text-2xl font-semibold dark:border-gray-700; 
+    /* Example */
+  }
+  .prose h3 {
+    @apply mb-2 mt-4 text-xl font-semibold; /* Example */
+  }
+  .prose h4 {
+    @apply mb-2 mt-4 text-lg font-semibold; /* Example */
+  }
+  .prose p {
+    @apply mb-4 leading-relaxed; /* Example */
+  }
+  .prose a {
+    @apply text-blue-600 underline hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300; /* Example */
+  }
+  .prose ul {
+    @apply mb-4 ml-6 list-disc; /* Example */
+  }
+  .prose ol {
+    @apply mb-4 ml-6 list-decimal; /* Example */
+  }
+  .prose li {
+    @apply mb-2; /* Example */
+  }
+  .prose blockquote {
+    @apply mb-4 border-l-4 border-gray-300 pl-4 italic text-gray-700 dark:border-gray-600 dark:text-gray-300; /* Example */
+  }
+  .prose code { /* Inline code */
+    @apply rounded bg-gray-100 px-1 py-0.5 text-sm font-mono dark:bg-gray-700; /* Example */
+  }
+  .prose pre { /* Code blocks */
+    @apply mb-4 overflow-x-auto rounded bg-gray-100 p-4 text-sm font-mono dark:bg-gray-900; /* Example */
+  }
+  .prose pre code { /* Code inside pre */
+     @apply bg-transparent p-0; /* Reset inline code styles */
+  }
+   .prose strong {
+      @apply font-bold;
+   }
+   .prose em {
+      @apply italic;
+   }
+  /* --- End Manual Prose Styles --- */
+
+  .prose img.float-left {
+    @apply float-left mr-4 mb-2; /* Add margin for spacing */
+  }
+  .prose img.float-right {
+    @apply float-right mb-2 ml-4; /* Add margin for spacing */
+  }
+  /* Clear floats after paragraphs/elements following floated images */
+  /* Using :has() for modern browsers */
+  .prose > *:has(+ img.float-left),
+  .prose > *:has(+ img.float-right) {
+    clear: both;
+  }
+  /* Fallback for browsers not supporting :has() - clear after common elements */
+  .prose p + img.float-left,
+  .prose p + img.float-right,
+  .prose h1 + img.float-left,
+  .prose h1 + img.float-right,
+  .prose h2 + img.float-left,
+  .prose h2 + img.float-right,
+  .prose h3 + img.float-left,
+  .prose h3 + img.float-right,
+  .prose ul + img.float-left,
+  .prose ul + img.float-right,
+  .prose ol + img.float-left,
+  .prose ol + img.float-right,
+  .prose blockquote + img.float-left,
+  .prose blockquote + img.float-right {
+    clear: both; /* This might be overly aggressive, adjust if needed */
+  }
+}
 /*more coming*/
