@@ -8,33 +8,33 @@ module.exports = {
       [
         // News Articles
         {
-          title: "Latest Championship Results",
-          excerpt: "Your short summary.",
-          content: "The recent championship saw incredible performances...",
+          title_en: "Latest Championship Results", // Changed field name
+          excerpt_en: "Your short summary.", // Changed field name
+          content_en: "The recent championship saw incredible performances...", // Changed field name
           category: "news",
-          author: "Chinkhuslen", // ADD THIS
+          author: "Chinkhuslen", 
           status: "published",
           createdAt: new Date(),
           updatedAt: new Date(),
           imageUrl: "https://picsum.photos/seed/image2/600/400",
         },
         {
-          title: "New Training Facility Opening",
-          excerpt: "Your short summary.",
-          content: "The federation is proud to announce...",
+          title_en: "New Training Facility Opening", // Changed field name
+          excerpt_en: "Your short summary.", // Changed field name
+          content_en: "The federation is proud to announce...", // Changed field name
           category: "news",
-          author: "Chinkhuslen", // ADD THIS
+          author: "Chinkhuslen", 
           status: "published",
           createdAt: new Date(),
           updatedAt: new Date(),
           imageUrl: "https://picsum.photos/seed/image2/600/400",
         },
         {
-          title: "Federation Updates",
-          excerpt: "Your short summary.",
-          content: "Important updates from the federation...",
+          title_en: "Federation Updates", // Changed field name
+          excerpt_en: "Your short summary.", // Changed field name
+          content_en: "Important updates from the federation...", // Changed field name
           category: "news",
-          author: "Chinkhuslen", // ADD THIS
+          author: "Chinkhuslen", 
           status: "published",
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -43,33 +43,33 @@ module.exports = {
 
         // Competition Articles
         {
-          title: "Summer Championship 2023",
-          excerpt: "Your short summary.",
-          content: "The Summer Championship 2023 will be held...",
+          title_en: "Summer Championship 2023", // Changed field name
+          excerpt_en: "Your short summary.", // Changed field name
+          content_en: "The Summer Championship 2023 will be held...", // Changed field name
           category: "competition",
-          author: "Chinkhuslen", // ADD THIS
+          author: "Chinkhuslen", 
           status: "published",
           createdAt: new Date(),
           updatedAt: new Date(),
           imageUrl: "https://picsum.photos/seed/image8/600/400",
         },
         {
-          title: "Regional Tournament Results",
-          excerpt: "Your short summary.",
-          content: "The Eastern Regional Tournament concluded...",
+          title_en: "Regional Tournament Results", // Changed field name
+          excerpt_en: "Your short summary.", // Changed field name
+          content_en: "The Eastern Regional Tournament concluded...", // Changed field name
           category: "competition",
-          author: "Chinkhuslen", // ADD THIS
+          author: "Chinkhuslen", 
           status: "published",
           createdAt: new Date(),
           updatedAt: new Date(),
           imageUrl: "https://picsum.photos/seed/image5/600/400",
         },
         {
-          title: "Upcoming Winter Competition",
-          excerpt: "Your short summary.",
-          content: "Registration is now open for the Winter Competition...",
+          title_en: "Upcoming Winter Competition", // Changed field name
+          excerpt_en: "Your short summary.", // Changed field name
+          content_en: "Registration is now open for the Winter Competition...", // Changed field name
           category: "competition",
-          author: "Chinkhuslen", // ADD THIS
+          author: "Chinkhuslen", 
           status: "published",
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -78,33 +78,33 @@ module.exports = {
 
         // Blog Articles
         {
-          title: "Knife Throwing Techniques",
-          excerpt: "Your short summary.",
-          content: "Master the art of knife throwing...",
+          title_en: "Knife Throwing Techniques", // Changed field name
+          excerpt_en: "Your short summary.", // Changed field name
+          content_en: "Master the art of knife throwing...", // Changed field name
           category: "blog",
-          author: "Chinkhuslen", // ADD THIS
+          author: "Chinkhuslen", 
           status: "published",
           createdAt: new Date(),
           updatedAt: new Date(),
           imageUrl: "https://picsum.photos/seed/image6/600/400",
         },
         {
-          title: "Training Tips for Beginners",
-          excerpt: "Your short summary.",
-          content: "Essential tips for those starting...",
+          title_en: "Training Tips for Beginners", // Changed field name
+          excerpt_en: "Your short summary.", // Changed field name
+          content_en: "Essential tips for those starting...", // Changed field name
           category: "blog",
-          author: "Chinkhuslen", // ADD THIS
+          author: "Chinkhuslen", 
           status: "published",
           createdAt: new Date(),
           updatedAt: new Date(),
           imageUrl: "https://picsum.photos/seed/image8/600/400",
         },
         {
-          title: "Mental Preparation in Sports",
-          excerpt: "Your short summary.",
-          content: "The importance of mental preparation...",
+          title_en: "Mental Preparation in Sports", // Changed field name
+          excerpt_en: "Your short summary.", // Changed field name
+          content_en: "The importance of mental preparation...", // Changed field name
           category: "blog",
-          author: "Chinkhuslen", // ADD THIS
+          author: "Chinkhuslen", 
           status: "published",
           createdAt: new Date(),
           updatedAt: new Date(),

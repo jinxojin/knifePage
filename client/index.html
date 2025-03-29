@@ -43,6 +43,14 @@
         >
           <i class="fi fi-rr-globe"></i>
         </button>
+        <!-- Language Dropdown Menu (Initially Hidden) -->
+        <div id="language-dropdown" class="absolute right-0 top-full mt-1 hidden w-32 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 dark:bg-gray-700">
+          <div class="py-1" role="menu" aria-orientation="vertical" aria-labelledby="language-btn">
+            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600" role="menuitem" data-lang="en">English</a>
+            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600" role="menuitem" data-lang="rus">Русский</a>
+            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600" role="menuitem" data-lang="mng">Монгол</a>
+          </div>
+        </div>
         <button id="burger-btn" class="md:hidden">
           <i
             class="fi fi-br-menu-burger transition-colors duration-200 hover:text-blue-500"
@@ -55,9 +63,7 @@
       <!-- Welcome Section -->
       <section class="mx-auto md:max-w-[80vw]">
         <h1 class="mt-8 w-[100%] pt-7 text-center text-2xl">Welcome!</h1>
-        <h2 class="w-[100%] text-center text-xl">
-          Mongolian Sports Knife Throwing Federation
-        </h2>
+        <h2 class="w-[100%] text-center text-xl">Mongolian Sports Knife Throwing Federation</h2>
       </section>
 
       <!-- Featured Articles -->
@@ -99,7 +105,8 @@
     </main>
 
     <footer class="mt-8 p-4 text-center">
-      <p>Copyrights © 2025 Mongolian Sports Knife Throwing Federation</p>
+      
+      <p data-i18n="footerCopyright">Copyrights © {year} Mongolian Sports Knife Throwing Federation</p>
     </footer>
 
     <script type="module" src="./src/main.js"></script>

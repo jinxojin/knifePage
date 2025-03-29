@@ -45,17 +45,67 @@ const validateRefreshTokenBody = [
     .withMessage("Invalid refresh token format"),
 ];
 
+// Updated validation for multilingual fields
 const validateArticleBody = [
-  body("title")
+  // English (Required)
+  body("title_en")
     .trim()
     .isLength({ min: 5, max: 255 })
     .escape()
-    .withMessage("Title must be between 5 and 255 characters"),
-  body("content")
+    .withMessage("English title must be between 5 and 255 characters"),
+  body("content_en")
     .trim()
     .isLength({ min: 10 })
-    // REMOVED .escape() - rely on sanitize-html
-    .withMessage("Content must be at least 10 characters long"),
+    // No .escape() - rely on sanitize-html later
+    .withMessage("English content must be at least 10 characters long"),
+  body("excerpt_en")
+    .trim()
+    .optional({ nullable: true, checkFalsy: true })
+    .isLength({ max: 500 })
+    .escape() // Escape plain text excerpt
+    .withMessage("English excerpt cannot exceed 500 characters"),
+
+  // Russian (Optional)
+  body("title_rus")
+    .optional({ nullable: true, checkFalsy: true })
+    .trim()
+    .isLength({ min: 5, max: 255 })
+    .escape()
+    .withMessage("Russian title must be between 5 and 255 characters"),
+  body("content_rus")
+    .optional({ nullable: true, checkFalsy: true })
+    .trim()
+    .isLength({ min: 10 })
+    // No .escape()
+    .withMessage("Russian content must be at least 10 characters long"),
+  body("excerpt_rus")
+    .optional({ nullable: true, checkFalsy: true })
+    .trim()
+    .isLength({ max: 500 })
+    .escape()
+    .withMessage("Russian excerpt cannot exceed 500 characters"),
+
+  // Mongolian (Optional)
+  body("title_mng")
+    .optional({ nullable: true, checkFalsy: true })
+    .trim()
+    .isLength({ min: 5, max: 255 })
+    .escape()
+    .withMessage("Mongolian title must be between 5 and 255 characters"),
+  body("content_mng")
+    .optional({ nullable: true, checkFalsy: true })
+    .trim()
+    .isLength({ min: 10 })
+    // No .escape()
+    .withMessage("Mongolian content must be at least 10 characters long"),
+  body("excerpt_mng")
+    .optional({ nullable: true, checkFalsy: true })
+    .trim()
+    .isLength({ max: 500 })
+    .escape()
+    .withMessage("Mongolian excerpt cannot exceed 500 characters"),
+
+  // Common Fields (Keep validation)
   body("category")
     .isIn(["news", "competition", "blog"])
     .withMessage("Invalid category"),
@@ -72,9 +122,9 @@ const validateArticleBody = [
   body("excerpt")
     .trim()
     .optional({ nullable: true, checkFalsy: true })
-    .isLength({ max: 500 }) // Example max length
+    .isLength({ max: 500 })
     .withMessage("Excerpt cannot exceed 500 characters")
-    .escape(), // Escape plain text excerpt
+    .escape(),
 ];
 
 const validateArticleIdParam = [
@@ -154,9 +204,16 @@ router.post(
       return next(new ErrorHandler("Validation Error", 400, errors.array()));
     }
     try {
-      let { title, content, category, author, imageUrl, excerpt } = req.body; // Include excerpt
-      content = sanitizeHtml(content, {
-        /* Add your full sanitize-html config here */
+      // Destructure all fields including new language ones
+      let { 
+        title_en, content_en, excerpt_en,
+        title_rus, content_rus, excerpt_rus,
+        title_mng, content_mng, excerpt_mng,
+        category, author, imageUrl 
+      } = req.body; 
+
+      // Define sanitize options once
+      const sanitizeOptions = {
         allowedTags: sanitizeHtml.defaults.allowedTags.concat([
           "img",
           "p",
@@ -168,26 +225,32 @@ router.post(
           "ol",
           "li",
           "a",
-          "h1",
-          "h2",
-          "h3",
-          "br",
+          "h1", "h2", "h3", "br",
         ]),
         allowedAttributes: {
           a: ["href", "name", "target", "rel"],
           img: ["src", "alt", "title", "style", "width", "height"],
-          "*": ["class"],
+          "*": ["class"], // Allow class for potential custom styling (e.g., floats)
         },
         allowedSchemes: ["http", "https", "mailto"],
-        allowedSchemesByTag: { img: ["data", "http", "https"] },
-      });
+        allowedSchemesByTag: { img: ["data", "http", "https"] }, // Allow data URIs for embedded images
+      };
+
+      // Sanitize content for each language
+      content_en = sanitizeHtml(content_en || '', sanitizeOptions);
+      content_rus = sanitizeHtml(content_rus || '', sanitizeOptions);
+      content_mng = sanitizeHtml(content_mng || '', sanitizeOptions);
+
+      // Create article with multilingual fields
       const newArticle = await Article.create({
-        title,
-        content,
+        title_en, content_en, excerpt_en,
+        title_rus, content_rus, excerpt_rus,
+        title_mng, content_mng, excerpt_mng,
         category,
         author,
         imageUrl: imageUrl || null,
-        excerpt, // Include excerpt
+        // status is handled by model default
+        // views is handled by model default
       });
       console.log("Article created successfully:", newArticle.id);
       res.status(201).json(newArticle);
@@ -216,9 +279,16 @@ router.put(
       if (!article) {
         return next(new ErrorHandler("Article not found", 404));
       }
-      let { title, content, category, author, imageUrl, excerpt } = req.body; // Include excerpt
-      content = sanitizeHtml(content, {
-        /* Add your full sanitize-html config here */
+      // Destructure all fields including new language ones
+      let { 
+        title_en, content_en, excerpt_en,
+        title_rus, content_rus, excerpt_rus,
+        title_mng, content_mng, excerpt_mng,
+        category, author, imageUrl 
+      } = req.body; 
+
+      // Define sanitize options once (same as create)
+      const sanitizeOptions = {
         allowedTags: sanitizeHtml.defaults.allowedTags.concat([
           "img",
           "p",
@@ -230,10 +300,7 @@ router.put(
           "ol",
           "li",
           "a",
-          "h1",
-          "h2",
-          "h3",
-          "br",
+          "h1", "h2", "h3", "br",
         ]),
         allowedAttributes: {
           a: ["href", "name", "target", "rel"],
@@ -242,14 +309,22 @@ router.put(
         },
         allowedSchemes: ["http", "https", "mailto"],
         allowedSchemesByTag: { img: ["data", "http", "https"] },
-      });
+      };
+
+      // Sanitize content for each language
+      content_en = sanitizeHtml(content_en || '', sanitizeOptions);
+      content_rus = sanitizeHtml(content_rus || '', sanitizeOptions);
+      content_mng = sanitizeHtml(content_mng || '', sanitizeOptions);
+
+      // Update article with multilingual fields
       await article.update({
-        title,
-        content,
+        title_en, content_en, excerpt_en,
+        title_rus, content_rus, excerpt_rus,
+        title_mng, content_mng, excerpt_mng,
         category,
         author,
         imageUrl: imageUrl || null,
-        excerpt, // Include excerpt
+        // status and views are typically not updated here unless specifically intended
       });
       console.log("Article updated successfully:", articleId);
       res.json(article);

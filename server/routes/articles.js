@@ -34,13 +34,47 @@ const validateArticleIdParam = [
     .toInt(),
 ];
 
+// Language validation
+const supportedLangs = ['en', 'rus', 'mng'];
+const validateLangQuery = [
+  query('lang')
+    .optional()
+    .isIn(supportedLangs)
+    .withMessage(`Invalid language code. Supported: ${supportedLangs.join(', ')}`),
+];
+
+// Helper to get language attributes with aliases
+const getLangAttributes = (lang = 'en') => {
+  // Ensure lang is valid, default to 'en'
+  const validLang = supportedLangs.includes(lang) ? lang : 'en';
+  return [
+    [`title_${validLang}`, 'title'],
+    [`content_${validLang}`, 'content'],
+    [`excerpt_${validLang}`, 'excerpt'],
+  ];
+};
+
+// Common attributes needed for lists/details (excluding language-specific ones)
+const commonAttributes = [
+  "id",
+  "category",
+  "author",
+  "imageUrl",
+  "createdAt",
+  "updatedAt", // Keep updatedAt for potential display/sorting
+  "views",
+  "status", // Needed for admin list, maybe useful for public too
+];
+
+
 // --- Routes ---
 
 // GET articles by category with limit
 router.get(
   "/category/:category",
   validateCategoryParam,
-  validateGetArticlesQuery,
+  validateGetArticlesQuery, // Keep limit validation
+  validateLangQuery,      // Add language validation
   async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -56,6 +90,9 @@ router.get(
     try {
       const { category } = req.params;
       const limit = req.query.limit || 10; // Default limit
+      const lang = req.query.lang; // Get requested language
+
+      const langAttributes = getLangAttributes(lang);
 
       const articles = await Article.findAll({
         where: {
@@ -64,20 +101,14 @@ router.get(
         },
         order: [["createdAt", "DESC"]],
         limit: limit,
+        // Combine common attributes with aliased language attributes
+        // Note: We only need excerpt for lists, not full content
         attributes: [
-          "id",
-          "title",
-          // "content", // Typically not needed for list view, send excerpt instead
-          "category",
-          "author",
-          "imageUrl",
-          "createdAt",
-          "updatedAt",
-          "excerpt", // <-- Include excerpt
-          "views",   // <-- Include views
+          ...commonAttributes.filter(attr => !['content', 'status'].includes(attr)), // Exclude content/status from list view
+          ...langAttributes.filter(attr => attr[1] !== 'content') // Exclude aliased 'content'
         ],
       });
-
+      
       res.json(articles);
     } catch (error) {
       console.error(
@@ -89,20 +120,22 @@ router.get(
   }
 );
 
-// GET /api/articles/all - Simple list
-router.get("/all", async (req, res, next) => {
+// GET /api/articles/all - Simple list (likely for admin, includes status)
+router.get("/all", validateLangQuery, async (req, res, next) => { // Add lang validation
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return next(new ErrorHandler("Invalid query parameters", 400, errors.array()));
+  }
   try {
+    const lang = req.query.lang;
+    const langAttributes = getLangAttributes(lang);
+
     const articles = await Article.findAll({
+       // Reverted Debugging Change: Combine common attributes (including status) with aliased language attributes
+       // Exclude full content from this list view
       attributes: [
-        "id",
-        "title",
-        "category",
-        "createdAt",
-        "imageUrl",
-        "author",
-        "status",
-        "excerpt", // <-- Include excerpt
-        "views",   // <-- Include views
+        ...commonAttributes.filter(attr => attr !== 'content'), // Keep status, exclude content
+        ...langAttributes.filter(attr => attr[1] !== 'content') // Exclude aliased 'content'
       ],
       order: [["createdAt", "DESC"]],
     });
@@ -113,8 +146,8 @@ router.get("/all", async (req, res, next) => {
   }
 });
 
-// GET /api/articles (General purpose list with filters)
-router.get("/", validateGetArticlesQuery, async (req, res, next) => {
+// GET /api/articles (General purpose public list with filters)
+router.get("/", validateGetArticlesQuery, validateLangQuery, async (req, res, next) => { // Add lang validation
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     console.error("Get Articles Validation Errors:", errors.array());
@@ -124,8 +157,9 @@ router.get("/", validateGetArticlesQuery, async (req, res, next) => {
   }
 
   try {
-    const { category, limit: queryLimit } = req.query;
+    const { category, limit: queryLimit, lang } = req.query; // Get lang
     const limit = queryLimit || 10; // Default limit
+    const langAttributes = getLangAttributes(lang);
 
     const queryOptions = {
       where: {
@@ -133,20 +167,13 @@ router.get("/", validateGetArticlesQuery, async (req, res, next) => {
       },
       order: [["createdAt", "DESC"]],
       limit: limit,
+      // Combine common attributes with aliased language attributes
+      // Exclude full content and status from public list view
       attributes: [
-        "id",
-        "title",
-        // "content", // Typically not needed for list view
-        "category",
-        "author",
-        "imageUrl",
-          "createdAt",
-          "updatedAt",
-          "excerpt", // <-- Include excerpt
-          "views",   // <-- Include views
-        ],
-      };
-
+        ...commonAttributes.filter(attr => !['content', 'status'].includes(attr)),
+        ...langAttributes.filter(attr => attr[1] !== 'content') // Exclude aliased 'content'
+      ],
+    };
     if (category) {
       queryOptions.where.category = category;
     }
@@ -160,7 +187,7 @@ router.get("/", validateGetArticlesQuery, async (req, res, next) => {
 });
 
 // GET /api/articles/:id (Fetch single article)
-router.get("/:id", validateArticleIdParam, async (req, res, next) => {
+router.get("/:id", validateArticleIdParam, validateLangQuery, async (req, res, next) => { // Add lang validation
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     console.error("Get Article by ID Validation Errors:", errors.array());
@@ -169,13 +196,36 @@ router.get("/:id", validateArticleIdParam, async (req, res, next) => {
 
   try {
     const articleId = req.params.id;
-    // findOne/findByPk usually returns all attributes by default
+    const lang = req.query.lang; // Get lang
+
+    // Determine attributes based on authentication
+    let attributesToFetch;
+    if (req.user) { 
+      // Authenticated user (admin editing) - fetch all fields
+      attributesToFetch = [
+        ...commonAttributes,
+        'title_en', 'content_en', 'excerpt_en',
+        'title_rus', 'content_rus', 'excerpt_rus',
+        'title_mng', 'content_mng', 'excerpt_mng',
+      ];
+    } else {
+      // Public view - fetch common fields + aliased language fields
+      const langAttributes = getLangAttributes(lang);
+      attributesToFetch = [
+        ...commonAttributes, // Include all common fields for detail view
+        ...langAttributes    // Include all aliased language fields
+      ];
+    }
+
+    // Fetch article with determined attributes
     const article = await Article.findOne({
       where: {
         id: articleId,
-        status: "published", // Only published for public view by ID
+        // Allow admin to fetch non-published articles too? Maybe add later.
+        // For now, keep status: "published" for simplicity, or remove if admin should see drafts
+        status: "published", 
       },
-      // No need to specify attributes unless excluding something
+      attributes: attributesToFetch,
     });
 
     if (!article) {

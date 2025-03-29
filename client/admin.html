@@ -152,33 +152,134 @@
             <!-- Hidden field to store ID when editing -->
             <input type="hidden" id="article-id" />
 
-            <!-- Title -->
+            <hr class="my-6 border-gray-300 dark:border-gray-600">
+            <h3 class="mb-4 text-lg font-semibold text-gray-800 dark:text-gray-200">English Content</h3>
+            
+            <!-- Title (English) -->
             <div class="mb-4">
-              <label class="form-label" for="article-title"> Title </label>
+              <label class="form-label" for="article-title-en"> Title (English) <span class="text-red-500">*</span></label>
               <input
                 class="form-input"
-                id="article-title"
+                id="article-title-en"
                 type="text"
                 placeholder="Article Title"
-                required
+                required 
               />
             </div>
 
-            <!-- Content (Quill Editor) -->
+            <!-- Content (English Quill Editor) -->
             <div class="mb-4">
-              <label class="form-label" for="editor-container"> Content </label>
-              
+              <label class="form-label" for="editor-container-en"> Content (English) <span class="text-red-500">*</span></label>
               <div
-                id="editor-container"
+                id="editor-container-en"
                 class="quill-editor overflow-hidden rounded border border-gray-300 dark:border-gray-500"
-              >
-                
-              </div>
-              
-              <input type="hidden" id="article-content" />
+              ></div>
+              <input type="hidden" id="article-content-en" />
             </div>
 
-            <!-- Category Dropdown -->
+            <!-- Excerpt (English) -->
+            <div class="mb-4">
+              <label class="form-label" for="article-excerpt-en">
+                Excerpt (English, Optional)
+                <span class="ml-1 text-xs text-gray-500 dark:text-gray-400"
+                  >(Short summary, max 500 chars)</span
+                >
+              </label>
+              <textarea
+                class="form-input"
+                id="article-excerpt-en"
+                rows="3"
+                placeholder="English excerpt..."
+                maxlength="500"
+              ></textarea>
+            </div>
+
+            <hr class="my-6 border-gray-300 dark:border-gray-600">
+            <h3 class="mb-4 text-lg font-semibold text-gray-800 dark:text-gray-200">Russian Content (Optional)</h3>
+
+            <!-- Title (Russian) -->
+            <div class="mb-4">
+              <label class="form-label" for="article-title-rus"> Title (Russian) </label>
+              <input
+                class="form-input"
+                id="article-title-rus"
+                type="text"
+                placeholder="Russian Title"
+              />
+            </div>
+
+            <!-- Content (Russian Quill Editor) -->
+            <div class="mb-4">
+              <label class="form-label" for="editor-container-rus"> Content (Russian) </label>
+              <div
+                id="editor-container-rus"
+                class="quill-editor overflow-hidden rounded border border-gray-300 dark:border-gray-500"
+              ></div>
+              <input type="hidden" id="article-content-rus" />
+            </div>
+
+             <!-- Excerpt (Russian) -->
+            <div class="mb-4">
+              <label class="form-label" for="article-excerpt-rus">
+                Excerpt (Russian, Optional)
+                <span class="ml-1 text-xs text-gray-500 dark:text-gray-400"
+                  >(Max 500 chars)</span
+                >
+              </label>
+              <textarea
+                class="form-input"
+                id="article-excerpt-rus"
+                rows="3"
+                placeholder="Russian excerpt..."
+                maxlength="500"
+              ></textarea>
+            </div>
+
+            <hr class="my-6 border-gray-300 dark:border-gray-600">
+            <h3 class="mb-4 text-lg font-semibold text-gray-800 dark:text-gray-200">Mongolian Content (Optional)</h3>
+
+             <!-- Title (Mongolian) -->
+            <div class="mb-4">
+              <label class="form-label" for="article-title-mng"> Title (Mongolian) </label>
+              <input
+                class="form-input"
+                id="article-title-mng"
+                type="text"
+                placeholder="Mongolian Title"
+              />
+            </div>
+
+            <!-- Content (Mongolian Quill Editor) -->
+            <div class="mb-4">
+              <label class="form-label" for="editor-container-mng"> Content (Mongolian) </label>
+              <div
+                id="editor-container-mng"
+                class="quill-editor overflow-hidden rounded border border-gray-300 dark:border-gray-500"
+              ></div>
+              <input type="hidden" id="article-content-mng" />
+            </div>
+
+             <!-- Excerpt (Mongolian) -->
+            <div class="mb-4">
+              <label class="form-label" for="article-excerpt-mng">
+                Excerpt (Mongolian, Optional)
+                <span class="ml-1 text-xs text-gray-500 dark:text-gray-400"
+                  >(Max 500 chars)</span
+                >
+              </label>
+              <textarea
+                class="form-input"
+                id="article-excerpt-mng"
+                rows="3"
+                placeholder="Mongolian excerpt..."
+                maxlength="500"
+              ></textarea>
+            </div>
+
+            <hr class="my-6 border-gray-300 dark:border-gray-600">
+            <h3 class="mb-4 text-lg font-semibold text-gray-800 dark:text-gray-200">Common Details</h3>
+
+            <!-- Category Dropdown (Common) -->
             <div class="mb-4">
               <label class="form-label" for="article-category">
                 Category
@@ -192,31 +293,9 @@
             </div>
             <!-- End Category Dropdown -->
 
-            <!-- ========================== -->
-            <!-- ADD EXCERPT TEXTAREA START -->
-            <!-- ========================== -->
+            <!-- Author Input (Common) -->
             <div class="mb-4">
-              <label class="form-label" for="article-excerpt">
-                Excerpt (Optional)
-                <span class="ml-1 text-xs text-gray-500 dark:text-gray-400"
-                  >(Short summary for list views, max 500 chars)</span
-                >
-              </label>
-              <textarea
-                class="form-input"
-                id="article-excerpt"
-                rows="3"
-                placeholder="Enter a brief summary for article cards..."
-                maxlength="500"
-              ></textarea>
-            </div>
-            <!-- ======================== -->
-            <!-- ADD EXCERPT TEXTAREA END -->
-            <!-- ======================== -->
-
-            <!-- Author Input -->
-            <div class="mb-4">
-              <label class="form-label" for="article-author"> Author </label>
+              <label class="form-label" for="article-author"> Author <span class="text-red-500">*</span></label>
               <input
                 class="form-input"
                 id="article-author"
@@ -227,11 +306,9 @@
             </div>
             <!-- End Author Input -->
 
-            <!-- Image URL Input -->
+            <!-- Image URL Input (Common) -->
             <div class="mb-4">
-              <label class="form-label" for="article-image">
-                Image URL (Optional)
-              </label>
+              <label class="form-label" for="article-image"> Image URL (Optional) </label>
               <input
                 class="form-input"
                 id="article-image"

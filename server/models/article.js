@@ -5,18 +5,47 @@ const { sequelize } = require("../config/database"); // Adjust path if your conf
 const Article = sequelize.define(
   "Article",
   {
-    // --- Existing Fields ---
-    title: {
+    // --- Language Specific Fields ---
+    title_en: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true, // Or false if English is required
     },
-    content: {
+    title_rus: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    title_mng: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    content_en: {
       type: DataTypes.TEXT,
-      allowNull: false,
+      allowNull: true, // Or false if English is required
     },
+    content_rus: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    content_mng: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    excerpt_en: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    excerpt_rus: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    excerpt_mng: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    // --- Other Fields ---
     category: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: false, // Keep category common
       validate: {
         // Ensures category is one of the allowed values
         isIn: [["news", "competition", "blog"]],
@@ -36,17 +65,9 @@ const Article = sequelize.define(
     },
     imageUrl: {
       type: DataTypes.STRING, // URL to an image
-      allowNull: true, // Image is optional
+      allowNull: true, // Image is optional (Keep common)
     },
-
-    // --- NEW Excerpt Field ---
-    excerpt: {
-      type: DataTypes.TEXT, // Using TEXT allows flexibility in length
-      allowNull: true, // This field is optional
-    },
-    // ------------------------
-
-    // --- View Count Field ---
+    // --- View Count Field --- (Keep common)
     views: {
       type: DataTypes.INTEGER,
       allowNull: false,

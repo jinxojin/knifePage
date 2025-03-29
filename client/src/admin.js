@@ -318,13 +318,23 @@ const AdminUI = {
     newArticleButton: document.getElementById("new-article-button"),
     cancelButton: document.getElementById("cancel-button"),
     articleFormContainer: document.getElementById("article-form-container"),
-    formHeading: document.getElementById("form-heading"), // Added for convenience
-    // Form Fields
-    articleContent: document.getElementById("article-content"), // Hidden input for Quill content
+    formHeading: document.getElementById("form-heading"),
+    // Form Fields (Language Specific)
+    articleTitle_en: document.getElementById("article-title-en"),
+    editorContainer_en: document.getElementById("editor-container-en"),
+    articleContent_en: document.getElementById("article-content-en"),
+    articleExcerpt_en: document.getElementById("article-excerpt-en"),
+    articleTitle_rus: document.getElementById("article-title-rus"),
+    editorContainer_rus: document.getElementById("editor-container-rus"),
+    articleContent_rus: document.getElementById("article-content-rus"),
+    articleExcerpt_rus: document.getElementById("article-excerpt-rus"),
+    articleTitle_mng: document.getElementById("article-title-mng"),
+    editorContainer_mng: document.getElementById("editor-container-mng"),
+    articleContent_mng: document.getElementById("article-content-mng"),
+    articleExcerpt_mng: document.getElementById("article-excerpt-mng"),
+    // Form Fields (Common)
     articleId: document.getElementById("article-id"),
-    articleTitle: document.getElementById("article-title"),
     articleCategory: document.getElementById("article-category"),
-    articleExcerpt: document.getElementById("article-excerpt"), // Excerpt field
     articleAuthor: document.getElementById("article-author"),
     articleImage: document.getElementById("article-image"),
     articleSubmit: document.getElementById("article-submit"),
@@ -332,10 +342,15 @@ const AdminUI = {
     articleFormMessage: document.getElementById("article-form-message"),
     loginMessage: document.getElementById("login-message"),
     articlesContainer: document.getElementById("articles-container"),
-    editorContainer: document.getElementById("editor-container"),
+    // editorContainer is now language specific
   },
 
-  quill: null, // To hold the Quill instance
+  // Store multiple Quill instances
+  quillInstances: {
+    en: null,
+    rus: null,
+    mng: null,
+  },
 
   /**
    * Initializes the Admin UI: sets up Quill, event listeners, and initial state.
@@ -347,15 +362,52 @@ const AdminUI = {
   },
 
   /**
-   * Initializes the Quill rich text editor if the container exists.
+   * Initializes Quill editors for each language.
    */
   initQuillEditor() {
-    if (this.elements.editorContainer) {
-      try {
-        this.quill = new Quill(this.elements.editorContainer, {
-          theme: "snow",
-          modules: {
-            toolbar: [
+    const toolbarOptions = [
+      [{ header: [1, 2, 3, false] }],
+      ["bold", "italic", "underline", "strike"],
+      [{ list: "ordered" }, { list: "bullet" }],
+      [{ color: [] }, { background: [] }],
+      ["link", "image"],
+      ["clean"],
+    ];
+
+    const initializeInstance = (lang) => {
+      const container = this.elements[`editorContainer_${lang}`];
+      const hiddenInput = this.elements[`articleContent_${lang}`];
+      if (container && hiddenInput) {
+        try {
+          this.quillInstances[lang] = new Quill(container, {
+            theme: "snow",
+            modules: { toolbar: toolbarOptions },
+            placeholder: `Write ${lang.toUpperCase()} content here...`,
+          });
+
+          // Sync content to hidden input
+          this.quillInstances[lang].on("text-change", () => {
+            hiddenInput.value = this.quillInstances[lang].root.innerHTML;
+          });
+        } catch (error) {
+          console.error(`Failed to initialize Quill for ${lang}:`, error);
+          this.displayMessage(
+            this.elements.articleFormMessage,
+            `Failed to load ${lang.toUpperCase()} text editor.`,
+            true
+          );
+        }
+      } else {
+        console.warn(`Quill container/input not found for language: ${lang}`);
+      }
+    };
+
+    initializeInstance('en');
+    initializeInstance('rus');
+    initializeInstance('mng');
+  },
+
+  /**
               // Standard toolbar
               [{ header: [1, 2, 3, false] }],
               ["bold", "italic", "underline", "strike"],
@@ -369,27 +421,6 @@ const AdminUI = {
           placeholder: "Write your article content here...",
         });
 
-        // Sync Quill content to hidden input on text change
-        this.quill.on("text-change", () => {
-          if (this.elements.articleContent) {
-            // Use innerHTML to capture formatting
-            this.elements.articleContent.value = this.quill.root.innerHTML;
-          }
-        });
-      } catch (error) {
-        console.error("Failed to initialize Quill:", error);
-        this.displayMessage(
-          this.elements.articleFormMessage,
-          "Failed to load text editor.",
-          true,
-        );
-      }
-    } else {
-      console.warn("Quill editor container (#editor-container) not found.");
-    }
-  },
-
-  /**
    * Sets up event listeners for forms and buttons.
    */
   setupEventListeners() {
@@ -534,22 +565,30 @@ const AdminUI = {
       const article = await ApiService.getArticle(articleId); // Was makeAuthenticatedRequest before refactor
       if (!article) throw new Error("Article not found by API");
 
-      // Populate form fields
+      // Populate common fields
       this.elements.articleId.value = article.id;
-      this.elements.articleTitle.value = article.title;
-      // Set Quill content safely
-      if (this.quill) {
-        const contentToLoad = article.content || "";
-        this.quill.root.innerHTML = contentToLoad;
-        if (this.elements.articleContent)
-          this.elements.articleContent.value = contentToLoad;
-      } else if (this.elements.articleContent) {
-        this.elements.articleContent.value = article.content || ""; // Fallback if Quill failed
-      }
       this.elements.articleCategory.value = article.category;
-      this.elements.articleExcerpt.value = article.excerpt || ""; // Populate excerpt
       this.elements.articleAuthor.value = article.author;
       this.elements.articleImage.value = article.imageUrl || "";
+
+      // Populate language-specific fields
+      ['en', 'rus', 'mng'].forEach(lang => {
+        const titleInput = this.elements[`articleTitle_${lang}`];
+        const excerptInput = this.elements[`articleExcerpt_${lang}`];
+        const hiddenContentInput = this.elements[`articleContent_${lang}`];
+        const quillInstance = this.quillInstances[lang];
+
+        if (titleInput) titleInput.value = article[`title_${lang}`] || "";
+        if (excerptInput) excerptInput.value = article[`excerpt_${lang}`] || "";
+        
+        const contentToLoad = article[`content_${lang}`] || "";
+        if (quillInstance) {
+          // Use setContents or pasteHTML to avoid losing formatting if possible, 
+          // but innerHTML is simpler for now. Ensure backend sends sanitized HTML.
+          quillInstance.root.innerHTML = contentToLoad; 
+        }
+        if (hiddenContentInput) hiddenContentInput.value = contentToLoad;
+      });
 
       // Update form state
       this.elements.articleSubmit.textContent = "Update Article";
@@ -580,12 +619,17 @@ const AdminUI = {
    */
   resetForm() {
     if (!this.elements.articleForm) return;
-    this.elements.articleForm.reset(); // Resets native inputs like text, select, textarea
-    if (this.quill) this.quill.root.innerHTML = ""; // Clear Quill editor
-    this.elements.articleId.value = ""; // Clear hidden ID
-    if (this.elements.articleContent) this.elements.articleContent.value = ""; // Clear hidden content input
-    // Excerpt is handled by form.reset() as it's a textarea now
+    this.elements.articleForm.reset(); // Resets native inputs
 
+    // Clear all Quill editors and hidden inputs
+    ['en', 'rus', 'mng'].forEach(lang => {
+      const quillInstance = this.quillInstances[lang];
+      const hiddenContentInput = this.elements[`articleContent_${lang}`];
+      if (quillInstance) quillInstance.root.innerHTML = "";
+      if (hiddenContentInput) hiddenContentInput.value = "";
+    });
+
+    this.elements.articleId.value = ""; // Clear hidden ID
     this.elements.articleSubmit.textContent = "Create Article";
     if (this.elements.formHeading)
       this.elements.formHeading.textContent = "Create Article";
@@ -669,39 +713,51 @@ const AdminUI = {
     e.preventDefault();
     if (!this.elements.articleForm) return;
 
-    // Sync Quill content before getting data
-    if (this.quill && this.elements.articleContent) {
-      this.elements.articleContent.value = this.quill.root.innerHTML;
-    } else if (!this.elements.articleContent) {
-      console.error("Hidden article content input not found!");
-      this.displayMessage(
-        this.elements.articleFormMessage,
-        "Form configuration error.",
-        true,
-      );
-      return;
-    }
+    // Sync content from all Quill editors to hidden inputs
+    ['en', 'rus', 'mng'].forEach(lang => {
+      const quillInstance = this.quillInstances[lang];
+      const hiddenContentInput = this.elements[`articleContent_${lang}`];
+      if (quillInstance && hiddenContentInput) {
+        hiddenContentInput.value = quillInstance.root.innerHTML;
+      } else if (!hiddenContentInput) {
+         console.error(`Hidden content input not found for ${lang}!`);
+         // Handle error appropriately - maybe prevent submission
+      }
+    });
 
     const articleId = this.elements.articleId.value;
+    
+    // Gather data from all fields
     const articleData = {
-      title: this.elements.articleTitle.value.trim(),
-      content: this.elements.articleContent.value, // From hidden input
+      // English
+      title_en: this.elements.articleTitle_en.value.trim(),
+      content_en: this.elements.articleContent_en.value,
+      excerpt_en: this.elements.articleExcerpt_en.value.trim() || null,
+      // Russian
+      title_rus: this.elements.articleTitle_rus.value.trim() || null,
+      content_rus: this.elements.articleContent_rus.value || null,
+      excerpt_rus: this.elements.articleExcerpt_rus.value.trim() || null,
+      // Mongolian
+      title_mng: this.elements.articleTitle_mng.value.trim() || null,
+      content_mng: this.elements.articleContent_mng.value || null,
+      excerpt_mng: this.elements.articleExcerpt_mng.value.trim() || null,
+      // Common
       category: this.elements.articleCategory.value,
-      excerpt: this.elements.articleExcerpt.value.trim() || null, // Read excerpt value
       author: this.elements.articleAuthor.value.trim(),
       imageUrl: this.elements.articleImage.value.trim() || null,
     };
 
     // Basic client-side validation (server-side is primary)
+    // Only check required fields (English title/content, category, author)
     if (
-      !articleData.title ||
-      !articleData.content ||
+      !articleData.title_en ||
+      !articleData.content_en ||
       !articleData.category ||
       !articleData.author
     ) {
       this.displayMessage(
         this.elements.articleFormMessage,
-        "Title, Content, Category, and Author are required.",
+        "English Title, English Content, Category, and Author are required.",
         true,
       );
       return;
