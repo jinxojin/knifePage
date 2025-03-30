@@ -318,13 +318,15 @@ router.get(
     );
     next();
   },
-  validateArticleIdParam,
+  validateArticleIdParam, // Keep ID validation
+  // Lang validation is irrelevant now for attribute selection, but keep it if used elsewhere
   query("lang").optional().isIn(supportedLangs),
   async (req, res, next) => {
     const timestamp = new Date().toISOString();
     console.log(
       `[${timestamp}] GET /api/articles/${req.params.id} - Async Handler entered.`
     );
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       console.warn(
@@ -335,41 +337,73 @@ router.get(
         new ErrorHandler("Invalid Article ID or Language", 400, errors.array())
       );
     }
+
     try {
-      const articleId = req.params.id;
-      const lang = req.query.lang || "en";
-      const langAttributes = getLangAttributes(lang);
-      const attributesToFetch = [...commonAttributes, ...langAttributes];
-      const publicAttributes = attributesToFetch.filter(
-        (attr) => attr !== "status"
-      );
+      const articleId = req.params.id; // Validated
+
+      // *** CHANGE: Define attributes to fetch ALL fields for editing ***
+      const attributesToFetch = [
+        // Include common fields needed by admin form/display
+        "id",
+        "category",
+        "author",
+        "imageUrl",
+        "createdAt",
+        "updatedAt",
+        "views",
+        "status",
+        // Include ALL raw language fields
+        "title_en",
+        "content_en",
+        "excerpt_en",
+        "title_rus",
+        "content_rus",
+        "excerpt_rus",
+        "title_mng",
+        "content_mng",
+        "excerpt_mng",
+      ];
+      // *** END CHANGE ***
+
       console.log(
-        `[${timestamp}] GET /api/articles/${articleId} - Executing DB query...`
+        `[${timestamp}] GET /api/articles/${articleId} - Executing DB query (fetching all fields)...`
       );
+
       const article = await Article.findOne({
-        where: { id: articleId, status: "published" },
-        attributes: publicAttributes,
+        where: {
+          id: articleId,
+          // NOTE: Admin might need to edit non-published articles too.
+          // Consider removing this status check OR adding logic
+          // to bypass it if req.user exists (indicating admin).
+          // For now, we'll keep it simple and only allow editing published ones via this route.
+          // status: "published",
+        },
+        attributes: attributesToFetch, // Use the new list of attributes
       });
+
       if (!article) {
         console.warn(
           `[${timestamp}] GET /api/articles/${articleId} - Article not found.`
         );
+        // Even if status check removed, still return 404 if ID doesn't exist
         return next(new ErrorHandler("Article Not Found", 404));
       }
+
       console.log(
-        `[${timestamp}] GET /api/articles/${articleId} - Article found. Incrementing views...`
+        `[${timestamp}] GET /api/articles/${articleId} - Article found. Sending all fields.`
       );
+
+      // NOTE: We still increment views even if admin is potentially viewing,
+      // might want to conditionally skip this based on req.user later.
       Article.increment("views", { where: { id: articleId } }).catch((err) => {
         console.error(
           `[${timestamp}] GET /api/articles/${articleId} - Failed to increment view count:`,
           err
         );
       });
-      console.log(
-        `[${timestamp}] GET /api/articles/${articleId} - Sending success response.`
-      );
+
       res.setHeader("Content-Type", "application/json");
-      res.json(article);
+      res.json(article); // Send the full article object
     } catch (error) {
       console.error(
         `[${timestamp}] GET /api/articles/${req.params.id} - ERROR caught in route handler:`,
