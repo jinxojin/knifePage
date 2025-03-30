@@ -2,9 +2,9 @@
 import "./style.css";
 import { formatDistanceToNow, format, differenceInHours } from "date-fns";
 import { enUS, ru, mn } from "date-fns/locale";
-import { t, currentLang } from "./i18n.js"; // No need to import setLanguage here
+import { t, currentLang } from "./i18n.js";
 // Import shared UI functions
-import { setupLanguageSelector, translateStaticElements } from "./uiUtils.js";
+import { initializeUI, translateStaticElements } from "./uiUtils.js"; // Added translateStaticElements back if needed dynamically
 
 // Map language codes to date-fns locales
 const dateLocales = { en: enUS, rus: ru, mng: mn };
@@ -13,12 +13,8 @@ const dateLocales = { en: enUS, rus: ru, mng: mn };
 const API_URL = "https://localhost:3000/api";
 const CATEGORIES = ["competition", "news", "blog"];
 
-// --- DOM Elements (specific to main page if any) ---
-// Language/Burger buttons handled by uiUtils
-
 // --- Helper Functions (specific to main page) ---
 function getConditionalTimestampStrings(dateObj) {
-  // ... (keep implementation as before) ...
   let displayString = "Unknown date";
   let hoverString = "";
   const now = new Date();
@@ -74,6 +70,7 @@ function updateHighlightCard(category, article) {
   }
 
   if (!article) {
+    // Use translated placeholders
     container.innerHTML = `
             <div class="p-5 text-center">
                 <h5 class="mb-2 text-xl font-medium text-gray-700 dark:text-gray-300">${t("noRecentArticle", { category })}</h5>
@@ -86,9 +83,10 @@ function updateHighlightCard(category, article) {
   const dateObj = new Date(article.createdAt);
   const { displayString, hoverString } =
     getConditionalTimestampStrings(dateObj);
-  const title = article.title || t("untitledArticle"); // Use fallback
+  const title = article.title || t("untitledArticle");
 
   try {
+    // Using the complex card template
     container.innerHTML = `
             <a href="/article.html?id=${article.id}" class="block group focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 rounded-t-lg">
                 <img class="rounded-t-lg object-cover w-full h-48 transition-opacity duration-300 group-hover:opacity-80" src="${article.imageUrl || "/assets/placeholder-image.jpg"}" alt="${title}" />
@@ -126,13 +124,10 @@ function updateHighlightCard(category, article) {
 }
 
 // --- UI Initialization (specific to main page) ---
-async function initializePage() {
-  console.log(`Initializing main page in ${currentLang}...`);
-  // Translate static elements FIRST using the imported function
-  translateStaticElements();
-
-  // Fetch dynamic content
+async function initializePageContent() {
+  console.log(`Initializing main page content in ${currentLang}...`);
   try {
+    // Fetch dynamic content AFTER initial UI setup and translation
     const articlePromises = CATEGORIES.map((category) =>
       fetchLatestArticle(category, currentLang),
     );
@@ -140,17 +135,16 @@ async function initializePage() {
     CATEGORIES.forEach((category, index) => {
       updateHighlightCard(category, articles[index]);
     });
+    // Re-run translation if dynamic content added elements with data-i18n (unlikely here)
+    // translateStaticElements();
     console.log("Highlight cards updated.");
   } catch (error) {
-    console.error("Error during main page initialization:", error);
-    // Optionally display a general error message on the page
+    console.error("Error initializing main page content:", error);
   }
 }
 
 // --- Global Event Listeners ---
 document.addEventListener("DOMContentLoaded", () => {
-  // Setup language selector and mobile menu using the imported function
-  setupLanguageSelector();
-  // Initialize page content (which also calls translateStaticElements)
-  initializePage();
+  initializeUI(); // Setup header, footer, listeners, translate initial static elements
+  initializePageContent(); // Load dynamic content specific to this page
 });

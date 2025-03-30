@@ -1,9 +1,9 @@
-// client/src/articles.js
+// client/src/article.js
 import { formatDistanceToNow, format, differenceInHours } from "date-fns";
 import { enUS, ru, mn } from "date-fns/locale";
-import { t, currentLang } from "./i18n.js"; // Only need t and currentLang here
+import { t, currentLang } from "./i18n.js";
 // Import shared UI functions
-import { setupLanguageSelector, translateStaticElements } from "./uiUtils.js";
+import { initializeUI, translateStaticElements } from "./uiUtils.js";
 
 // --- Constants ---
 const API_URL = "https://localhost:3000/api";
@@ -12,15 +12,11 @@ const ARTICLE_ENDPOINT = `${API_URL}/articles`;
 // --- Cache ---
 const articleCache = new Map();
 
-// --- DOM Elements (specific to article page if any) ---
-// Handled by uiUtils
-
 // Map language codes to date-fns locales
 const dateLocales = { en: enUS, rus: ru, mng: mn };
 
 // --- Helper Functions ---
 export function getConditionalTimestampStrings(dateObj) {
-  // ... (keep implementation as before) ...
   let displayString = "Unknown date";
   let hoverString = "";
   const now = new Date();
@@ -48,7 +44,6 @@ export function getConditionalTimestampStrings(dateObj) {
 
 // --- API Fetching ---
 export async function getArticleById(id, lang) {
-  // ... (keep implementation as before) ...
   const cacheKey = `${id}-${lang}`;
   if (articleCache.has(cacheKey)) {
     return articleCache.get(cacheKey);
@@ -77,7 +72,6 @@ export async function getArticleById(id, lang) {
   }
 }
 export async function getArticlesByCategory(category, lang, limit) {
-  // ... (keep implementation as before) ...
   try {
     let url = `${ARTICLE_ENDPOINT}/category/${category}?lang=${lang}`;
     if (limit) {
@@ -107,7 +101,6 @@ export async function getArticlesByCategory(category, lang, limit) {
 
 // --- Rendering Functions ---
 export function renderArticle(article, container) {
-  // ... (keep implementation as before) ...
   if (!article) {
     container.innerHTML = `<p class="text-red-500">${t("errorLoadingData")}</p>`;
     return;
@@ -120,7 +113,6 @@ export function renderArticle(article, container) {
   container.innerHTML = articleHTML;
 }
 export function renderArticleList(articles, container) {
-  // ... (keep implementation as before) ...
   if (!articles || articles.length === 0) {
     container.innerHTML = `<p class="text-center py-10">${t("noArticlesFound")}</p>`;
     return;
@@ -133,11 +125,8 @@ export function renderArticleList(articles, container) {
         );
         return "";
       }
-      console.log(
-        `[renderArticleList] Rendering article index ${index}:`,
-        article,
-      );
-      const dateObj = new Date(article.createdAt);
+      /* console.log(`[renderArticleList] Rendering article index ${index}:`, article); */ const dateObj =
+        new Date(article.createdAt);
       const { displayString, hoverString } =
         getConditionalTimestampStrings(dateObj);
       const excerptToDisplay = article.excerpt || "";
@@ -151,10 +140,7 @@ export function renderArticleList(articles, container) {
 
 // --- UI Initialization (specific to article page) ---
 async function initArticlePage() {
-  console.log(`Initializing article page in ${currentLang}...`);
-  // Translate static elements using the imported function
-  translateStaticElements();
-
+  console.log(`Initializing article page content in ${currentLang}...`);
   const container = document.getElementById("article-container");
   const loadingIndicator = document.getElementById("article-loading");
   const urlParams = new URLSearchParams(window.location.search);
@@ -173,6 +159,8 @@ async function initArticlePage() {
     const article = await getArticleById(articleId, currentLang);
     document.title = `${article.title || t("untitledArticle")} - MSKTF`;
     renderArticle(article, container);
+    // Re-translate static elements AFTER dynamic content might affect layout/elements
+    // translateStaticElements(); // Usually not needed if dynamic part doesn't add data-i18n
   } catch (error) {
     console.error("Error in initArticlePage:", error);
     const errorTitleKey = "errorLoadingArticleTitle";
@@ -194,19 +182,9 @@ async function initArticlePage() {
 
 // --- Event Listener for Article Page ---
 document.addEventListener("DOMContentLoaded", () => {
-  // Setup language selector and mobile menu using the imported function
-  setupLanguageSelector();
-  // Only run initArticlePage if we are on a page meant to display a single article
+  initializeUI(); // Setup header, footer, listeners, translate initial static elements
+  // Only run article loading if container exists
   if (document.getElementById("article-container")) {
-    initArticlePage(); // Fetches article data AND translates dynamic content parts
+    initArticlePage();
   }
 });
-
-// --- Exports ---
-// Keep exports needed by other modules
-// getConditionalTimestampStrings is used internally and in renderArticleList
-// getArticleById is used internally and potentially elsewhere
-// getArticlesByCategory is used by competitions.js and main.js
-// renderArticle is used internally and by competitions.js
-// renderArticleList is used by articles-list.js
-// No need to export initArticlePage as it's called internally

@@ -1,21 +1,18 @@
 // client/src/articles-list.js
-import "./style.css"; // Import base styles
-import { t, currentLang } from "./i18n.js"; // Only need t and currentLang
-// Import ONLY the list rendering function from articles.js
-import { renderArticleList } from "./articles.js";
-// Import shared UI functions
-import { setupLanguageSelector, translateStaticElements } from "./uiUtils.js";
+import "./style.css";
+import { t, currentLang } from "./i18n.js";
+import { renderArticleList } from "./articles.js"; // Import ONLY needed function
+import { initializeUI, translateStaticElements } from "./uiUtils.js"; // Import UI utils
 
 // --- DOM Elements ---
-// Language/Burger buttons handled by uiUtils
 const articlesContainer = document.getElementById("articles-list-container");
 const paginationControls = document.getElementById("pagination-controls");
 
 // --- State ---
 let currentPage = 1;
-const articlesPerPage = 6; // Match server default or desired number
+const articlesPerPage = 6;
 
-// --- Article Fetching & Rendering (with Server-Side Pagination) ---
+// --- Article Fetching & Rendering ---
 async function fetchAndRenderArticles(page = 1) {
   if (!articlesContainer) {
     console.error("[articles-list] Article list container not found!");
@@ -93,6 +90,8 @@ async function fetchAndRenderArticles(page = 1) {
       } else {
         articlesContainer.innerHTML = `<p class="text-center py-10">${t("noArticlesFound")}</p>`;
       }
+      // Translate pagination buttons AFTER they are rendered
+      translateStaticElements(); // Call here specifically for pagination
     } else {
       console.error(
         "[articles-list] Received OK response but data format is unexpected:",
@@ -109,7 +108,6 @@ async function fetchAndRenderArticles(page = 1) {
 
 // --- Pagination Rendering ---
 function renderPagination(currentPage, totalPages) {
-  // ... (keep implementation as before) ...
   if (!paginationControls || totalPages <= 1) {
     if (paginationControls) paginationControls.innerHTML = "";
     return;
@@ -118,7 +116,7 @@ function renderPagination(currentPage, totalPages) {
     '<div class="flex items-center justify-center space-x-1">';
   const prevDisabled = currentPage === 1;
   const prevText = t("paginationPrevious");
-  paginationHTML += ` <button class="rounded border bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 ${prevDisabled ? "cursor-not-allowed opacity-50" : ""}" ${prevDisabled ? "disabled" : ""} onclick="changePage(${currentPage - 1})" aria-label="${prevText}"> ${prevText} </button>`;
+  paginationHTML += ` <button class="rounded border bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 ${prevDisabled ? "cursor-not-allowed opacity-50" : ""}" ${prevDisabled ? "disabled" : ""} onclick="changePage(${currentPage - 1})" aria-label="${prevText}" data-i18n="paginationPrevious"> ${prevText} </button>`;
   const maxPagesToShow = 5;
   const pageNeighbours = Math.floor((maxPagesToShow - 3) / 2);
   let startPage = Math.max(1, currentPage - pageNeighbours);
@@ -147,7 +145,7 @@ function renderPagination(currentPage, totalPages) {
   }
   const nextDisabled = currentPage === totalPages;
   const nextText = t("paginationNext");
-  paginationHTML += ` <button class="rounded border bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 ${nextDisabled ? "cursor-not-allowed opacity-50" : ""}" ${nextDisabled ? "disabled" : ""} onclick="changePage(${currentPage + 1})" aria-label="${nextText}"> ${nextText} </button>`;
+  paginationHTML += ` <button class="rounded border bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 ${nextDisabled ? "cursor-not-allowed opacity-50" : ""}" ${nextDisabled ? "disabled" : ""} onclick="changePage(${currentPage + 1})" aria-label="${nextText}" data-i18n="paginationNext"> ${nextText} </button>`;
   paginationHTML += "</div>";
   paginationControls.innerHTML = paginationHTML;
 }
@@ -163,8 +161,6 @@ window.changePage = (page) => {
 
 // --- Initialization ---
 document.addEventListener("DOMContentLoaded", () => {
-  // Use imported functions
-  setupLanguageSelector();
-  translateStaticElements(); // Translate static parts first
+  initializeUI(); // Setup header, footer, listeners, translate initial static elements
   fetchAndRenderArticles(currentPage); // Fetch initial page data
 });

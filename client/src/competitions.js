@@ -3,11 +3,11 @@ import "./style.css"; // Import base styles
 import { t, currentLang } from "./i18n.js"; // Only need t and currentLang
 // Import functions from articles.js needed here
 import { renderArticle, getArticlesByCategory } from "./articles.js";
-// Import shared UI functions
-import { setupLanguageSelector, translateStaticElements } from "./uiUtils.js";
+// Import ONLY the main initializer from uiUtils.js
+import { initializeUI } from "./uiUtils.js"; // <<<< CORRECT IMPORT
 
 // --- DOM Elements ---
-// Language/Burger buttons handled by uiUtils
+// Handled by uiUtils
 const competitionContentContainer = document.getElementById(
   "competition-content",
 );
@@ -41,8 +41,8 @@ async function loadCompetitionData() {
 
 // --- Initialization ---
 document.addEventListener("DOMContentLoaded", () => {
-  // Use imported functions
-  setupLanguageSelector();
-  translateStaticElements(); // Translate static parts first
-  loadCompetitionData(); // Then load dynamic data
+  // Use the main UI initializer
+  initializeUI(); // <<<< CALL THIS INSTEAD
+  // Then load page-specific content
+  loadCompetitionData();
 });

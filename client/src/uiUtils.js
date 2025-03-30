@@ -1,27 +1,102 @@
 // client/src/uiUtils.js
 import { t, currentLang, setLanguage } from "./i18n.js";
 
-/**
- * Creates the mobile menu and sets up its toggle behavior.
- * Assumes #burger-btn and header nav ul exist in the calling page's HTML.
- */
+// --- Header HTML Template ---
+const headerHTML = `
+<header>
+  <nav
+    class="dark:bg-primary-800/80 fixed flex w-screen items-center justify-between bg-white/80 px-2 backdrop-blur-sm z-50"
+  >
+    <a href="index.html" class="flex-shrink-0">
+        <i class="cursor-pointer text-xl transition-colors duration-200 select-none hover:text-blue-500">
+          MSKTF
+        </i>
+     </a>
+
+    <ul class="hidden md:flex md:items-center md:justify-center flex-grow">
+      <li class="comp-navlink"><a href="index.html" data-i18n="navHome">Home</a></li>
+      <li class="comp-navlink"><a href="competitions.html" data-i18n="navCompetitions">Competitions</a></li>
+      <li class="comp-navlink"><a href="articles.html" data-i18n="navNewsBlog">News & Blog</a></li>
+      <li class="comp-navlink"><a href="mission.html" data-i18n="navMission">Mission</a></li>
+      <li class="comp-navlink"><a href="contact.html" data-i18n="navContact">Contact</a></li>
+    </ul>
+
+    <div class="flex items-center flex-shrink-0">
+        <div class="relative hidden md:block mr-2">
+            <button
+              class="flex items-center rounded p-1 transition-colors duration-200 hover:text-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-300"
+              id="language-btn"
+              aria-label="Select Language"
+            >
+               <span id="current-lang-display" class="text-xs mr-1">EN</span>
+               <i class="fi fi-rr-globe"></i>
+            </button>
+            <div id="language-dropdown" class="absolute right-0 top-full mt-1 hidden w-32 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 dark:bg-gray-700 z-50">
+               <div class="py-1" role="menu" aria-orientation="vertical" aria-labelledby="language-btn">
+                 <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600" role="menuitem" data-lang="en">English</a>
+                 <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600" role="menuitem" data-lang="rus">Русский</a>
+                 <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600" role="menuitem" data-lang="mng">Монгол</a>
+               </div>
+             </div>
+        </div>
+        <button id="burger-btn" class="md:hidden" aria-label="Toggle Menu">
+          <i class="fi fi-br-menu-burger transition-colors duration-200 hover:text-blue-500 text-lg leading-none"></i>
+        </button>
+    </div>
+  </nav>
+</header>
+`;
+
+// --- Footer HTML Template ---
+const footerHTML = `
+<footer class="mt-8 p-4 text-center bg-primary-500 text-white dark:bg-white dark:text-black">
+  <p data-i18n="footerCopyright">
+    Copyrights © {year} Mongolian Sports Knife Throwing Federation
+  </p>
+</footer>
+`;
+
+/** Injects the header HTML into the #header-placeholder element. */
+function loadHeader() {
+  const placeholder = document.getElementById("header-placeholder");
+  if (placeholder) {
+    placeholder.innerHTML = headerHTML;
+  } else {
+    console.error(
+      "[uiUtils] #header-placeholder element not found in the HTML.",
+    );
+  }
+}
+
+/** Injects the footer HTML into the #footer-placeholder element. */
+function loadFooter() {
+  const placeholder = document.getElementById("footer-placeholder");
+  if (placeholder) {
+    placeholder.innerHTML = footerHTML;
+  } else {
+    console.error(
+      "[uiUtils] #footer-placeholder element not found in the HTML.",
+    );
+  }
+}
+
+/** Creates the mobile menu and sets up its toggle behavior. */
 function createMobileMenu() {
   const burgerBtn = document.getElementById("burger-btn");
-  if (!burgerBtn) return; // Don't run if no burger button
-  const navUl = document.querySelector("header nav ul"); // Main desktop nav
+  if (!burgerBtn) return;
+  const navContainer = document.querySelector("#header-placeholder header nav");
+  const navUl = navContainer?.querySelector("ul");
   if (!navUl) {
-    console.warn("Could not find 'header nav ul' for mobile menu.");
+    console.warn("[uiUtils] Could not find 'header nav ul' after header load.");
     return;
   }
-  let dropdown = document.getElementById("mobile-menu"); // Check if already exists
 
+  let dropdown = document.getElementById("mobile-menu");
   if (!dropdown) {
     dropdown = document.createElement("div");
     dropdown.id = "mobile-menu";
-    // Consistent styling and positioning
     dropdown.className = `md:hidden fixed top-14 left-0 right-0 w-full bg-white/95 dark:bg-primary-800/95 backdrop-blur-sm shadow-md overflow-hidden transition-max-height duration-300 ease-in-out z-40`;
     dropdown.style.maxHeight = "0";
-
     const nav = navUl.cloneNode(true);
     nav.className = "flex flex-col items-center py-4 space-y-2";
     nav
@@ -39,38 +114,25 @@ function createMobileMenu() {
         ),
       );
     dropdown.appendChild(nav);
-    // Insert after the main nav container (usually header > nav)
-    document
-      .querySelector("header nav")
-      ?.insertAdjacentElement("afterend", dropdown);
+    navContainer?.insertAdjacentElement("afterend", dropdown);
   } else {
-    // Ensure it's hidden if it somehow exists already (e.g., back navigation)
     dropdown.style.maxHeight = "0";
   }
 
-  // --- Event Listeners for Mobile Menu ---
-  // Use a flag to prevent multiple listeners if this function is called more than once (though it shouldn't be needed with proper structure)
   if (!burgerBtn.dataset.mobileMenuListener) {
-    burgerBtn.dataset.mobileMenuListener = "true"; // Mark as listener attached
-
+    burgerBtn.dataset.mobileMenuListener = "true";
     burgerBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      // Re-select dropdown inside listener to ensure it exists
       const currentDropdown = document.getElementById("mobile-menu");
       if (!currentDropdown) return;
-
       const isOpen = currentDropdown.style.maxHeight !== "0px";
       const innerNav = currentDropdown.querySelector("ul");
-      // Calculate scrollHeight or use a fallback height
       currentDropdown.style.maxHeight = isOpen
         ? "0"
         : `${innerNav?.scrollHeight || 250}px`;
     });
-
-    // Close on click outside
     document.addEventListener("click", (e) => {
-      const mobileMenu = document.getElementById("mobile-menu"); // Re-select
-      // Check if the click target is the burger button or inside the mobile menu
+      const mobileMenu = document.getElementById("mobile-menu");
       if (
         mobileMenu &&
         !mobileMenu.contains(e.target) &&
@@ -83,21 +145,15 @@ function createMobileMenu() {
   }
 }
 
-/**
- * Sets up the language selector dropdown behavior.
- * Assumes #language-btn, #language-dropdown, #current-lang-display exist.
- * Also calls createMobileMenu internally.
- */
-export function setupLanguageSelector() {
+/** Sets up the language selector dropdown behavior. */
+function setupLanguageSelectorListeners() {
   const languageBtn = document.getElementById("language-btn");
   const languageDropdown = document.getElementById("language-dropdown");
 
   if (!languageBtn || !languageDropdown) {
     console.warn(
-      "[uiUtils] Language selector elements (#language-btn or #language-dropdown) not found.",
+      "[uiUtils] Language selector elements not found after header load.",
     );
-    // Still try to set up mobile menu if burger exists
-    createMobileMenu();
     return;
   }
 
@@ -106,32 +162,23 @@ export function setupLanguageSelector() {
     currentLangDisplay.textContent = currentLang.toUpperCase();
   }
 
-  // --- Event Listeners for Language Dropdown ---
   if (!languageBtn.dataset.langMenuListener) {
     languageBtn.dataset.langMenuListener = "true";
-
-    // Toggle dropdown visibility
     languageBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       languageDropdown.classList.toggle("hidden");
     });
-
-    // Handle language selection
     languageDropdown.addEventListener("click", (e) => {
       if (e.target.tagName === "A" && e.target.dataset.lang) {
         e.preventDefault();
         const selectedLang = e.target.dataset.lang;
-        // Only reload if language actually changes
         if (selectedLang !== currentLang) {
-          setLanguage(selectedLang); // Handles localStorage and reload
+          setLanguage(selectedLang);
         }
-        languageDropdown.classList.add("hidden"); // Hide dropdown
+        languageDropdown.classList.add("hidden");
       }
     });
-
-    // Hide dropdown if clicking outside
     document.addEventListener("click", (e) => {
-      // Check if the click is outside both the button and the dropdown itself
       if (
         !languageBtn.contains(e.target) &&
         !languageDropdown.contains(e.target)
@@ -140,20 +187,13 @@ export function setupLanguageSelector() {
       }
     });
   }
-
-  // Set up mobile menu (called from here to ensure burger listener is attached)
-  createMobileMenu();
 }
 
-/**
- * Translates static elements marked with data-i18n attribute.
- */
+/** Translates static elements marked with data-i18n attribute. */
 export function translateStaticElements() {
-  // console.log('[uiUtils] Translating static elements...'); // Optional debug log
   document.querySelectorAll("[data-i18n]").forEach((element) => {
     const key = element.getAttribute("data-i18n");
-    if (!key) return; // Skip if key is missing
-
+    if (!key) return;
     const paramsAttr = element.getAttribute("data-i18n-params");
     let params = {};
     if (paramsAttr) {
@@ -166,28 +206,30 @@ export function translateStaticElements() {
         );
       }
     }
-
-    // Special handling for dynamic params like year
     if (key === "footerCopyright") {
       params.year = new Date().getFullYear();
     }
-    // Add more special cases if needed
-
-    const translation = t(key, params); // Get translation
-
-    // Apply translation based on element type
+    const translation = t(key, params);
     if (element.hasAttribute("placeholder")) {
       element.placeholder = translation;
     } else if (element.tagName === "INPUT" || element.tagName === "TEXTAREA") {
-      // Avoid setting textContent for input/textarea unless it's placeholder
     } else if (
       key === "footerCopyright" ||
       element.closest("#pagination-controls")
     ) {
-      // Allow HTML for specific elements (footer, pagination buttons)
       element.innerHTML = translation;
     } else {
       element.textContent = translation;
     }
   });
+}
+
+/** Initializes common UI: Loads Header/Footer, Sets up Listeners, Translates. */
+export function initializeUI() {
+  loadHeader();
+  loadFooter();
+  // Run listeners after HTML is injected
+  setupLanguageSelectorListeners();
+  createMobileMenu();
+  translateStaticElements();
 }

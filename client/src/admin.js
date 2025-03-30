@@ -480,7 +480,6 @@ const AdminUI = {
                     <h3 class="text-lg font-bold mb-1 dark:text-white flex-grow">${title}</h3>
                     <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Category: ${category}</p>
                     <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">Author: ${author}</p>
-                    {/* Display status */}
                     <p class="text-sm font-medium ${status === "published" ? "text-green-600 dark:text-green-400" : "text-yellow-600 dark:text-yellow-400"} mb-2 capitalize">Status: ${status}</p>
 
                     <div class="mt-auto pt-2 flex space-x-2">

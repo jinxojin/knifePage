@@ -9,7 +9,6 @@ if (dotenvResult.error) {
   console.error("Error loading .env file:", dotenvResult.error);
   process.exit(1);
 }
-// console.log("CSRF_SECRET after dotenv:", process.env.CSRF_SECRET); // Keep commented unless needed
 
 const express = require("express");
 const cors = require("cors");
