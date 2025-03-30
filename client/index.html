@@ -32,10 +32,9 @@
           <li class="comp-navlink">
             <a href="competitions.html">Competitions</a>
           </li>
-          <li class="comp-navlink"><a href="article.html">News & Blog</a></li>
+          <li class="comp-navlink"><a href="articles.html">News & Blog</a></li>
           <li class="comp-navlink"><a href="mission.html">Mission</a></li>
           <li class="comp-navlink"><a href="contact.html">Contact</a></li>
-          <li class="comp-navlink"><a href="admin.html">Admin</a></li>
         </ul>
         <button
           class="hidden transition-colors duration-200 hover:text-blue-500 md:block"
@@ -44,11 +43,37 @@
           <i class="fi fi-rr-globe"></i>
         </button>
         <!-- Language Dropdown Menu (Initially Hidden) -->
-        <div id="language-dropdown" class="absolute right-0 top-full mt-1 hidden w-32 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 dark:bg-gray-700">
-          <div class="py-1" role="menu" aria-orientation="vertical" aria-labelledby="language-btn">
-            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600" role="menuitem" data-lang="en">English</a>
-            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600" role="menuitem" data-lang="rus">Русский</a>
-            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600" role="menuitem" data-lang="mng">Монгол</a>
+        <div
+          id="language-dropdown"
+          class="ring-opacity-5 absolute top-full right-0 mt-1 hidden w-32 rounded-md bg-white shadow-lg ring-1 ring-black dark:bg-gray-700"
+        >
+          <div
+            class="py-1"
+            role="menu"
+            aria-orientation="vertical"
+            aria-labelledby="language-btn"
+          >
+            <a
+              href="#"
+              class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600"
+              role="menuitem"
+              data-lang="en"
+              >English</a
+            >
+            <a
+              href="#"
+              class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600"
+              role="menuitem"
+              data-lang="rus"
+              >Русский</a
+            >
+            <a
+              href="#"
+              class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600"
+              role="menuitem"
+              data-lang="mng"
+              >Монгол</a
+            >
           </div>
         </div>
         <button id="burger-btn" class="md:hidden">
@@ -63,14 +88,16 @@
       <!-- Welcome Section -->
       <section class="mx-auto md:max-w-[80vw]">
         <h1 class="mt-8 w-[100%] pt-7 text-center text-2xl">Welcome!</h1>
-        <h2 class="w-[100%] text-center text-xl">Mongolian Sports Knife Throwing Federation</h2>
+        <h2 class="w-[100%] text-center text-xl">
+          Mongolian Sports Knife Throwing Federation
+        </h2>
       </section>
 
       <!-- Featured Articles -->
       <section id="featured-articles" class="mt-4 w-full max-w-[90%]">
         <!-- Latest Competition -->
         <div class="mb-8">
-          <h3 class="text-2xl">Latest Competition</h3>
+          <h3 class="text-2xl" data-i18n="latestCompetition">Latest Competition</h3>
           <div class="comp-divider"></div>
           <div
             id="highlight-competition"
@@ -81,7 +108,7 @@
         </div>
         <!-- Latest News -->
         <div class="mb-8">
-          <h3 class="text-2xl">Latest News</h3>
+          <h3 class="text-2xl" data-i18n="latestNews">Latest News</h3>
           <div class="comp-divider"></div>
           <div
             id="highlight-news"
@@ -92,7 +119,7 @@
         </div>
         <!-- Latest Blog -->
         <div class="mb-8">
-          <h3 class="text-2xl">Latest Blog Post</h3>
+          <h3 class="text-2xl" data-i18n="latestBlog">Latest Blog Post</h3>
           <div class="comp-divider"></div>
           <div
             id="highlight-blog"
@@ -105,8 +132,9 @@
     </main>
 
     <footer class="mt-8 p-4 text-center">
-      
-      <p data-i18n="footerCopyright">Copyrights © {year} Mongolian Sports Knife Throwing Federation</p>
+      <p data-i18n="footerCopyright">
+        Copyrights © {year} Mongolian Sports Knife Throwing Federation
+      </p>
     </footer>
 
     <script type="module" src="./src/main.js"></script>

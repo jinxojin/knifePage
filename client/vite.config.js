@@ -1,16 +1,13 @@
 // client/vite.config.js
 import { defineConfig } from "vite";
 import tailwindcss from "@tailwindcss/vite";
-// Removed typography import
 import { readFileSync } from "fs";
 import path from "path";
 
 export default defineConfig(({ command }) => {
-  // Use function form to access command
-  const isProduction = command === "build"; // Check if running 'vite build'
+  const isProduction = command === "build";
 
   return {
-    // Reverted to simple plugin usage
     plugins: [tailwindcss()],
     server: {
       https: {
@@ -19,21 +16,33 @@ export default defineConfig(({ command }) => {
       },
       port: 5173,
       strictPort: true,
+      // ++++++++++ PROXY CONFIGURATION ++++++++++
+      proxy: {
+        "/api": {
+          // Proxy requests starting with /api
+          target: "https://localhost:3000", // Your backend server address
+          changeOrigin: true, // Recommended
+          secure: false, // IMPORTANT for self-signed certs on backend
+        },
+      },
+      // +++++++++++++++++++++++++++++++++++++++++++++
     },
     preview: {
       port: 5173,
+      https: {
+        // Also configure HTTPS for preview if needed
+        key: readFileSync(path.resolve(__dirname, "../localhost+2-key.pem")),
+        cert: readFileSync(path.resolve(__dirname, "../localhost+2.pem")),
+      },
     },
-    // --- Add this build configuration ---
     build: {
-      minify: "terser", // Use terser for minification
+      minify: "terser",
       terserOptions: {
         compress: {
-          // Drop console logs and warnings in production builds
           drop_console: isProduction,
           drop_debugger: isProduction,
         },
       },
     },
-    // -----------------------------------
   };
 });

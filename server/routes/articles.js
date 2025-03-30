@@ -7,18 +7,38 @@ const { Op } = require("sequelize");
 const { Article } = require("../models"); // Assuming models are exported correctly
 const ErrorHandler = require("../utils/errorHandler");
 
-// --- Validation Middleware ---
+// --- Validation Middleware Definitions ---
+const supportedLangs = ["en", "rus", "mng"];
 
 const validateGetArticlesQuery = [
   query("category")
     .optional()
-    .isIn(["news", "competition", "blog"])
-    .withMessage("Invalid category specified"),
+    .custom((value) => {
+      // Allow comma-separated categories
+      if (!value) return true;
+      const categories = value.split(",");
+      const validCategories = ["news", "competition", "blog"];
+      return categories.every((cat) => validCategories.includes(cat.trim()));
+    })
+    .withMessage(
+      "Invalid category specified. Allowed: news, competition, blog (comma-separated)"
+    ),
   query("limit")
     .optional()
-    .isInt({ min: 1, max: 50 }) // Set a reasonable max limit
+    .isInt({ min: 1, max: 50 }) // Max limit for safety
     .toInt()
     .withMessage("Limit must be a positive integer (max 50)"),
+  query("page") // Added page validation
+    .optional()
+    .isInt({ min: 1 })
+    .toInt()
+    .withMessage("Page must be a positive integer"),
+  query("lang") // Added language validation
+    .optional()
+    .isIn(supportedLangs)
+    .withMessage(
+      `Invalid language code. Supported: ${supportedLangs.join(", ")}`
+    ),
 ];
 
 const validateCategoryParam = [
@@ -34,215 +54,330 @@ const validateArticleIdParam = [
     .toInt(),
 ];
 
-// Language validation
-const supportedLangs = ['en', 'rus', 'mng'];
-const validateLangQuery = [
-  query('lang')
-    .optional()
-    .isIn(supportedLangs)
-    .withMessage(`Invalid language code. Supported: ${supportedLangs.join(', ')}`),
-];
-
 // Helper to get language attributes with aliases
-const getLangAttributes = (lang = 'en') => {
-  // Ensure lang is valid, default to 'en'
-  const validLang = supportedLangs.includes(lang) ? lang : 'en';
+const getLangAttributes = (lang = "en") => {
+  const validLang = supportedLangs.includes(lang) ? lang : "en";
   return [
-    [`title_${validLang}`, 'title'],
-    [`content_${validLang}`, 'content'],
-    [`excerpt_${validLang}`, 'excerpt'],
+    [`title_${validLang}`, "title"],
+    [`content_${validLang}`, "content"],
+    [`excerpt_${validLang}`, "excerpt"],
   ];
 };
 
-// Common attributes needed for lists/details (excluding language-specific ones)
+// Common attributes needed
 const commonAttributes = [
   "id",
   "category",
   "author",
   "imageUrl",
   "createdAt",
-  "updatedAt", // Keep updatedAt for potential display/sorting
+  "updatedAt",
   "views",
-  "status", // Needed for admin list, maybe useful for public too
+  "status",
 ];
-
 
 // --- Routes ---
 
-// GET articles by category with limit
+// GET articles by category with limit (Keep Original Handler)
 router.get(
   "/category/:category",
   validateCategoryParam,
-  validateGetArticlesQuery, // Keep limit validation
-  validateLangQuery,      // Add language validation
+  query("limit").optional().isInt({ min: 1, max: 10 }).toInt(),
+  query("lang").optional().isIn(supportedLangs),
   async (req, res, next) => {
+    const timestamp = new Date().toISOString();
+    console.log(
+      `[${timestamp}] Entering GET /api/articles/category/${req.params.category} handler chain for query:`,
+      req.query
+    );
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      console.error(
-        "Get Articles by Category Validation Errors:",
+      console.warn(
+        `[${timestamp}] GET /api/articles/category/${req.params.category} - Validation Errors:`,
         errors.array()
       );
       return next(
         new ErrorHandler("Invalid request parameters", 400, errors.array())
       );
     }
-
     try {
       const { category } = req.params;
-      const limit = req.query.limit || 10; // Default limit
-      const lang = req.query.lang; // Get requested language
-
+      const limit = req.query.limit || 1;
+      const lang = req.query.lang || "en";
       const langAttributes = getLangAttributes(lang);
-
+      console.log(
+        `[${timestamp}] GET /api/articles/category/${category} - Executing DB query with options:`,
+        {
+          where: { category, status: "published" },
+          limit,
+          order: [["createdAt", "DESC"]],
+        }
+      );
       const articles = await Article.findAll({
-        where: {
-          category: category,
-          status: "published",
-        },
+        where: { category: category, status: "published" },
         order: [["createdAt", "DESC"]],
         limit: limit,
-        // Combine common attributes with aliased language attributes
-        // Note: We only need excerpt for lists, not full content
         attributes: [
-          ...commonAttributes.filter(attr => !['content', 'status'].includes(attr)), // Exclude content/status from list view
-          ...langAttributes.filter(attr => attr[1] !== 'content') // Exclude aliased 'content'
+          ...commonAttributes.filter(
+            (attr) => !["content", "status", "updatedAt"].includes(attr)
+          ),
+          ...langAttributes.filter((attr) => attr[1] !== "content"),
         ],
       });
-      
+      console.log(
+        `[${timestamp}] GET /api/articles/category/${category} - DB Query Result: Found ${articles.length} articles.`
+      );
+      console.log(
+        `[${timestamp}] GET /api/articles/category/${category} - Sending success response.`
+      );
       res.json(articles);
     } catch (error) {
       console.error(
-        `Error fetching articles by category (${req.params.category}):`,
+        `[${timestamp}] GET /api/articles/category/${req.params.category} - ERROR caught in route handler:`,
         error
       );
-      next(new ErrorHandler("Failed to fetch articles.", 500));
+      next(
+        new ErrorHandler(
+          error.message || "Failed to fetch articles.",
+          error.statusCode || 500
+        )
+      );
     }
   }
 );
 
-// GET /api/articles/all - Simple list (likely for admin, includes status)
-router.get("/all", validateLangQuery, async (req, res, next) => { // Add lang validation
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return next(new ErrorHandler("Invalid query parameters", 400, errors.array()));
-  }
-  try {
-    const lang = req.query.lang;
-    const langAttributes = getLangAttributes(lang);
-
-    const articles = await Article.findAll({
-       // Reverted Debugging Change: Combine common attributes (including status) with aliased language attributes
-       // Exclude full content from this list view
-      attributes: [
-        ...commonAttributes.filter(attr => attr !== 'content'), // Keep status, exclude content
-        ...langAttributes.filter(attr => attr[1] !== 'content') // Exclude aliased 'content'
-      ],
-      order: [["createdAt", "DESC"]],
-    });
-    res.json(articles);
-  } catch (error) {
-    console.error("Error fetching all articles:", error);
-    next(new ErrorHandler("Server error while fetching articles.", 500));
-  }
-});
-
-// GET /api/articles (General purpose public list with filters)
-router.get("/", validateGetArticlesQuery, validateLangQuery, async (req, res, next) => { // Add lang validation
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    console.error("Get Articles Validation Errors:", errors.array());
-    return next(
-      new ErrorHandler("Invalid query parameters", 400, errors.array())
+// GET /api/articles/all - Simple list (Keep Original Handler)
+router.get(
+  "/all",
+  query("lang").optional().isIn(supportedLangs),
+  async (req, res, next) => {
+    const timestamp = new Date().toISOString();
+    console.log(
+      `[${timestamp}] Entering GET /api/articles/all handler chain for query:`,
+      req.query
     );
-  }
-
-  try {
-    const { category, limit: queryLimit, lang } = req.query; // Get lang
-    const limit = queryLimit || 10; // Default limit
-    const langAttributes = getLangAttributes(lang);
-
-    const queryOptions = {
-      where: {
-        status: "published",
-      },
-      order: [["createdAt", "DESC"]],
-      limit: limit,
-      // Combine common attributes with aliased language attributes
-      // Exclude full content and status from public list view
-      attributes: [
-        ...commonAttributes.filter(attr => !['content', 'status'].includes(attr)),
-        ...langAttributes.filter(attr => attr[1] !== 'content') // Exclude aliased 'content'
-      ],
-    };
-    if (category) {
-      queryOptions.where.category = category;
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      console.warn(
+        `[${timestamp}] GET /api/articles/all - Validation Errors:`,
+        errors.array()
+      );
+      return next(
+        new ErrorHandler("Invalid query parameters", 400, errors.array())
+      );
     }
-
-    const articles = await Article.findAll(queryOptions);
-    res.json(articles);
-  } catch (error) {
-    console.error("Error fetching articles:", error);
-    next(new ErrorHandler("Server error while fetching articles.", 500));
-  }
-});
-
-// GET /api/articles/:id (Fetch single article)
-router.get("/:id", validateArticleIdParam, validateLangQuery, async (req, res, next) => { // Add lang validation
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    console.error("Get Article by ID Validation Errors:", errors.array());
-    return next(new ErrorHandler("Invalid Article ID", 400, errors.array()));
-  }
-
-  try {
-    const articleId = req.params.id;
-    const lang = req.query.lang; // Get lang
-
-    // Determine attributes based on authentication
-    let attributesToFetch;
-    if (req.user) { 
-      // Authenticated user (admin editing) - fetch all fields
-      attributesToFetch = [
-        ...commonAttributes,
-        'title_en', 'content_en', 'excerpt_en',
-        'title_rus', 'content_rus', 'excerpt_rus',
-        'title_mng', 'content_mng', 'excerpt_mng',
-      ];
-    } else {
-      // Public view - fetch common fields + aliased language fields
+    try {
+      const lang = req.query.lang || "en";
       const langAttributes = getLangAttributes(lang);
-      attributesToFetch = [
-        ...commonAttributes, // Include all common fields for detail view
-        ...langAttributes    // Include all aliased language fields
-      ];
+      console.log(
+        `[${timestamp}] GET /api/articles/all - Executing DB query...`
+      );
+      const articles = await Article.findAll({
+        attributes: [
+          ...commonAttributes.filter((attr) => attr !== "content"),
+          ...langAttributes.filter((attr) => attr[1] !== "content"),
+        ],
+        order: [["createdAt", "DESC"]],
+      });
+      console.log(
+        `[${timestamp}] GET /api/articles/all - DB Query Result: Found ${articles.length} articles.`
+      );
+      console.log(
+        `[${timestamp}] GET /api/articles/all - Sending success response.`
+      );
+      res.json(articles);
+    } catch (error) {
+      console.error(
+        `[${timestamp}] GET /api/articles/all - ERROR caught in route handler:`,
+        error
+      );
+      next(
+        new ErrorHandler(
+          error.message || "Server error while fetching articles.",
+          error.statusCode || 500
+        )
+      );
     }
-
-    // Fetch article with determined attributes
-    const article = await Article.findOne({
-      where: {
-        id: articleId,
-        // Allow admin to fetch non-published articles too? Maybe add later.
-        // For now, keep status: "published" for simplicity, or remove if admin should see drafts
-        status: "published", 
-      },
-      attributes: attributesToFetch,
-    });
-
-    if (!article) {
-      return next(new ErrorHandler("Article Not Found", 404));
-    }
-
-    // Increment the view count (fire-and-forget, no need to wait for it to complete before sending response)
-    article.increment('views').catch(err => {
-      // Log error if increment fails, but don't block the response
-      console.error(`Failed to increment view count for article ${articleId}:`, err);
-    });
-
-    res.json(article); // Send the article data (including the *previous* view count)
-  } catch (error) {
-    console.error(`Error fetching article by ID (${req.params.id}):`, error);
-    next(error);
   }
-});
+);
+
+// ========== RESTORED ORIGINAL HANDLER FOR GET /api/articles ==========
+router.get(
+  "/",
+  // Logging middleware first
+  (req, res, next) => {
+    console.log(
+      `[${new Date().toISOString()}] Entering GET /api/articles handler chain for query:`,
+      req.query
+    );
+    next();
+  },
+  // *** Re-enable the validation middleware ***
+  validateGetArticlesQuery,
+  async (req, res, next) => {
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] GET /api/articles - Async Handler entered.`);
+
+    // Check validation results *after* the middleware runs
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      console.warn(
+        `[${timestamp}] GET /api/articles - Validation Errors:`,
+        errors.array()
+      );
+      // Pass error to global handler which will send JSON
+      return next(
+        new ErrorHandler("Invalid query parameters", 400, errors.array())
+      );
+    }
+
+    try {
+      // Proceed with original logic now that validation passed (or was bypassed if commented)
+      const { category, limit: queryLimit, page: queryPage, lang } = req.query;
+      const limit = queryLimit || 6; // Use validated or default limit
+      const page = queryPage || 1; // Use validated or default page
+      const offset = (page - 1) * limit;
+      const currentLang = lang || "en"; // Use validated or default lang
+      const langAttributes = getLangAttributes(currentLang);
+
+      const whereClause = {
+        status: "published",
+      };
+
+      if (category) {
+        const categories = category
+          .split(",")
+          .map((cat) => cat.trim())
+          .filter(Boolean);
+        // Validation ensures categories are valid if provided
+        if (categories.length > 0) {
+          whereClause.category = { [Op.in]: categories };
+        }
+      }
+
+      console.log(
+        `[${timestamp}] GET /api/articles - Executing DB query with options:`,
+        { where: whereClause, limit, offset, order: [["createdAt", "DESC"]] }
+      );
+
+      const { count, rows } = await Article.findAndCountAll({
+        where: whereClause,
+        order: [["createdAt", "DESC"]],
+        limit: limit,
+        offset: offset,
+        attributes: [
+          ...commonAttributes.filter(
+            (attr) => !["content", "status", "updatedAt"].includes(attr)
+          ),
+          ...langAttributes.filter((attr) => attr[1] !== "content"),
+        ],
+        distinct: true,
+      });
+
+      console.log(
+        `[${timestamp}] GET /api/articles - DB Query Result: Found ${count} total, returning ${rows.length} articles for page ${page}.`
+      );
+
+      const responseData = {
+        totalArticles: count,
+        totalPages: Math.ceil(count / limit),
+        currentPage: page,
+        articles: rows,
+      };
+
+      console.log(
+        `[${timestamp}] GET /api/articles - Sending success response.`
+      );
+      res.setHeader("Content-Type", "application/json"); // Ensure JSON header
+      res.json(responseData);
+    } catch (error) {
+      console.error(
+        `[${timestamp}] GET /api/articles - ERROR caught in route handler:`,
+        error
+      );
+      next(
+        new ErrorHandler(
+          error.message || "Server error while fetching articles.",
+          error.statusCode || 500
+        )
+      );
+    }
+  }
+);
+// =================================================================
+
+// GET /api/articles/:id (Fetch single article detail - Keep Original Handler)
+router.get(
+  "/:id",
+  (req, res, next) => {
+    console.log(
+      `[${new Date().toISOString()}] Entering GET /api/articles/:id handler chain for ID: ${
+        req.params.id
+      }, query:`,
+      req.query
+    );
+    next();
+  },
+  validateArticleIdParam,
+  query("lang").optional().isIn(supportedLangs),
+  async (req, res, next) => {
+    const timestamp = new Date().toISOString();
+    console.log(
+      `[${timestamp}] GET /api/articles/${req.params.id} - Async Handler entered.`
+    );
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      console.warn(
+        `[${timestamp}] GET /api/articles/${req.params.id} - Validation Errors:`,
+        errors.array()
+      );
+      return next(
+        new ErrorHandler("Invalid Article ID or Language", 400, errors.array())
+      );
+    }
+    try {
+      const articleId = req.params.id;
+      const lang = req.query.lang || "en";
+      const langAttributes = getLangAttributes(lang);
+      const attributesToFetch = [...commonAttributes, ...langAttributes];
+      const publicAttributes = attributesToFetch.filter(
+        (attr) => attr !== "status"
+      );
+      console.log(
+        `[${timestamp}] GET /api/articles/${articleId} - Executing DB query...`
+      );
+      const article = await Article.findOne({
+        where: { id: articleId, status: "published" },
+        attributes: publicAttributes,
+      });
+      if (!article) {
+        console.warn(
+          `[${timestamp}] GET /api/articles/${articleId} - Article not found.`
+        );
+        return next(new ErrorHandler("Article Not Found", 404));
+      }
+      console.log(
+        `[${timestamp}] GET /api/articles/${articleId} - Article found. Incrementing views...`
+      );
+      Article.increment("views", { where: { id: articleId } }).catch((err) => {
+        console.error(
+          `[${timestamp}] GET /api/articles/${articleId} - Failed to increment view count:`,
+          err
+        );
+      });
+      console.log(
+        `[${timestamp}] GET /api/articles/${articleId} - Sending success response.`
+      );
+      res.setHeader("Content-Type", "application/json");
+      res.json(article);
+    } catch (error) {
+      console.error(
+        `[${timestamp}] GET /api/articles/${req.params.id} - ERROR caught in route handler:`,
+        error
+      );
+      next(error);
+    }
+  }
+);
 
 module.exports = router;

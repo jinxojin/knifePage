@@ -9,7 +9,7 @@ if (dotenvResult.error) {
   console.error("Error loading .env file:", dotenvResult.error);
   process.exit(1);
 }
-console.log("CSRF_SECRET after dotenv:", process.env.CSRF_SECRET);
+// console.log("CSRF_SECRET after dotenv:", process.env.CSRF_SECRET); // Keep commented unless needed
 
 const express = require("express");
 const cors = require("cors");
@@ -19,7 +19,7 @@ const winston = require("winston");
 const https = require("https");
 const fs = require("fs");
 const cookieParser = require("cookie-parser");
-const helmet = require("helmet"); // <-- Import Helmet
+const helmet = require("helmet"); // Import Helmet
 const {
   doubleCsrfProtection,
   generateToken,
@@ -27,6 +27,7 @@ const {
 } = require("./middleware/csrfMiddleware");
 
 // --- Configure Winston Logger ---
+// Note: Logs might not show in console if only file transports are configured without console
 const logger = winston.createLogger({
   level: process.env.NODE_ENV === "production" ? "info" : "debug",
   format: winston.format.combine(
@@ -34,19 +35,35 @@ const logger = winston.createLogger({
     winston.format.json()
   ),
   transports: [
-    new winston.transports.Console(),
+    // Ensure Console transport is added for console logging
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize(),
+        winston.format.simple() // Or use json() if preferred for console too
+      ),
+    }),
     new winston.transports.File({ filename: "error.log", level: "error" }),
     new winston.transports.File({ filename: "combined.log" }),
   ],
+  // Optional: Prevent Winston from crashing on errors during logging
+  // exceptionHandlers: [
+  //   new winston.transports.File({ filename: 'exceptions.log' })
+  // ],
+  // rejectionHandlers: [
+  //   new winston.transports.File({ filename: 'rejections.log' })
+  // ]
 });
 
 // --- Centralized Configuration ---
 const config = require("./config");
-// CORS Origin is now read within config/index.js
-// console.log("config.jwtSecret:", config.jwtSecret); // Already logged in config/index.js
 
 if (!config.jwtSecret) {
   logger.error("JWT_SECRET is not defined in environment variables");
+  process.exit(1);
+}
+if (!process.env.CSRF_SECRET) {
+  // Re-check CSRF secret as it's critical
+  logger.error("CSRF_SECRET environment variable must be set");
   process.exit(1);
 }
 
@@ -57,11 +74,7 @@ const initializeDatabase = require("./config/initDb");
 const articleRoutes = require("./routes/articles");
 const adminRoutes = require("./routes/admin");
 
-// --- Import Custom Error Handler ---
-// ErrorHandler is used within routes, no need to import here unless used directly
-// const { ErrorHandler } = require("./utils/errorHandler");
-
-// --- Sequelize Instance (for logging) ---
+// --- Sequelize Instance (for logging if needed) ---
 const { sequelize } = require("./config/database");
 
 // --- Initialize Express App ---
@@ -69,46 +82,39 @@ const app = express();
 
 // --- Middleware ---
 
-// Request Logging (Morgan) - Good place for it
+// Request Logging (Morgan)
 app.use(morgan(config.nodeEnv === "production" ? "combined" : "dev"));
 
-// CORS (Cross-Origin Resource Sharing) - Before Helmet might be slightly better, but okay here
+// CORS (Cross-Origin Resource Sharing)
 app.use(cors(config.corsOptions));
 
-// Security Headers (Helmet) - Add Helmet early, but after CORS potentially
-// It's generally safe before rate limiting and body parsing.
+// Security Headers (Helmet)
 app.use(helmet());
-// If you encounter issues with external scripts/styles (CDNs), inline styles etc.
-// try disabling CSP temporarily for debugging:
-// app.use(helmet({ contentSecurityPolicy: false }));
-// Then work on crafting a specific CSP policy later if needed.
 
-// Rate Limiting (Prevent Brute-Force Attacks)
+// Rate Limiting
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // Limit each IP to 100 requests per windowMs
-  message: "Too many requests from this IP, please try again later.",
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  message: {
+    message: "Too many requests from this IP, please try again later.",
+  }, // Send JSON
+  standardHeaders: true,
+  legacyHeaders: false,
 });
-app.use("/api/", apiLimiter); // Apply to API routes
+app.use("/api/", apiLimiter); // Apply to all API routes
 
-// Body Parsers - Needed before routes that read req.body
-// Increase limit to allow larger payloads (e.g., for base64 images)
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+// Body Parsers
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-// Cookie Parser - Needed before CSRF middleware
+// Cookie Parser
 app.use(cookieParser());
 
 // --- CSRF Protection ---
-// 1. Route to get the CSRF token (Must be before CSRF middleware is applied to all routes)
+// 1. Route to get the CSRF token
 app.get("/api/csrf-token", (req, res) => {
   try {
     const csrfToken = generateToken(req, res);
-    // Log the generated token and associated cookie for debugging if needed
-    // console.log("Generated CSRF Token:", csrfToken);
-    // console.log("CSRF Cookie Set:", res.getHeader('Set-Cookie'));
     res.json({ csrfToken });
   } catch (err) {
     logger.error("Error generating CSRF token:", err);
@@ -116,39 +122,52 @@ app.get("/api/csrf-token", (req, res) => {
   }
 });
 
-// 2. Apply the CSRF middleware protection globally or to specific routes
-// Applying globally after the token endpoint is common
+// 2. Apply the CSRF middleware protection
 app.use(doubleCsrfProtection);
 
 // --- Routes ---
+// +++ Add logging before routers +++
+app.use("/api", (req, res, next) => {
+  console.log(
+    `[${new Date().toISOString()}] Request received for path: ${
+      req.originalUrl
+    }`
+  );
+  logger.debug(`Request received for path: ${req.originalUrl}`); // Also log with Winston
+  next();
+});
+// +++ End log +++
+
 app.use("/api/articles", articleRoutes); // Public article routes
 app.use("/api/admin", adminRoutes); // Admin routes
 
-// --- Simple Hello Endpoint (for testing basic connectivity) ---
+// --- Simple Hello Endpoint ---
 app.get("/api/hello", (req, res) => {
   res.json({ message: "Hello from the server!" });
 });
 
-// --- Serve Static Files (Optional - If needed from server) ---
-// If your client is fully separate and served by Vite/CDN, you might not need this
-// app.use(express.static(path.join(__dirname, "../client/dist"))); // Example if serving built client
-
-// --- Log Database Info (for debugging) ---
-// sequelize.options.storage is specific to SQLite, won't show path for PostgreSQL
-// console.log("DB Host:", sequelize.config.host); // Log host instead
-
 // --- Error Handling Middleware (MUST be last) ---
 app.use((err, req, res, next) => {
+  const timestamp = new Date().toISOString();
   // Log the full error stack regardless of environment
   logger.error({
+    // Using Winston logger
+    timestamp: timestamp,
     message: err.message,
     stack: err.stack,
     statusCode: err.statusCode,
-    errors: err.errors, // Include validation errors if present
+    errors: err.errors,
     url: req.originalUrl,
     method: req.method,
     ip: req.ip,
   });
+  // Also log to console for immediate visibility during development
+  if (process.env.NODE_ENV !== "production") {
+    console.error(`[${timestamp}] Global Error Handler Caught:`, err);
+  }
+
+  // Ensure Content-Type is set to JSON for ALL error responses
+  res.setHeader("Content-Type", "application/json");
 
   // Handle CSRF specific error
   if (err === invalidCsrfTokenError) {
@@ -167,7 +186,13 @@ app.use((err, req, res, next) => {
   }
 
   // General error handling
-  const statusCode = typeof err.statusCode === "number" ? err.statusCode : 500;
+  const statusCode =
+    typeof err.statusCode === "number" &&
+    err.statusCode >= 400 &&
+    err.statusCode < 600
+      ? err.statusCode
+      : 500; // Default to 500 if invalid or not set
+
   const message = err.message || "Internal Server Error";
 
   // Only send stack trace in non-production environments
@@ -182,10 +207,10 @@ app.use((err, req, res, next) => {
 
   res.status(statusCode).json({
     message: responseMessage,
-    // Optionally include structured errors if available and not a 500 in prod
+    // Include structured validation errors if available and not a 500 in prod
     errors:
       statusCode !== 500 || process.env.NODE_ENV !== "production"
-        ? err.errors
+        ? err.errors // These are likely from express-validator
         : undefined,
     ...errorDetails, // Include stack trace only if not in production
   });
@@ -200,13 +225,15 @@ const httpsOptions = {
 // --- Start the Server (HTTPS) ---
 const startServer = async () => {
   try {
-    await initializeDatabase(); // Authenticates connection
-    // NO MORE sequelize.sync() here!
+    await initializeDatabase();
     https.createServer(httpsOptions, app).listen(config.port, () => {
-      logger.info(`HTTPS Server is running on port ${config.port}`);
+      logger.info(
+        `HTTPS Server is running on port ${config.port} in ${config.nodeEnv} mode`
+      );
     });
   } catch (err) {
     logger.error("Failed to start server:", err);
+    console.error("Failed to start server:", err); // Also log to console on critical startup failure
     process.exit(1);
   }
 };

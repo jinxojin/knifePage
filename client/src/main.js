@@ -1,7 +1,16 @@
 // client/src/main.js
 import "./style.css";
 import { formatDistanceToNow, format, differenceInHours } from "date-fns";
+// Import locales for date-fns
+import { enUS, ru, mn } from 'date-fns/locale'; 
 import { t, currentLang, setLanguage, supportedLangs } from './i18n.js'; // Import i18n functions
+
+// Map language codes to date-fns locales
+const dateLocales = {
+  en: enUS,
+  rus: ru,
+  mng: mn,
+};
 
 // --- Constants ---
 const API_URL = "https://localhost:3000/api";
@@ -13,13 +22,6 @@ const languageBtn = document.getElementById("language-btn");
 const languageDropdown = document.getElementById("language-dropdown");
 const currentLangDisplay = document.getElementById("current-lang-display"); 
 
-// --- Language State (Now handled by i18n.js) ---
-// const supportedLangs = ['en', 'rus', 'mng'];
-// let currentLang = localStorage.getItem('selectedLang') || 'en';
-// if (!supportedLangs.includes(currentLang)) {
-//   currentLang = 'en'; // Default to 'en' if stored value is invalid
-// }
-
 // --- Helper Functions ---
 /**
  * Generates the display string and hover string for timestamps based on age.
@@ -30,13 +32,16 @@ function getConditionalTimestampStrings(dateObj) {
   let displayString = "Unknown date";
   let hoverString = "";
   const now = new Date();
+  const locale = dateLocales[currentLang] || enUS; // Get locale for current language
 
   try {
     const hoursDifference = differenceInHours(now, dateObj);
-    const fullDateFormat = format(dateObj, "do MMMM, yyyy"); // e.g., 26th March, 2025
+    // Format full date according to locale (example, might need adjustment)
+    const fullDateFormat = format(dateObj, "PPP", { locale }); 
     const relativeTimeFormat = formatDistanceToNow(dateObj, {
       addSuffix: true,
-    }); // e.g., about 5 hours ago
+      locale: locale // Pass locale here
+    }); 
 
     if (hoursDifference < 24) {
       displayString = relativeTimeFormat;
@@ -59,7 +64,6 @@ function getConditionalTimestampStrings(dateObj) {
 // --- API Fetching ---
 /**
  * Fetches the single latest article for a given category.
- * @param {string} category - The category name.
  * @param {string} category - The category name.
  * @param {string} lang - The language code (e.g., 'en', 'rus').
  * @returns {Promise<object|null>} The latest article object or null if none found/error.
@@ -93,7 +97,7 @@ async function fetchLatestArticle(category, lang) { // Added lang parameter
  * @param {object|null} article - The article object or null.
  */
 function updateHighlightCard(category, article) {
-  console.log(`Updating card for category: ${category}`, article); // DEBUG: Log input
+  // console.log(`Updating card for category: ${category}`, article); // DEBUG: Log input
   const container = document.getElementById(`highlight-${category}`);
   if (!container) {
     console.warn(`Highlight container not found for category: ${category}`);
@@ -102,7 +106,7 @@ function updateHighlightCard(category, article) {
 
   // --- Handle No Article Found ---
   if (!article) {
-    console.log(`No article found for ${category}, rendering placeholder.`); // DEBUG
+    // console.log(`No article found for ${category}, rendering placeholder.`); // DEBUG
     // Use translation function for placeholder text
     container.innerHTML = `
             <div class="p-5 text-center">
@@ -123,13 +127,9 @@ function updateHighlightCard(category, article) {
     getConditionalTimestampStrings(dateObj);
 
   // --- Render HTML ---
-  console.log(`Rendering article ID ${article.id} ('${article.title}') for ${category}`); // DEBUG
+  // console.log(`Rendering article ID ${article.id} ('${article.title}') for ${category}`); // DEBUG
   try {
-    // --- Simplified HTML for Debugging ---
-    // container.innerHTML = `<div class="p-4"><h2>${article.title || 'No Title'}</h2><p>${excerptToDisplay || 'No Excerpt'}</p><p>ID: ${article.id}</p></div>`;
-    // --- End Simplified HTML ---
-
-    // --- Original HTML with absolute placeholder path ---
+    // --- Restore Original HTML ---
      container.innerHTML = `
         <a href="/article.html?id=${article.id}" class="block group focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 rounded-t-lg">
              <img class="rounded-t-lg object-cover w-full h-48 transition-opacity duration-300 group-hover:opacity-80" src="${
@@ -170,8 +170,8 @@ function updateHighlightCard(category, article) {
 
             </div>
         </div>
-        `;
-    console.log(`Successfully updated innerHTML for ${category}`); // DEBUG
+        `; 
+    // console.log(`Successfully updated innerHTML for ${category}`); // DEBUG
   } catch (renderError) {
     console.error(`Error during innerHTML update for ${category}:`, renderError); // DEBUG: Catch rendering errors
     container.innerHTML = `<div class="p-4 text-red-500">Error rendering article card.</div>`;
@@ -248,6 +248,7 @@ async function initializePage() {
     const articlePromises = CATEGORIES.map(category => fetchLatestArticle(category, currentLang)); 
     const articles = await Promise.all(articlePromises);
     CATEGORIES.forEach((category, index) => {
+      // Ensure problematic querySelector is removed
       updateHighlightCard(category, articles[index]);
     });
     console.log("Highlight cards updated.");
@@ -319,19 +320,19 @@ function translateStaticElements() {
   const federationNameHeading = document.querySelector('section h2');
   if (federationNameHeading) federationNameHeading.textContent = t('federationName');
 
-  // Update category titles (simple example, might need refinement)
-  const competitionTitle = document.querySelector('#featured-articles h3:nth-of-type(1)'); // Assuming order
-  if (competitionTitle) competitionTitle.textContent = t('latestCompetition');
-  const newsTitle = document.querySelector('#featured-articles h3:nth-of-type(2)');
-  if (newsTitle) newsTitle.textContent = t('latestNews');
-  const blogTitle = document.querySelector('#featured-articles h3:nth-of-type(3)');
-  if (blogTitle) blogTitle.textContent = t('latestBlog');
+  // Remove direct category title updates - now handled by data-i18n in index.html
+  // const competitionTitle = document.querySelector('#featured-articles h3:nth-of-type(1)'); 
+  // if (competitionTitle) competitionTitle.textContent = t('latestCompetition');
+  // const newsTitle = document.querySelector('#featured-articles h3:nth-of-type(2)');
+  // if (newsTitle) newsTitle.textContent = t('latestNews');
+  // const blogTitle = document.querySelector('#featured-articles h3:nth-of-type(3)');
+  // if (blogTitle) blogTitle.textContent = t('latestBlog');
 
   // Update nav links (assuming specific structure)
   const navLinks = {
     'index.html': 'navHome',
     'competitions.html': 'navCompetitions',
-    'article.html': 'navNewsBlog', // Might need adjustment if this links to a category page
+    'articles.html': 'navNewsBlog', // Might need adjustment if this links to a category page
     'mission.html': 'navMission',
     'contact.html': 'navContact',
     'admin.html': 'navAdmin'
