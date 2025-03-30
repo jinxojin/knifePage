@@ -1,13 +1,11 @@
 // client/src/competitions.js
-import "./style.css"; // Import base styles
-import { t, currentLang } from "./i18n.js"; // Only need t and currentLang
-// Import functions from articles.js needed here
-import { renderArticle, getArticlesByCategory } from "./articles.js";
-// Import ONLY the main initializer from uiUtils.js
-import { initializeUI } from "./uiUtils.js"; // <<<< CORRECT IMPORT
+import "./style.css";
+import { t, currentLang } from "./i18n.js";
+import { renderArticle } from "./articles.js"; // Keep render function import
+import { initializeUI } from "./uiUtils.js";
+import { getArticlesByCategorySlug } from "./apiService.js"; // Import from new apiService
 
 // --- DOM Elements ---
-// Handled by uiUtils
 const competitionContentContainer = document.getElementById(
   "competition-content",
 );
@@ -21,18 +19,22 @@ async function loadCompetitionData() {
   competitionContentContainer.innerHTML = `<p class="text-center py-10">${t("loadingCompetitionDetails")}</p>`;
 
   try {
-    // Fetch latest 'competition' category article
-    const articles = await getArticlesByCategory("competition", currentLang, 1); // Use imported function
+    // Use new apiService function
+    const articles = await getArticlesByCategorySlug("competition", {
+      lang: currentLang,
+      limit: 1,
+    });
+    const competitionArticle = articles[0] || null;
 
-    if (articles && articles.length > 0) {
-      const competitionArticle = articles[0];
+    if (competitionArticle) {
       document.title = `${competitionArticle.title || t("competitionsTitle")} - MSKTF`;
-      renderArticle(competitionArticle, competitionContentContainer); // Use imported function
+      renderArticle(competitionArticle, competitionContentContainer);
     } else {
       competitionContentContainer.innerHTML = `<p class="text-center py-10">${t("noCompetitionData")}</p>`;
       document.title = `${t("competitionsTitle")} - MSKTF`;
     }
   } catch (error) {
+    // Catch errors from apiService call
     console.error("Error loading competition data:", error);
     competitionContentContainer.innerHTML = `<p class="text-center text-red-500 py-10">${t("errorLoadingData")}: ${error.message || ""}</p>`;
     document.title = `${t("competitionsTitle")} - MSKTF`;
@@ -41,8 +43,6 @@ async function loadCompetitionData() {
 
 // --- Initialization ---
 document.addEventListener("DOMContentLoaded", () => {
-  // Use the main UI initializer
-  initializeUI(); // <<<< CALL THIS INSTEAD
-  // Then load page-specific content
-  loadCompetitionData();
+  initializeUI(); // Setup header, footer, listeners, translate initial static elements
+  loadCompetitionData(); // Load dynamic content specific to this page
 });

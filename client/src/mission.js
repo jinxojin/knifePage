@@ -1,8 +1,7 @@
 // client/src/mission.js
 import "./style.css"; // Import base styles
 // No dynamic data needs 't' or 'currentLang' here unless added later
-// Import shared UI functions
-import { initializeUI } from "./uiUtils.js";
+import { initializeUI } from "./uiUtils.js"; // Import shared UI initializer
 
 // --- Initialization ---
 document.addEventListener("DOMContentLoaded", () => {

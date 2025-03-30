@@ -3,6 +3,7 @@ import "./style.css";
 import { t, currentLang } from "./i18n.js";
 import { renderArticleList } from "./articles.js"; // Import ONLY needed function
 import { initializeUI, translateStaticElements } from "./uiUtils.js"; // Import UI utils
+import { getPublicArticles } from "./apiService.js"; // Import from new apiService
 
 // --- DOM Elements ---
 const articlesContainer = document.getElementById("articles-list-container");
@@ -10,7 +11,7 @@ const paginationControls = document.getElementById("pagination-controls");
 
 // --- State ---
 let currentPage = 1;
-const articlesPerPage = 6;
+const articlesPerPage = 6; // Match server default or desired number
 
 // --- Article Fetching & Rendering ---
 async function fetchAndRenderArticles(page = 1) {
@@ -21,85 +22,35 @@ async function fetchAndRenderArticles(page = 1) {
   articlesContainer.innerHTML = `<p class="text-center py-10">${t("loadingArticles")}</p>`;
   if (paginationControls) paginationControls.innerHTML = "";
 
-  const apiUrl = `/api/articles?category=news,blog&page=${page}&limit=${articlesPerPage}&lang=${currentLang}`;
-  console.log(`[articles-list] Fetching: ${apiUrl}`);
-
   try {
-    const response = await fetch(apiUrl);
-    console.log(
-      `[articles-list] Fetch status for page ${page}: ${response.status}`,
-    );
+    // Use new apiService function
+    const data = await getPublicArticles({
+      category: "news,blog", // Combine categories
+      page: page,
+      limit: articlesPerPage,
+      lang: currentLang,
+    });
 
-    if (!response.ok) {
-      let errorMsg = `Failed to fetch articles (status: ${response.status})`;
-      let responseText = "";
-      try {
-        responseText = await response.text();
-        console.error(
-          "[articles-list] Received non-OK response text:",
-          responseText,
-        );
-        try {
-          const contentType = response.headers.get("content-type");
-          if (contentType && contentType.includes("application/json")) {
-            const errorData = JSON.parse(responseText);
-            errorMsg = errorData.message || errorMsg;
-            console.error(
-              "[articles-list] Parsed non-OK JSON response:",
-              errorData,
-            );
-          } else {
-            errorMsg += ` - Server Response: ${responseText.substring(0, 150)}${responseText.length > 150 ? "..." : ""}`;
-          }
-        } catch (parseError) {
-          console.error(
-            "[articles-list] Failed to parse non-OK response as JSON:",
-            parseError,
-          );
-          errorMsg += ` - Server Response: ${responseText.substring(0, 150)}${responseText.length > 150 ? "..." : ""}`;
-        }
-      } catch (textError) {
-        console.error(
-          "[articles-list] Could not read response text:",
-          textError,
-        );
-        errorMsg += ` - Could not read server response.`;
-      }
-      throw new Error(errorMsg);
-    }
-
-    const contentType = response.headers.get("content-type");
-    if (!contentType || !contentType.includes("application/json")) {
-      const responseText = await response.text();
-      console.error(
-        `[articles-list] Expected JSON, received Content-Type: ${contentType}. Response text:`,
-        responseText,
-      );
-      throw new Error(
-        `Received invalid content type from server: ${contentType}`,
-      );
-    }
-
-    const data = await response.json();
     console.log(`[articles-list] Received data for page ${page}:`, data);
 
+    // Render articles and pagination
     if (data && data.articles) {
       if (data.articles.length > 0) {
-        renderArticleList(data.articles, articlesContainer); // Use imported function
+        renderArticleList(data.articles, articlesContainer);
         renderPagination(data.currentPage, data.totalPages);
       } else {
         articlesContainer.innerHTML = `<p class="text-center py-10">${t("noArticlesFound")}</p>`;
       }
-      // Translate pagination buttons AFTER they are rendered
-      translateStaticElements(); // Call here specifically for pagination
+      translateStaticElements(); // Translate pagination buttons AFTER renderPagination runs
     } else {
       console.error(
-        "[articles-list] Received OK response but data format is unexpected:",
+        "[articles-list] API response data format is unexpected:",
         data,
       );
       throw new Error("Received unexpected data format from server.");
     }
   } catch (error) {
+    // Catch errors from apiService call
     console.error("[articles-list] Error during fetch/render process:", error);
     articlesContainer.innerHTML = `<p class="text-center text-red-500 py-10">${t("errorLoadingData")}: ${error.message}</p>`;
     if (paginationControls) paginationControls.innerHTML = "";

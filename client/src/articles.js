@@ -2,20 +2,14 @@
 import { formatDistanceToNow, format, differenceInHours } from "date-fns";
 import { enUS, ru, mn } from "date-fns/locale";
 import { t, currentLang } from "./i18n.js";
-// Import shared UI functions
 import { initializeUI, translateStaticElements } from "./uiUtils.js";
+import { getPublicArticleById } from "./apiService.js"; // Import from new apiService
 
-// --- Constants ---
-const API_URL = "https://localhost:3000/api";
-const ARTICLE_ENDPOINT = `${API_URL}/articles`;
-
-// --- Cache ---
-const articleCache = new Map();
-
-// Map language codes to date-fns locales
+// --- Keep Constants, Date Locales, Cache ---
 const dateLocales = { en: enUS, rus: ru, mng: mn };
+const articleCache = new Map(); // Cache could be removed if not deemed necessary
 
-// --- Helper Functions ---
+// --- Keep Helper Functions (Export if needed elsewhere) ---
 export function getConditionalTimestampStrings(dateObj) {
   let displayString = "Unknown date";
   let hoverString = "";
@@ -42,64 +36,7 @@ export function getConditionalTimestampStrings(dateObj) {
   return { displayString, hoverString };
 }
 
-// --- API Fetching ---
-export async function getArticleById(id, lang) {
-  const cacheKey = `${id}-${lang}`;
-  if (articleCache.has(cacheKey)) {
-    return articleCache.get(cacheKey);
-  }
-  try {
-    const response = await fetch(`${ARTICLE_ENDPOINT}/${id}?lang=${lang}`);
-    if (!response.ok) {
-      if (response.status === 404) {
-        throw new Error(`Article not found.`);
-      }
-      let errorMsg = `Failed to fetch article: ${response.status} ${response.statusText}`;
-      try {
-        const errorData = await response.json();
-        errorMsg = `${errorMsg} - ${errorData.message || "Server error"}`;
-      } catch (e) {
-        /* Ignore */
-      }
-      throw new Error(errorMsg);
-    }
-    const article = await response.json();
-    articleCache.set(cacheKey, article);
-    return article;
-  } catch (error) {
-    console.error(`Error fetching article ${id} (${lang}):`, error);
-    throw error;
-  }
-}
-export async function getArticlesByCategory(category, lang, limit) {
-  try {
-    let url = `${ARTICLE_ENDPOINT}/category/${category}?lang=${lang}`;
-    if (limit) {
-      url += `&limit=${limit}`;
-    }
-    const response = await fetch(url);
-    if (!response.ok) {
-      let errorMsg = `Failed to fetch articles: ${response.status} ${response.statusText}`;
-      try {
-        const errorData = await response.json();
-        errorMsg = `${errorMsg} - ${errorData.message || "Server error"}`;
-      } catch (e) {
-        /* Ignore */
-      }
-      throw new Error(errorMsg);
-    }
-    const articles = await response.json();
-    return articles;
-  } catch (error) {
-    console.error(
-      `Error fetching articles by category (${category}, ${lang}):`,
-      error,
-    );
-    throw error;
-  }
-}
-
-// --- Rendering Functions ---
+// --- Keep Rendering Functions (Export if needed elsewhere) ---
 export function renderArticle(article, container) {
   if (!article) {
     container.innerHTML = `<p class="text-red-500">${t("errorLoadingData")}</p>`;
@@ -112,6 +49,7 @@ export function renderArticle(article, container) {
   const articleHTML = ` <article class="bg-white dark:bg-gray-700 rounded-lg shadow-md overflow-hidden"> ${article.imageUrl ? `<img src="${article.imageUrl}" alt="${title}" class="w-full h-auto max-h-96 object-cover">` : ""} <div class="p-6"> <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">${title}</h1> <div class="flex flex-wrap items-center text-gray-500 dark:text-gray-400 text-sm mb-4 space-x-2"> <span title="${hoverString}" class="whitespace-nowrap">${displayString}</span> <span class="hidden sm:inline">•</span> <span class="capitalize whitespace-nowrap">${article.category}</span> <span class="hidden sm:inline">•</span> <span class="flex items-center whitespace-nowrap"> <svg class="w-4 h-4 mr-1.5 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 14"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 10.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7a9.99 9.99 0 0 1-1.774 5.318A9.956 9.956 0 0 1 10 13.5a9.956 9.956 0 0 1-8.226-1.182A9.99 9.99 0 0 1 0 7a9.99 9.99 0 0 1 1.774-5.318A9.956 9.956 0 0 1 10 0.5a9.956 9.956 0 0 1 8.226 1.182A9.99 9.99 0 0 1 20 7Z"/></svg> ${article.views ?? 0} views </span> </div> <div class="prose dark:prose-invert max-w-none mt-6"> ${article.content || `<p>${t("noContentAvailable")}</p>`} </div> </div> </article> `;
   container.innerHTML = articleHTML;
 }
+
 export function renderArticleList(articles, container) {
   if (!articles || articles.length === 0) {
     container.innerHTML = `<p class="text-center py-10">${t("noArticlesFound")}</p>`;
@@ -156,17 +94,24 @@ async function initArticlePage() {
     if (!articleId) {
       throw new Error(t("noArticleIdUrl"));
     }
-    const article = await getArticleById(articleId, currentLang);
+
+    // Use new apiService function
+    const article = await getPublicArticleById(articleId, {
+      lang: currentLang,
+    });
+
     document.title = `${article.title || t("untitledArticle")} - MSKTF`;
-    renderArticle(article, container);
-    // Re-translate static elements AFTER dynamic content might affect layout/elements
-    // translateStaticElements(); // Usually not needed if dynamic part doesn't add data-i18n
+    renderArticle(article, container); // Use the existing render function
   } catch (error) {
+    // Catch errors from apiService call
     console.error("Error in initArticlePage:", error);
     const errorTitleKey = "errorLoadingArticleTitle";
     const generalError = t("errorLoadingArticleContent");
     let displayMessage = error.message;
-    if (error.message === "Article not found.") {
+    if (
+      error.message.includes("404") ||
+      error.message.toLowerCase().includes("not found")
+    ) {
       displayMessage = t("articleNotFound");
     } else if (error.message === t("noArticleIdUrl")) {
       displayMessage = t("noArticleIdUrl");

@@ -3,14 +3,14 @@ import "./style.css";
 import { formatDistanceToNow, format, differenceInHours } from "date-fns";
 import { enUS, ru, mn } from "date-fns/locale";
 import { t, currentLang } from "./i18n.js";
-// Import shared UI functions
-import { initializeUI, translateStaticElements } from "./uiUtils.js"; // Added translateStaticElements back if needed dynamically
+// Import shared UI functions and public API service
+import { initializeUI, translateStaticElements } from "./uiUtils.js";
+import { getArticlesByCategorySlug } from "./apiService.js";
 
 // Map language codes to date-fns locales
 const dateLocales = { en: enUS, rus: ru, mng: mn };
 
 // --- Constants ---
-const API_URL = "https://localhost:3000/api";
 const CATEGORIES = ["competition", "news", "blog"];
 
 // --- Helper Functions (specific to main page) ---
@@ -40,27 +40,6 @@ function getConditionalTimestampStrings(dateObj) {
   return { displayString, hoverString };
 }
 
-// --- API Fetching (specific to main page) ---
-async function fetchLatestArticle(category, lang) {
-  try {
-    const response = await fetch(
-      `${API_URL}/articles/category/${category}?limit=1&lang=${lang}`,
-    );
-    if (!response.ok) {
-      if (response.status === 404) {
-        console.warn(`No articles found for category: ${category}`);
-        return null;
-      }
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const articles = await response.json();
-    return articles[0] || null;
-  } catch (error) {
-    console.error(`Error fetching latest ${category} article:`, error);
-    return null;
-  }
-}
-
 // --- Rendering Functions (specific to main page) ---
 function updateHighlightCard(category, article) {
   const container = document.getElementById(`highlight-${category}`);
@@ -70,7 +49,6 @@ function updateHighlightCard(category, article) {
   }
 
   if (!article) {
-    // Use translated placeholders
     container.innerHTML = `
             <div class="p-5 text-center">
                 <h5 class="mb-2 text-xl font-medium text-gray-700 dark:text-gray-300">${t("noRecentArticle", { category })}</h5>
@@ -127,19 +105,39 @@ function updateHighlightCard(category, article) {
 async function initializePageContent() {
   console.log(`Initializing main page content in ${currentLang}...`);
   try {
-    // Fetch dynamic content AFTER initial UI setup and translation
+    // Use new apiService function
     const articlePromises = CATEGORIES.map((category) =>
-      fetchLatestArticle(category, currentLang),
+      getArticlesByCategorySlug(category, { lang: currentLang, limit: 1 })
+        .then((articles) => articles[0] || null) // Extract first item or null
+        .catch((error) => {
+          console.error(
+            `[Main Page] Failed to fetch highlight for ${category}:`,
+            error,
+          );
+          // Find the container and display an error placeholder *for this card*
+          const container = document.getElementById(`highlight-${category}`);
+          if (container) {
+            container.innerHTML = `<div class="p-5 text-center text-red-500">${t("errorLoadingData")}</div>`;
+          }
+          return null; // Still return null so Promise.all doesn't reject entirely
+        }),
     );
+
+    // Wait for all fetches (or their error handling) to complete
     const articles = await Promise.all(articlePromises);
+
+    // Render cards with fetched data (or error placeholders)
     CATEGORIES.forEach((category, index) => {
-      updateHighlightCard(category, articles[index]);
+      // Only call update if we didn't already set an error placeholder
+      const container = document.getElementById(`highlight-${category}`);
+      if (container && !container.innerHTML.includes("text-red-500")) {
+        updateHighlightCard(category, articles[index]);
+      }
     });
-    // Re-run translation if dynamic content added elements with data-i18n (unlikely here)
-    // translateStaticElements();
-    console.log("Highlight cards updated.");
+    console.log("Highlight cards updated (or errors shown).");
   } catch (error) {
-    console.error("Error initializing main page content:", error);
+    // This catch is less likely to be hit now, but kept as a fallback
+    console.error("Error during main page initialization:", error);
   }
 }
 
