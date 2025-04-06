@@ -18,49 +18,48 @@
       href="https://cdn.quilljs.com/1.3.6/quill.snow.css"
       rel="stylesheet"
     />
-    <!-- Custom Quill Styles (Keep these) -->
+    <!-- Custom Quill Styles -->
     <style>
       .ql-editor {
         min-height: 200px;
-        background-color: white; /* Default background */
+        background-color: white;
       }
       .ql-toolbar {
-        background-color: white; /* Default background */
-        border-top-left-radius: 0.375rem; /* Tailwind rounded-md */
+        background-color: white;
+        border-top-left-radius: 0.375rem;
         border-top-right-radius: 0.375rem;
       }
       .ql-container {
         border-bottom-left-radius: 0.375rem;
         border-bottom-right-radius: 0.375rem;
       }
-      /* Dark mode styles for Quill */
       .dark .ql-toolbar {
-        background-color: #4b5563; /* gray-600 */
-        border-color: #6b7280; /* gray-500 */
-        color: #f3f4f6; /* gray-100 */
+        background-color: #4b5563;
+        border-color: #6b7280;
+        color: #f3f4f6;
       }
       .dark .ql-editor {
-        background-color: #4b5563; /* gray-600 */
-        color: #f3f4f6; /* gray-100 */
+        background-color: #4b5563;
+        color: #f3f4f6;
       }
       .dark .ql-picker-label {
-        color: #f3f4f6 !important; /* Ensure dropdown text is visible */
+        color: #f3f4f6 !important;
       }
       .dark .ql-stroke {
-        stroke: #f3f4f6 !important; /* Ensure icon strokes are visible */
+        stroke: #f3f4f6 !important;
       }
       .dark .ql-fill {
-        fill: #f3f4f6 !important; /* Ensure icon fills are visible */
+        fill: #f3f4f6 !important;
       }
       .dark .ql-picker-options {
-        background-color: #374151; /* gray-700 */
+        background-color: #374151;
         color: #f3f4f6;
       }
     </style>
     <!-- Quill JS -->
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
-    <!-- Main CSS (Tailwind processed) -->
-    <!-- Vite will inject this link during dev/build -->
+    <!-- Main CSS Link (Vite will handle this) -->
+    <link rel="stylesheet" href="./src/style.css" />
   </head>
   <body
     class="bg-gray-100 font-[tinos] text-gray-900 dark:bg-gray-800 dark:text-gray-100"
@@ -75,7 +74,6 @@
           <h2 class="mb-6 text-center text-2xl font-bold dark:text-white">
             Admin Login
           </h2>
-          <!-- Login Form uses GET initially, JS prevents default -->
           <form id="login-form">
             <div class="mb-4">
               <label class="form-label" for="username"> Username </label>
@@ -114,30 +112,110 @@
 
       <!-- Admin Panel (Hidden initially) -->
       <div id="admin-panel" class="hidden">
-        <!-- Logout Button -->
-        <div class="mb-4 flex justify-end">
-          <button id="logout-button" class="btn btn-red">Logout</button>
+        <!-- Header Row: Title, Buttons, Logout -->
+        <div
+          class="mb-6 flex flex-wrap items-center justify-between gap-4 border-b pb-4 dark:border-gray-600"
+        >
+          <h1 class="text-3xl font-bold dark:text-white">Admin Dashboard</h1>
+          <div class="flex gap-4">
+            {/* Wrapper for admin-only manage button */}
+            <div id="manage-moderators-button-wrapper" class="hidden">
+              <button id="manage-moderators-button" class="btn btn-gray">
+                Manage Moderators
+              </button>
+            </div>
+            <button id="logout-button" class="btn btn-red">Logout</button>
+          </div>
         </div>
 
-        <!-- Articles Management Section -->
+        {/* Moderator Management Section (Initially Hidden) */}
+        <div
+          id="moderators-section"
+          class="mb-8 hidden rounded border border-gray-200 bg-gray-50 p-6 shadow-sm dark:border-gray-600 dark:bg-gray-700"
+        >
+          <h2
+            class="mb-4 border-b pb-2 text-2xl font-bold dark:border-gray-600 dark:text-white"
+          >
+            Manage Moderators
+          </h2>
+
+          {/* Create Moderator Form */}
+          <div class="mx-auto mb-8 max-w-lg">
+            {/* Slightly wider form */}
+            <h3
+              class="mb-4 text-xl font-semibold text-gray-800 dark:text-gray-200"
+            >
+              Create New Moderator
+            </h3>
+            <form id="create-moderator-form" class="space-y-4">
+              <div>
+                <label class="form-label" for="mod-username">Username</label>
+                <input
+                  class="form-input"
+                  id="mod-username"
+                  type="text"
+                  placeholder="Moderator Username"
+                  required
+                  autocomplete="off"
+                />
+              </div>
+              <div>
+                <label class="form-label" for="mod-email">Email Address</label>
+                <input
+                  class="form-input"
+                  id="mod-email"
+                  type="email"
+                  placeholder="moderator@example.com"
+                  required
+                  autocomplete="off"
+                />
+              </div>
+              <div class="flex justify-end pt-2">
+                <button type="submit" class="btn btn-green">
+                  Create Moderator
+                </button>
+              </div>
+            </form>
+            <div
+              id="create-moderator-message"
+              class="mt-4 text-center text-sm"
+            ></div>
+          </div>
+
+          {/* Moderator List */}
+          <div>
+            <h3
+              class="mb-4 text-xl font-semibold text-gray-800 dark:text-gray-200"
+            >
+              Existing Moderators
+            </h3>
+            <div
+              id="moderators-list-container"
+              class="min-h-[5rem] rounded border bg-white p-4 dark:border-gray-600 dark:bg-gray-800"
+            >
+              <p class="p-4 text-center">Loading moderators...</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Articles Management Section */}
         <div id="articles-list" class="mb-8">
           <div class="mb-4 flex flex-wrap items-center justify-between gap-4">
             <h2 class="text-2xl font-bold dark:text-white">Manage Articles</h2>
-            <button id="new-article-button" class="btn btn-green">
+            {/* This button is conditionally shown via JS */}
+            <button id="new-article-button" class="btn btn-green hidden">
               Create New Article
             </button>
           </div>
-          <!-- Container where article cards will be listed -->
           <div
             id="articles-container"
             class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
           >
-            <!-- Loading indicator or article cards go here -->
             <p class="col-span-full p-4 text-center">Loading articles...</p>
           </div>
         </div>
 
-        <!-- Article Create/Edit Form (Hidden initially within Admin Panel) -->
+        {/* Article Create/Edit Form (Keep hidden, shown on click) */}
         <div
           id="article-form-container"
           class="mx-auto mb-8 hidden max-w-3xl rounded border border-gray-200 bg-white p-6 shadow-md dark:border-gray-600 dark:bg-gray-700"
@@ -149,35 +227,36 @@
             Create/Edit Article
           </h2>
           <form id="article-form">
-            <!-- Hidden field to store ID when editing -->
             <input type="hidden" id="article-id" />
-
-            <hr class="my-6 border-gray-300 dark:border-gray-600">
-            <h3 class="mb-4 text-lg font-semibold text-gray-800 dark:text-gray-200">English Content</h3>
-            
-            <!-- Title (English) -->
+            {/* English Fields */}
+            <hr class="my-6 border-gray-300 dark:border-gray-600" />
+            <h3
+              class="mb-4 text-lg font-semibold text-gray-800 dark:text-gray-200"
+            >
+              English Content
+            </h3>
             <div class="mb-4">
-              <label class="form-label" for="article-title-en"> Title (English) <span class="text-red-500">*</span></label>
+              <label class="form-label" for="article-title-en">
+                Title (English) <span class="text-red-500">*</span></label
+              >
               <input
                 class="form-input"
                 id="article-title-en"
                 type="text"
                 placeholder="Article Title"
-                required 
+                required
               />
             </div>
-
-            <!-- Content (English Quill Editor) -->
             <div class="mb-4">
-              <label class="form-label" for="editor-container-en"> Content (English) <span class="text-red-500">*</span></label>
+              <label class="form-label" for="editor-container-en">
+                Content (English) <span class="text-red-500">*</span></label
+              >
               <div
                 id="editor-container-en"
                 class="quill-editor overflow-hidden rounded border border-gray-300 dark:border-gray-500"
               ></div>
               <input type="hidden" id="article-content-en" />
             </div>
-
-            <!-- Excerpt (English) -->
             <div class="mb-4">
               <label class="form-label" for="article-excerpt-en">
                 Excerpt (English, Optional)
@@ -193,13 +272,17 @@
                 maxlength="500"
               ></textarea>
             </div>
-
-            <hr class="my-6 border-gray-300 dark:border-gray-600">
-            <h3 class="mb-4 text-lg font-semibold text-gray-800 dark:text-gray-200">Russian Content (Optional)</h3>
-
-            <!-- Title (Russian) -->
+            {/* Russian Fields */}
+            <hr class="my-6 border-gray-300 dark:border-gray-600" />
+            <h3
+              class="mb-4 text-lg font-semibold text-gray-800 dark:text-gray-200"
+            >
+              Russian Content (Optional)
+            </h3>
             <div class="mb-4">
-              <label class="form-label" for="article-title-rus"> Title (Russian) </label>
+              <label class="form-label" for="article-title-rus">
+                Title (Russian)
+              </label>
               <input
                 class="form-input"
                 id="article-title-rus"
@@ -207,18 +290,16 @@
                 placeholder="Russian Title"
               />
             </div>
-
-            <!-- Content (Russian Quill Editor) -->
             <div class="mb-4">
-              <label class="form-label" for="editor-container-rus"> Content (Russian) </label>
+              <label class="form-label" for="editor-container-rus">
+                Content (Russian)
+              </label>
               <div
                 id="editor-container-rus"
                 class="quill-editor overflow-hidden rounded border border-gray-300 dark:border-gray-500"
               ></div>
               <input type="hidden" id="article-content-rus" />
             </div>
-
-             <!-- Excerpt (Russian) -->
             <div class="mb-4">
               <label class="form-label" for="article-excerpt-rus">
                 Excerpt (Russian, Optional)
@@ -234,13 +315,17 @@
                 maxlength="500"
               ></textarea>
             </div>
-
-            <hr class="my-6 border-gray-300 dark:border-gray-600">
-            <h3 class="mb-4 text-lg font-semibold text-gray-800 dark:text-gray-200">Mongolian Content (Optional)</h3>
-
-             <!-- Title (Mongolian) -->
+            {/* Mongolian Fields */}
+            <hr class="my-6 border-gray-300 dark:border-gray-600" />
+            <h3
+              class="mb-4 text-lg font-semibold text-gray-800 dark:text-gray-200"
+            >
+              Mongolian Content (Optional)
+            </h3>
             <div class="mb-4">
-              <label class="form-label" for="article-title-mng"> Title (Mongolian) </label>
+              <label class="form-label" for="article-title-mng">
+                Title (Mongolian)
+              </label>
               <input
                 class="form-input"
                 id="article-title-mng"
@@ -248,18 +333,16 @@
                 placeholder="Mongolian Title"
               />
             </div>
-
-            <!-- Content (Mongolian Quill Editor) -->
             <div class="mb-4">
-              <label class="form-label" for="editor-container-mng"> Content (Mongolian) </label>
+              <label class="form-label" for="editor-container-mng">
+                Content (Mongolian)
+              </label>
               <div
                 id="editor-container-mng"
                 class="quill-editor overflow-hidden rounded border border-gray-300 dark:border-gray-500"
               ></div>
               <input type="hidden" id="article-content-mng" />
             </div>
-
-             <!-- Excerpt (Mongolian) -->
             <div class="mb-4">
               <label class="form-label" for="article-excerpt-mng">
                 Excerpt (Mongolian, Optional)
@@ -275,11 +358,13 @@
                 maxlength="500"
               ></textarea>
             </div>
-
-            <hr class="my-6 border-gray-300 dark:border-gray-600">
-            <h3 class="mb-4 text-lg font-semibold text-gray-800 dark:text-gray-200">Common Details</h3>
-
-            <!-- Category Dropdown (Common) -->
+            {/* Common Details */}
+            <hr class="my-6 border-gray-300 dark:border-gray-600" />
+            <h3
+              class="mb-4 text-lg font-semibold text-gray-800 dark:text-gray-200"
+            >
+              Common Details
+            </h3>
             <div class="mb-4">
               <label class="form-label" for="article-category">
                 Category
@@ -291,11 +376,10 @@
                 <option value="blog">Blog</option>
               </select>
             </div>
-            <!-- End Category Dropdown -->
-
-            <!-- Author Input (Common) -->
             <div class="mb-4">
-              <label class="form-label" for="article-author"> Author <span class="text-red-500">*</span></label>
+              <label class="form-label" for="article-author">
+                Author <span class="text-red-500">*</span></label
+              >
               <input
                 class="form-input"
                 id="article-author"
@@ -304,11 +388,10 @@
                 required
               />
             </div>
-            <!-- End Author Input -->
-
-            <!-- Image URL Input (Common) -->
             <div class="mb-4">
-              <label class="form-label" for="article-image"> Image URL (Optional) </label>
+              <label class="form-label" for="article-image">
+                Image URL (Optional)
+              </label>
               <input
                 class="form-input"
                 id="article-image"
@@ -319,10 +402,8 @@
                 Enter the full URL of an image hosted elsewhere.
               </p>
             </div>
-            <!-- End Image URL Input -->
-
-            <!-- Form Action Buttons -->
-            <div class="flex justify-end space-x-4">
+            {/* Form Actions */}
+            <div class="mt-6 flex justify-end space-x-4">
               <button type="button" id="cancel-button" class="btn btn-gray">
                 Cancel
               </button>
@@ -331,16 +412,13 @@
               </button>
             </div>
           </form>
-          <!-- Message area for form success/error -->
           <div id="article-form-message" class="mt-4 text-center text-sm"></div>
         </div>
-        <!-- End Article Form Container -->
       </div>
       <!-- End Admin Panel -->
     </div>
     <!-- End Main Container -->
 
-    <!-- Main Admin Script -->
     <script type="module" src="./src/admin.js"></script>
   </body>
 </html>
