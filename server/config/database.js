@@ -6,27 +6,43 @@ const path = require("path");
 const env = process.env.NODE_ENV || "development";
 // Correctly require the config file relative to this file's location
 const configPath = path.join(__dirname, "config.json");
-const config = require(configPath)[env];
+// Load the specific config object for the current environment
+const envConfig = require(configPath)[env]; // Use a different variable name like envConfig
 
 console.log(`Initializing Sequelize for environment: ${env}`);
-// console.log("Using DB config:", config); // Uncomment for debugging connection details
 
 let sequelize;
 
-if (config.use_env_variable) {
+// --- Create the options object ---
+// Spread the options loaded from config.json (dialect, host, port, etc.)
+// Set logging based on environment (using false for development now)
+const sequelizeOptions = {
+  ...envConfig,
+  logging: false, // Disabled console logging for development (was console.log)
+  // Keep false for test/production as set in config.json
+};
+// --------------------------------
+
+if (envConfig.use_env_variable) {
+  // Check envConfig here
   // If DATABASE_URL is specified in config.json for the environment
   console.log(
-    `Connecting using DATABASE_URL from env var: ${config.use_env_variable}`
+    `Connecting using DATABASE_URL from env var: ${envConfig.use_env_variable}`
   );
-  sequelize = new Sequelize(process.env[config.use_env_variable], config);
+  // Pass the DATABASE_URL string first, then the combined options object
+  sequelize = new Sequelize(
+    process.env[envConfig.use_env_variable],
+    sequelizeOptions
+  );
 } else {
   // Otherwise, use individual properties (host, user, password, etc.)
   console.log(`Connecting using individual DB parameters for env: ${env}`);
+  // Pass individual credentials, then the combined options object
   sequelize = new Sequelize(
-    config.database,
-    config.username,
-    config.password,
-    config // Pass the whole config object for dialect, host, port, options etc.
+    envConfig.database,
+    envConfig.username,
+    envConfig.password,
+    sequelizeOptions // Pass the combined options object here
   );
 }
 

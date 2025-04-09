@@ -24,6 +24,9 @@ const {
   generateToken,
   invalidCsrfTokenError,
 } = require("./middleware/csrfMiddleware");
+const articleRoutes = require("./routes/articles");
+const adminRoutes = require("./routes/admin");
+const authRoutes = require("./routes/auth");
 
 // --- Configure Winston Logger ---
 // Note: Logs might not show in console if only file transports are configured without console
@@ -68,10 +71,6 @@ if (!process.env.CSRF_SECRET) {
 
 // --- Database Initialization ---
 const initializeDatabase = require("./config/initDb");
-
-// --- Import Route Handlers ---
-const articleRoutes = require("./routes/articles");
-const adminRoutes = require("./routes/admin");
 
 // --- Sequelize Instance (for logging if needed) ---
 const { sequelize } = require("./config/database");
@@ -138,6 +137,7 @@ app.use("/api", (req, res, next) => {
 // +++ End log +++
 
 app.use("/api/articles", articleRoutes); // Public article routes
+app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes); // Admin routes
 
 // --- Simple Hello Endpoint ---
