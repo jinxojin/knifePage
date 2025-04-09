@@ -18,66 +18,88 @@
       href="https://cdn.quilljs.com/1.3.6/quill.snow.css"
       rel="stylesheet"
     />
-    <!-- Custom Quill Styles -->
+    <!-- Custom Quill Styles & Base Styles -->
+    <link rel="stylesheet" href="./src/style.css" />
     <style>
+      /* Quill editor overrides */
       .ql-editor {
         min-height: 200px;
         background-color: white;
       }
       .ql-toolbar {
-        background-color: white;
+        background-color: #f9fafb;
         border-top-left-radius: 0.375rem;
         border-top-right-radius: 0.375rem;
+        border-bottom: 0;
       }
       .ql-container {
         border-bottom-left-radius: 0.375rem;
         border-bottom-right-radius: 0.375rem;
       }
+
+      /* Dark mode Quill overrides */
       .dark .ql-toolbar {
-        background-color: #4b5563;
-        border-color: #6b7280;
-        color: #f3f4f6;
+        background-color: #374151;
+        border-color: #4b5563;
       }
       .dark .ql-editor {
         background-color: #4b5563;
         color: #f3f4f6;
       }
-      .dark .ql-picker-label {
-        color: #f3f4f6 !important;
+      .dark .ql-snow .ql-stroke {
+        stroke: #d1d5db;
       }
-      .dark .ql-stroke {
-        stroke: #f3f4f6 !important;
+      .dark .ql-snow .ql-fill {
+        fill: #d1d5db;
       }
-      .dark .ql-fill {
-        fill: #f3f4f6 !important;
+      .dark .ql-snow .ql-picker-label {
+        color: #d1d5db;
       }
-      .dark .ql-picker-options {
-        background-color: #374151;
+      .dark .ql-snow .ql-picker-options {
+        background-color: #4b5563;
         color: #f3f4f6;
       }
-      /* Style for suggestion items */
+      .dark .ql-snow .ql-active .ql-stroke {
+        stroke: #ffffff;
+      }
+      .dark .ql-snow .ql-active .ql-fill {
+        fill: #ffffff;
+      }
+      .dark .ql-snow .ql-active .ql-picker-label {
+        color: #ffffff;
+      }
+
+      /* Suggestion item button state */
       .suggestion-item button:disabled {
         opacity: 0.5;
         cursor: not-allowed;
       }
+
+      /* Ensure message areas are hidden initially if empty */
+      #login-message:empty,
+      #article-form-message:empty,
+      #create-moderator-message:empty {
+        display: none;
+      }
+      #login-message,
+      #article-form-message,
+      #create-moderator-message {
+        display: block;
+      } /* Default to block if they have content */
     </style>
-    <!-- Quill JS -->
-    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
-    <!-- Main CSS Link -->
-    <link rel="stylesheet" href="./src/style.css" />
   </head>
   <body
     class="bg-gray-100 font-[tinos] text-gray-900 dark:bg-gray-800 dark:text-gray-100"
   >
     <!-- Main Container -->
     <div class="container mx-auto p-4">
-      <!-- Login Panel (Visible initially) -->
+      <!-- Login Panel (Visible initially or if logged out) -->
       <div id="login-panel">
         <div
           class="mx-auto mb-4 max-w-md rounded border border-gray-200 bg-white px-8 pt-6 pb-8 shadow-md dark:border-gray-600 dark:bg-gray-700"
         >
           <h2 class="mb-6 text-center text-2xl font-bold dark:text-white">
-            Admin Login
+            Admin / Moderator Login
           </h2>
           <form id="login-form">
             <div class="mb-4">
@@ -109,45 +131,58 @@
               >
                 Sign In
               </button>
+              <!-- TODO: Add Forgot Password Link Here Later -->
+              <a
+                href="#"
+                class="inline-block align-baseline text-sm text-blue-500 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+              >
+                <!-- Forgot Password? -->
+              </a>
             </div>
           </form>
+          <!-- Login message area -->
           <div id="login-message" class="mt-4 text-center text-sm"></div>
         </div>
       </div>
 
-      <!-- Admin Panel (Hidden initially) -->
+      <!-- Admin Panel (Hidden initially, shown after successful login) -->
       <div id="admin-panel" class="hidden">
         <!-- Header Row: Title, Buttons, Logout -->
         <div
           class="mb-6 flex flex-wrap items-center justify-between gap-4 border-b pb-4 dark:border-gray-600"
         >
-          <h1 class="text-3xl font-bold dark:text-white">Admin Dashboard</h1>
-          <div class="flex gap-4">
+          <h1 class="text-3xl font-bold dark:text-white">Dashboard</h1>
+          <div class="flex flex-wrap items-center gap-2 sm:gap-4">
+            <!-- Button for Admin to manage mods/suggestions (hidden for mods) -->
             <div id="manage-moderators-button-wrapper" class="hidden">
-              {/* Wrapper controls visibility */}
               <button id="manage-moderators-button" class="btn btn-gray">
                 Manage Mods & Suggestions
               </button>
             </div>
+            <!-- Button for Creating/Suggesting Articles (text changes based on role) -->
+            <button id="new-article-button" class="btn btn-green hidden">
+              <!-- Text set by JS -->
+            </button>
             <button id="logout-button" class="btn btn-red">Logout</button>
           </div>
         </div>
 
-        {/* Moderator Management & Suggestions Section (Initially Hidden) */}
+        <!-- ===== ADMIN ONLY SECTION ===== -->
+        <!-- Moderator Management & Suggestions Section (Admin Only - Initially Hidden) -->
         <div
           id="moderators-section"
-          class="mb-8 hidden rounded border border-gray-200 bg-gray-50 p-6 shadow-sm dark:border-gray-600 dark:bg-gray-700"
+          class="mb-8 hidden rounded border border-gray-200 bg-gray-50 p-4 shadow-sm sm:p-6 dark:border-gray-600 dark:bg-gray-700"
         >
           <h2
-            class="mb-4 border-b pb-2 text-2xl font-bold dark:border-gray-600 dark:text-white"
+            class="mb-4 border-b pb-2 text-xl font-bold sm:text-2xl dark:border-gray-600 dark:text-white"
           >
             Manage Moderators & Suggestions
           </h2>
 
-          {/* Create Moderator Form */}
+          <!-- Create Moderator Form (Admin Only) -->
           <div class="mx-auto mb-8 max-w-lg">
             <h3
-              class="mb-4 text-xl font-semibold text-gray-800 dark:text-gray-200"
+              class="mb-4 text-lg font-semibold text-gray-800 sm:text-xl dark:text-gray-200"
             >
               Create New Moderator
             </h3>
@@ -180,16 +215,17 @@
                 </button>
               </div>
             </form>
+            <!-- Moderator creation message area -->
             <div
               id="create-moderator-message"
               class="mt-4 text-center text-sm"
             ></div>
           </div>
 
-          {/* Moderator List */}
+          <!-- Moderator List (Admin Only) -->
           <div class="mb-8">
             <h3
-              class="mb-4 text-xl font-semibold text-gray-800 dark:text-gray-200"
+              class="mb-4 text-lg font-semibold text-gray-800 sm:text-xl dark:text-gray-200"
             >
               Existing Moderators
             </h3>
@@ -197,257 +233,297 @@
               id="moderators-list-container"
               class="min-h-[5rem] rounded border bg-white p-4 dark:border-gray-600 dark:bg-gray-800"
             >
-              <p class="p-4 text-center">Loading moderators...</p>
+              <!-- Loading/Content inserted by JS -->
+              <p class="p-4 text-center text-gray-500 dark:text-gray-400">
+                Loading moderators...
+              </p>
             </div>
           </div>
 
-          {/* Pending Suggestions List */}
+          <!-- Pending Suggestions List (Admin Only) -->
           <hr class="my-6 border-gray-300 dark:border-gray-600" />
           <div>
             <h3
-              class="mb-4 text-xl font-semibold text-gray-800 dark:text-gray-200"
+              class="mb-4 text-lg font-semibold text-gray-800 sm:text-xl dark:text-gray-200"
             >
-              Pending Edit Suggestions
+              Pending Suggestions for Review
             </h3>
-            {/* Container where JS will render the list */}
             <div id="suggestions-list-container" class="space-y-3">
-              <p class="p-4 text-center">Loading suggestions...</p>
-              {/* Suggestions rendered by JS */}
+              <!-- Loading/Content inserted by JS -->
+              <p class="p-4 text-center text-gray-500 dark:text-gray-400">
+                Loading suggestions...
+              </p>
             </div>
           </div>
         </div>
-        {/* End Moderator Section */} {/* Articles Management Section */}
+        <!-- ===== END ADMIN ONLY SECTION ===== -->
+
+        <!-- +++++++ MODERATOR ONLY SECTION +++++++ -->
+        <!-- Moderator's Own Suggestions Section (Moderator Only - Initially Hidden) -->
+        <div
+          id="moderator-suggestions-section"
+          class="mb-8 hidden rounded border border-gray-200 bg-gray-50 p-4 shadow-sm sm:p-6 dark:border-gray-600 dark:bg-gray-700"
+        >
+          <!-- Content will be rendered here by admin.js -> renderMySuggestions -->
+          <p class="p-4 text-center text-gray-500 dark:text-gray-400">
+            Loading your suggestions...
+          </p>
+        </div>
+        <!-- +++++++ END MODERATOR ONLY SECTION +++++++ -->
+
+        <!-- ===== SHARED SECTION ===== -->
+        <!-- Articles List Section (Visible to both Admin/Mod) -->
         <div id="articles-list" class="mb-8">
-          <div class="mb-4 flex flex-wrap items-center justify-between gap-4">
-            <h2 class="text-2xl font-bold dark:text-white">Manage Articles</h2>
-            <button id="new-article-button" class="btn btn-green hidden">
-              Create New Article
-            </button>
-            {/* Conditionally shown */}
-          </div>
+          <!-- Title and Create/Suggest button already handled in header row -->
+          <h2 class="sr-only">Articles List</h2>
+          <!-- Screen reader title -->
           <div
             id="articles-container"
             class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
           >
-            <p class="col-span-full p-4 text-center">Loading articles...</p>
+            <!-- Loading/Content inserted by JS -->
+            <p
+              class="col-span-full p-4 text-center text-gray-500 dark:text-gray-400"
+            >
+              Loading articles...
+            </p>
           </div>
         </div>
 
-        {/* Article Create/Edit/Suggest Form */}
+        <!-- Article Create/Edit/Suggest Form (Shared - Initially Hidden) -->
         <div
           id="article-form-container"
-          class="mx-auto mb-8 hidden max-w-3xl rounded border border-gray-200 bg-white p-6 shadow-md dark:border-gray-600 dark:bg-gray-700"
+          class="mx-auto mb-8 hidden max-w-3xl rounded border border-gray-200 bg-white p-4 shadow-md sm:p-6 dark:border-gray-600 dark:bg-gray-700"
         >
           <h2
-            class="mb-6 text-center text-2xl font-bold dark:text-white"
+            class="mb-6 text-center text-xl font-bold sm:text-2xl dark:text-white"
             id="form-heading"
           >
-            Create/Edit Article
+            <!-- Heading set by JS -->
           </h2>
           <form id="article-form">
+            <!-- Hidden input to store article ID when editing/suggesting edit -->
             <input type="hidden" id="article-id" />
-            {/* Language Fields */}
-            <hr class="my-6 border-gray-300 dark:border-gray-600" />
-            <h3
-              class="mb-4 text-lg font-semibold text-gray-800 dark:text-gray-200"
+
+            <!-- --- English Content (Required) --- -->
+            <fieldset
+              class="mb-6 rounded border border-gray-300 p-4 dark:border-gray-500"
             >
-              English Content
-            </h3>
-            <div class="mb-4">
-              <label class="form-label" for="article-title-en">
-                Title (English) <span class="text-red-500">*</span></label
+              <legend
+                class="px-2 font-semibold text-gray-700 dark:text-gray-300"
               >
-              <input
-                class="form-input"
-                id="article-title-en"
-                type="text"
-                placeholder="Article Title"
-                required
-              />
-            </div>
-            <div class="mb-4">
-              <label class="form-label" for="editor-container-en">
-                Content (English) <span class="text-red-500">*</span></label
+                English Content <span class="text-red-500">*</span>
+              </legend>
+              <div class="mb-4">
+                <label class="form-label" for="article-title-en"
+                  >Title (English)</label
+                >
+                <input
+                  class="form-input"
+                  id="article-title-en"
+                  type="text"
+                  placeholder="English Article Title"
+                  required
+                />
+              </div>
+              <div class="mb-4">
+                <label class="form-label" for="editor-container-en"
+                  >Content (English)</label
+                >
+                <!-- Quill Editor Container -->
+                <div
+                  id="editor-container-en"
+                  class="quill-editor overflow-hidden rounded border border-gray-300 dark:border-gray-500"
+                ></div>
+                <!-- Hidden input to store Quill's HTML content -->
+                <input type="hidden" id="article-content-en" />
+              </div>
+              <div class="mb-4">
+                <label class="form-label" for="article-excerpt-en">
+                  Excerpt (English, Optional)
+                  <span class="ml-1 text-xs text-gray-500 dark:text-gray-400"
+                    >(Short summary, max 500 chars)</span
+                  >
+                </label>
+                <textarea
+                  class="form-input"
+                  id="article-excerpt-en"
+                  rows="3"
+                  placeholder="English excerpt..."
+                  maxlength="500"
+                ></textarea>
+              </div>
+            </fieldset>
+
+            <!-- --- Russian Content (Optional) --- -->
+            <fieldset
+              class="mb-6 rounded border border-gray-300 p-4 dark:border-gray-500"
+            >
+              <legend
+                class="px-2 font-semibold text-gray-700 dark:text-gray-300"
               >
-              <div
-                id="editor-container-en"
-                class="quill-editor overflow-hidden rounded border border-gray-300 dark:border-gray-500"
-              ></div>
-              <input type="hidden" id="article-content-en" />
-            </div>
-            <div class="mb-4">
-              <label class="form-label" for="article-excerpt-en">
-                Excerpt (English, Optional)
-                <span class="ml-1 text-xs text-gray-500 dark:text-gray-400"
-                  >(Max 500 chars)</span
+                Russian Content (Optional)
+              </legend>
+              <div class="mb-4">
+                <label class="form-label" for="article-title-rus"
+                  >Title (Russian)</label
                 >
-              </label>
-              <textarea
-                class="form-input"
-                id="article-excerpt-en"
-                rows="3"
-                placeholder="English excerpt..."
-                maxlength="500"
-              ></textarea>
-            </div>
-            <hr class="my-6 border-gray-300 dark:border-gray-600" />
-            <h3
-              class="mb-4 text-lg font-semibold text-gray-800 dark:text-gray-200"
-            >
-              Russian Content (Optional)
-            </h3>
-            <div class="mb-4">
-              <label class="form-label" for="article-title-rus">
-                Title (Russian)
-              </label>
-              <input
-                class="form-input"
-                id="article-title-rus"
-                type="text"
-                placeholder="Russian Title"
-              />
-            </div>
-            <div class="mb-4">
-              <label class="form-label" for="editor-container-rus">
-                Content (Russian)
-              </label>
-              <div
-                id="editor-container-rus"
-                class="quill-editor overflow-hidden rounded border border-gray-300 dark:border-gray-500"
-              ></div>
-              <input type="hidden" id="article-content-rus" />
-            </div>
-            <div class="mb-4">
-              <label class="form-label" for="article-excerpt-rus">
-                Excerpt (Russian, Optional)
-                <span class="ml-1 text-xs text-gray-500 dark:text-gray-400"
-                  >(Max 500 chars)</span
+                <input
+                  class="form-input"
+                  id="article-title-rus"
+                  type="text"
+                  placeholder="Russian Title"
+                />
+              </div>
+              <div class="mb-4">
+                <label class="form-label" for="editor-container-rus"
+                  >Content (Russian)</label
                 >
-              </label>
-              <textarea
-                class="form-input"
-                id="article-excerpt-rus"
-                rows="3"
-                placeholder="Russian excerpt..."
-                maxlength="500"
-              ></textarea>
-            </div>
-            <hr class="my-6 border-gray-300 dark:border-gray-600" />
-            <h3
-              class="mb-4 text-lg font-semibold text-gray-800 dark:text-gray-200"
-            >
-              Mongolian Content (Optional)
-            </h3>
-            <div class="mb-4">
-              <label class="form-label" for="article-title-mng">
-                Title (Mongolian)
-              </label>
-              <input
-                class="form-input"
-                id="article-title-mng"
-                type="text"
-                placeholder="Mongolian Title"
-              />
-            </div>
-            <div class="mb-4">
-              <label class="form-label" for="editor-container-mng">
-                Content (Mongolian)
-              </label>
-              <div
-                id="editor-container-mng"
-                class="quill-editor overflow-hidden rounded border border-gray-300 dark:border-gray-500"
-              ></div>
-              <input type="hidden" id="article-content-mng" />
-            </div>
-            <div class="mb-4">
-              <label class="form-label" for="article-excerpt-mng">
-                Excerpt (Mongolian, Optional)
-                <span class="ml-1 text-xs text-gray-500 dark:text-gray-400"
-                  >(Max 500 chars)</span
+                <div
+                  id="editor-container-rus"
+                  class="quill-editor overflow-hidden rounded border border-gray-300 dark:border-gray-500"
+                ></div>
+                <input type="hidden" id="article-content-rus" />
+              </div>
+              <div class="mb-4">
+                <label class="form-label" for="article-excerpt-rus"
+                  >Excerpt (Russian, Optional)</label
                 >
-              </label>
-              <textarea
-                class="form-input"
-                id="article-excerpt-mng"
-                rows="3"
-                placeholder="Mongolian excerpt..."
-                maxlength="500"
-              ></textarea>
-            </div>
-            {/* Common Details */}
-            <hr class="my-6 border-gray-300 dark:border-gray-600" />
-            <h3
-              class="mb-4 text-lg font-semibold text-gray-800 dark:text-gray-200"
+                <textarea
+                  class="form-input"
+                  id="article-excerpt-rus"
+                  rows="3"
+                  placeholder="Russian excerpt..."
+                  maxlength="500"
+                ></textarea>
+              </div>
+            </fieldset>
+
+            <!-- --- Mongolian Content (Optional) --- -->
+            <fieldset
+              class="mb-6 rounded border border-gray-300 p-4 dark:border-gray-500"
             >
-              Common Details
-            </h3>
-            <div class="mb-4">
-              <label class="form-label" for="article-category">
-                Category
-              </label>
-              <select class="form-input" id="article-category" required>
-                <option value="">Select a category</option>
-                <option value="news">News</option>
-                <option value="competition">Competition</option>
-                <option value="blog">Blog</option>
-              </select>
-            </div>
-            <div class="mb-4">
-              <label class="form-label" for="article-author">
-                Author <span class="text-red-500">*</span></label
+              <legend
+                class="px-2 font-semibold text-gray-700 dark:text-gray-300"
               >
-              <input
-                class="form-input"
-                id="article-author"
-                type="text"
-                placeholder="Author"
-                required
-              />
-            </div>
-            <div class="mb-4">
-              <label class="form-label" for="article-image">
-                Image URL (Optional)
-              </label>
-              <input
-                class="form-input"
-                id="article-image"
-                type="url"
-                placeholder="https://example.com/image.jpg"
-              />
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Enter the full URL of an image hosted elsewhere.
-              </p>
-            </div>
-            {/* Form Actions */}
+                Mongolian Content (Optional)
+              </legend>
+              <div class="mb-4">
+                <label class="form-label" for="article-title-mng"
+                  >Title (Mongolian)</label
+                >
+                <input
+                  class="form-input"
+                  id="article-title-mng"
+                  type="text"
+                  placeholder="Mongolian Title"
+                />
+              </div>
+              <div class="mb-4">
+                <label class="form-label" for="editor-container-mng"
+                  >Content (Mongolian)</label
+                >
+                <div
+                  id="editor-container-mng"
+                  class="quill-editor overflow-hidden rounded border border-gray-300 dark:border-gray-500"
+                ></div>
+                <input type="hidden" id="article-content-mng" />
+              </div>
+              <div class="mb-4">
+                <label class="form-label" for="article-excerpt-mng"
+                  >Excerpt (Mongolian, Optional)</label
+                >
+                <textarea
+                  class="form-input"
+                  id="article-excerpt-mng"
+                  rows="3"
+                  placeholder="Mongolian excerpt..."
+                  maxlength="500"
+                ></textarea>
+              </div>
+            </fieldset>
+
+            <!-- --- Common Details (Required) --- -->
+            <fieldset
+              class="mb-6 rounded border border-gray-300 p-4 dark:border-gray-500"
+            >
+              <legend
+                class="px-2 font-semibold text-gray-700 dark:text-gray-300"
+              >
+                Common Details <span class="text-red-500">*</span>
+              </legend>
+              <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div class="mb-4">
+                  <label class="form-label" for="article-category"
+                    >Category</label
+                  >
+                  <select class="form-input" id="article-category" required>
+                    <option value="">Select a category</option>
+                    <option value="news">News</option>
+                    <option value="competition">Competition</option>
+                    <option value="blog">Blog</option>
+                  </select>
+                </div>
+                <div class="mb-4">
+                  <label class="form-label" for="article-author">Author</label>
+                  <input
+                    class="form-input"
+                    id="article-author"
+                    type="text"
+                    placeholder="Author Name"
+                    required
+                  />
+                </div>
+              </div>
+              <div class="mb-4">
+                <label class="form-label" for="article-image"
+                  >Image URL (Optional)</label
+                >
+                <input
+                  class="form-input"
+                  id="article-image"
+                  type="url"
+                  placeholder="https://example.com/image.jpg"
+                />
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Enter the full URL of an image hosted elsewhere (e.g., Imgur,
+                  Cloudinary).
+                </p>
+              </div>
+            </fieldset>
+
+            <!-- --- Form Actions --- -->
             <div class="mt-6 flex justify-end space-x-4">
               <button type="button" id="cancel-button" class="btn btn-gray">
                 Cancel
               </button>
               <button id="article-submit" type="submit" class="btn btn-blue">
-                Create Article
+                <!-- Text set by JS -->
               </button>
             </div>
           </form>
+          <!-- Article form message area -->
           <div id="article-form-message" class="mt-4 text-center text-sm"></div>
         </div>
-        <!-- End Article Form Container -->
+        <!-- ===== END SHARED SECTION ===== -->
       </div>
-      <!-- End Admin Panel -->
+      <!-- End #admin-panel -->
 
-      {/* Suggestion Details Modal (Initially Hidden) */}
+      <!-- ===== ADMIN ONLY MODAL ===== -->
+      <!-- Suggestion Details Modal (Admin Only - Initially Hidden) -->
       <div
         id="suggestion-modal"
-        class="bg-opacity-60 fixed inset-0 z-50 hidden items-center justify-center overflow-y-auto bg-black backdrop-blur-sm"
+        class="bg-opacity-60 fixed inset-0 z-[100] hidden items-center justify-center overflow-y-auto bg-black backdrop-blur-sm"
         aria-labelledby="modal-title"
         role="dialog"
         aria-modal="true"
       >
         <div
-          class="relative w-full max-w-3xl rounded-lg bg-white p-4 shadow-xl md:p-6 dark:bg-gray-800"
+          class="relative m-4 w-full max-w-3xl rounded-lg bg-white p-4 shadow-xl md:p-6 dark:bg-gray-800"
         >
-          {/* Modal Header */}
+          <!-- Modal Header -->
           <div
-            class="mb-4 flex items-center justify-between border-b pb-3 dark:border-gray-600"
+            class="mb-4 flex items-start justify-between border-b pb-3 dark:border-gray-600"
           >
             <h3
               class="text-xl font-semibold text-gray-900 dark:text-white"
@@ -458,7 +534,7 @@
             <button
               type="button"
               id="modal-close-button"
-              class="inline-flex items-center rounded-lg bg-transparent p-1.5 text-sm text-gray-400 hover:bg-gray-200 hover:text-gray-900 dark:hover:bg-gray-600 dark:hover:text-white"
+              class="ml-auto inline-flex items-center rounded-lg bg-transparent p-1.5 text-sm text-gray-400 hover:bg-gray-200 hover:text-gray-900 dark:hover:bg-gray-600 dark:hover:text-white"
               aria-label="Close modal"
             >
               <svg
@@ -476,19 +552,29 @@
               </svg>
             </button>
           </div>
-          {/* Modal Body - Content loaded by JS */}
+          <!-- Modal Body - Content loaded by JS -->
           <div
             id="modal-body"
-            class="max-h-[70vh] space-y-4 overflow-y-auto pr-2"
+            class="max-h-[70vh] space-y-4 overflow-y-auto pr-2 text-sm sm:text-base"
           >
-            <p>Loading details...</p>
+            <!-- Loading/Content inserted by JS -->
+            <p class="p-4 text-center text-gray-500 dark:text-gray-400">
+              Loading details...
+            </p>
           </div>
+          <!-- Optional Modal Footer for actions? -->
+          <!-- <div class="mt-4 flex justify-end space-x-2 border-t pt-3 dark:border-gray-600">
+                <button type="button" class="btn btn-gray" id="modal-close-button-footer">Close</button>
+           </div> -->
         </div>
       </div>
-      {/* End Modal */}
+      <!-- ===== END ADMIN ONLY MODAL ===== -->
     </div>
     <!-- End Main Container -->
 
+    <!-- Quill JS (Load before admin.js) -->
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+    <!-- Main Admin Script -->
     <script type="module" src="./src/admin.js"></script>
   </body>
 </html>

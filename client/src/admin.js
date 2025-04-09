@@ -3,12 +3,13 @@ import "./style.css";
 
 // --- API Service ---
 const ApiService = {
-  baseUrl: "https://localhost:3000/api",
+  baseUrl: "https://localhost:3000/api", // Should match Vite proxy target base
   csrfToken: null,
 
   async fetchCsrfToken() {
     try {
-      const response = await fetch(`${this.baseUrl}/csrf-token`, {
+      // Use relative path because of Vite proxy
+      const response = await fetch(`/api/csrf-token`, {
         credentials: "include",
       });
       if (!response.ok) {
@@ -17,29 +18,62 @@ const ApiService = {
             `Failed fetch CSRF: ${response.status} Too Many Requests.`,
           );
         }
-        throw new Error(`Failed fetch CSRF: ${response.status}`);
+        throw new Error(
+          `Failed fetch CSRF: ${response.status} ${response.statusText}`,
+        );
       }
       const data = await response.json();
       this.csrfToken = data.csrfToken;
+      console.log("CSRF Token fetched.");
       return this.csrfToken;
     } catch (error) {
       console.error("Error fetching CSRF token:", error);
-      throw error;
+      throw error; // Re-throw to be caught by caller
     }
   },
 
   async makeRequest(url, method = "GET", data = null, isRetry = false) {
+    // url = Full backend URL like https://localhost:3000/api/admin/login
+    // We need the path part that the Vite proxy understands, starting with /api
+
+    let fetchPath;
+    try {
+      // Check if the provided URL is one of our backend API URLs
+      if (url.startsWith(this.baseUrl)) {
+        // Extract the pathname part (e.g., /api/admin/login)
+        const urlObject = new URL(url);
+        fetchPath = urlObject.pathname;
+      } else if (url.startsWith("/api/")) {
+        // If it's already a relative path starting with /api/
+        fetchPath = url;
+      } else {
+        // If it's some other URL or unexpected format, use it as is (might fail)
+        console.warn("makeRequest called with non-API base URL:", url);
+        fetchPath = url;
+      }
+    } catch (e) {
+      console.error("Error parsing URL in makeRequest:", url, e);
+      // Fallback if URL parsing fails for some reason
+      fetchPath = url.startsWith(this.baseUrl)
+        ? url.substring(this.baseUrl.indexOf("/api"))
+        : url;
+    }
+
+    // Ensure CSRF token is fetched for modifying requests
     if (
       !this.csrfToken &&
       ["POST", "PUT", "DELETE", "PATCH"].includes(method.toUpperCase()) &&
       !isRetry
     ) {
       try {
+        console.log("Attempting pre-fetch CSRF token...");
         await this.fetchCsrfToken();
       } catch (csrfError) {
         console.error("Failed pre-fetch CSRF token:", csrfError);
+        // Allow the request to proceed; retry logic might handle it
       }
     }
+
     const headers = { "Content-Type": "application/json" };
     const accessToken = localStorage.getItem("accessToken");
     if (accessToken) {
@@ -51,157 +85,198 @@ const ApiService = {
     ) {
       headers["x-csrf-token"] = this.csrfToken;
     }
+
     const options = {
       method: method.toUpperCase(),
       headers,
       credentials: "include",
     };
+
     if (data) {
       options.body = JSON.stringify(data);
     }
 
     try {
-      const response = await fetch(url, options);
+      // Use the calculated fetchPath, which should start with /api/ for backend requests
+      console.log(`Making API request: ${method} ${fetchPath}`);
+      const response = await fetch(fetchPath, options); // Fetch relative to Vite origin
+
+      // --- CSRF Retry Logic ---
       if (response.status === 403 && !isRetry) {
         try {
           const errorJson = await response.clone().json();
           if (
             errorJson.message &&
-            errorJson.message.toLowerCase() === "invalid csrf token"
+            errorJson.message.toLowerCase().includes("invalid csrf token")
           ) {
-            console.warn("CSRF invalid, retrying ONCE...");
+            console.warn(
+              "CSRF token invalid, fetching new token and retrying ONCE...",
+            );
             this.csrfToken = null;
             await this.fetchCsrfToken();
+            // Retry the original request (pass original full URL to restart logic)
             return this.makeRequest(url, method, data, true);
           }
         } catch (e) {
-          console.error("Could not parse CSRF error:", e);
+          console.error("Could not parse potential CSRF error response:", e);
         }
       }
+      // --- End CSRF Retry Logic ---
+
       if (response.status === 204) {
         return null;
       }
+
       if (!response.ok) {
         let errorData = {
           message: `Request failed: ${response.status} ${response.statusText}`,
+          statusCode: response.status,
         };
         let responseText = "";
         try {
           responseText = await response.text();
           errorData = JSON.parse(responseText);
+          if (!errorData.statusCode) errorData.statusCode = response.status;
         } catch (e) {
           errorData.responseText = responseText;
           console.warn(
-            `Failed parse error response JSON ${method} ${url}. Raw: ${responseText.substring(0, 100)}...`,
+            `Failed to parse error response JSON for ${method} ${fetchPath}. Raw: ${responseText.substring(0, 150)}...`,
           );
         }
-        const errors = errorData.errors;
-        const errorMessage =
-          errorData.message || `Request failed: ${response.status}`;
-        console.error(`Request failed: ${response.status}`, errorData);
-        const error = new Error(errorMessage);
-        error.statusCode = response.status;
+        const error = new Error(
+          errorData.message || `Request failed with status ${response.status}`,
+        );
+        error.statusCode = errorData.statusCode;
         error.data = errorData;
+        console.error(
+          `API Request Failed: ${error.statusCode} - ${error.message}`,
+          error.data,
+        );
         throw error;
       }
+
       const contentType = response.headers.get("content-type");
       if (contentType && contentType.includes("application/json")) {
         return await response.json();
       } else {
         const text = await response.text();
-        console.log(`Non-JSON response for ${method} ${url}`, text);
+        console.log(
+          `Received non-JSON OK response for ${method} ${fetchPath}:`,
+          text.substring(0, 100) + "...",
+        );
         return text;
-      } // Return text for non-JSON OK response
-    } catch (networkError) {
-      console.error(`API error during ${method} ${url}:`, networkError);
-      const errorToThrow = new Error(networkError.message || `Network error.`);
-      if (networkError.statusCode) {
-        errorToThrow.statusCode = networkError.statusCode;
       }
-      if (networkError.data) {
-        errorToThrow.data = networkError.data;
-      }
-      if (networkError.errors) {
-        errorToThrow.errors = networkError.errors;
-      }
+    } catch (networkOrProcessingError) {
+      console.error(
+        `API Error during ${method} ${fetchPath}:`,
+        networkOrProcessingError,
+      );
+      const errorToThrow = new Error(
+        networkOrProcessingError.message ||
+          `Network or processing error occurred.`,
+      );
+      errorToThrow.statusCode = networkOrProcessingError.statusCode || 500;
+      errorToThrow.data = networkOrProcessingError.data || {};
       throw errorToThrow;
     }
   },
 
+  // --- Authentication ---
   async login(username, password) {
-    try {
-      return await this.makeRequest(`${this.baseUrl}/admin/login`, "POST", {
-        username,
-        password,
-      });
-    } catch (error) {
-      throw error;
-    }
+    // Uses makeRequest internally, which uses relative path /api/admin/login
+    return this.makeRequest(`${this.baseUrl}/admin/login`, "POST", {
+      username,
+      password,
+    });
   },
+
   async refreshToken() {
-    const r = localStorage.getItem("refreshToken");
-    if (!r) return null;
+    const currentRefreshToken = localStorage.getItem("refreshToken");
+    if (!currentRefreshToken) {
+      console.log("No refresh token found in localStorage.");
+      return null; // No token to refresh
+    }
     try {
-      const d = await this.makeRequest(
+      // Uses makeRequest internally, which uses relative path /api/admin/refresh
+      const data = await this.makeRequest(
         `${this.baseUrl}/admin/refresh`,
         "POST",
-        { refreshToken: r },
+        { refreshToken: currentRefreshToken },
       );
-      return d.accessToken;
-    } catch (e) {
-      console.error("Refresh token failed:", e);
-      AuthService.clearTokens();
-      throw e;
+      console.log("Refresh token successful.");
+      return data.accessToken; // Return the new access token
+    } catch (error) {
+      console.error("Refresh token failed:", error);
+      AuthService.clearTokens(); // Clear tokens on refresh failure
+      // Optionally, redirect to login or show message
+      // window.location.href = '/admin.html';
+      throw error; // Re-throw error for handling by makeAuthenticatedRequest
     }
   },
+
   async makeAuthenticatedRequest(url, method = "GET", data = null) {
     try {
+      // First attempt with current access token
       return await this.makeRequest(url, method, data);
     } catch (error) {
-      const s = error.statusCode;
-      if (
-        s === 401 ||
-        s === 403 ||
-        error.message.includes("401") ||
-        error.message.includes("Forbidden") ||
-        error.message.includes("403")
-      ) {
+      // Check if the error is likely due to expired/invalid access token (401 or 403)
+      const statusCode = error.statusCode;
+      if (statusCode === 401 || statusCode === 403) {
         console.warn(
-          `Auth error (${s || "N/A"}) on ${method} ${url}, attempting refresh...`,
+          `Auth error (${statusCode}) on ${method} ${url}. Attempting token refresh...`,
         );
         try {
-          const t = await this.refreshToken();
-          if (t) {
-            localStorage.setItem("accessToken", t);
-            console.log(`Retrying ${method} ${url} with new token.`);
+          // Attempt to get a new access token using the refresh token
+          const newAccessToken = await this.refreshToken();
+          if (newAccessToken) {
+            localStorage.setItem("accessToken", newAccessToken); // Store the new token
+            console.log(`Retrying ${method} ${url} with new access token.`);
+            // Retry the original request ONCE with the new token
+            // Pass the original full URL to makeRequest for the retry
             return await this.makeRequest(url, method, data);
           } else {
-            console.error("Refresh failed. Clearing session.");
-            AuthService.clearTokens();
-            window.location.href = "/admin.html";
-            throw new Error("Session expired. Log in again.");
+            // Refresh failed (e.g., refresh token expired or invalid)
+            console.error(
+              "Token refresh failed or no refresh token available. Redirecting to login.",
+            );
+            AuthService.clearTokens(); // Ensure tokens are cleared
+            window.location.href = "/admin.html"; // Redirect to login
+            // Throw a more specific error for the UI?
+            throw new Error("Session expired. Please log in again.");
           }
-        } catch (r) {
-          console.error("Error during refresh attempt:", r);
-          AuthService.clearTokens();
-          window.location.href = "/admin.html";
-          throw new Error("Session expired. Log in again.");
+        } catch (refreshError) {
+          // Catch errors during the refresh attempt itself
+          console.error("Error during token refresh attempt:", refreshError);
+          // Already handled token clearing and potential redirect in refreshToken failure
+          // Throw error to prevent further execution
+          throw new Error(
+            "Session expired or refresh failed. Please log in again.",
+          );
         }
       } else {
-        console.error(`Non-auth error on ${method} ${url}:`, error);
+        // If the error was not 401/403, re-throw it
+        console.error(`Non-authentication error on ${method} ${url}:`, error);
         throw error;
       }
     }
   },
+
   async getMe() {
     return this.makeAuthenticatedRequest(`${this.baseUrl}/admin/me`);
   },
+
+  // --- Articles ---
   async getArticles() {
+    // Public endpoint, but use authenticated request if needed later for drafts etc.
+    // Using public /api/articles/all endpoint
     return this.makeAuthenticatedRequest(`${this.baseUrl}/articles/all`);
   },
+
   async getArticle(id) {
+    // Uses authenticated request to potentially fetch unpublished articles if needed by admin
     return this.makeAuthenticatedRequest(`${this.baseUrl}/articles/${id}`);
   },
+
   async createArticle(articleData) {
     return this.makeAuthenticatedRequest(
       `${this.baseUrl}/admin/articles`,
@@ -209,6 +284,7 @@ const ApiService = {
       articleData,
     );
   },
+
   async updateArticle(id, articleData) {
     return this.makeAuthenticatedRequest(
       `${this.baseUrl}/admin/articles/${id}`,
@@ -216,26 +292,35 @@ const ApiService = {
       articleData,
     );
   },
+
   async deleteArticle(id) {
     return this.makeAuthenticatedRequest(
       `${this.baseUrl}/admin/articles/${id}`,
       "DELETE",
     );
   },
+
+  // --- Users (Admin) ---
   async getUsers(filters = {}) {
-    let q = "";
+    let queryString = "";
     if (filters.role) {
-      q = `?role=${encodeURIComponent(filters.role)}`;
+      queryString = `?role=${encodeURIComponent(filters.role)}`;
     }
-    return this.makeAuthenticatedRequest(`${this.baseUrl}/admin/users${q}`);
+    return this.makeAuthenticatedRequest(
+      `${this.baseUrl}/admin/users${queryString}`,
+    );
   },
+
   async createUser(userData) {
+    // For creating moderators
     return this.makeAuthenticatedRequest(
       `${this.baseUrl}/admin/users`,
       "POST",
       userData,
     );
   },
+
+  // --- Suggestions ---
   async suggestArticleEdit(articleId, articleData) {
     return this.makeAuthenticatedRequest(
       `${this.baseUrl}/admin/articles/${articleId}/suggest`,
@@ -243,6 +328,7 @@ const ApiService = {
       articleData,
     );
   },
+
   async suggestNewArticle(articleData) {
     return this.makeAuthenticatedRequest(
       `${this.baseUrl}/admin/articles/suggest-new`,
@@ -250,40 +336,59 @@ const ApiService = {
       articleData,
     );
   },
+
   async getSuggestions(status = "pending") {
-    const q = `?status=${encodeURIComponent(status)}`;
+    // Admin view of all suggestions
+    const queryString = `?status=${encodeURIComponent(status)}`;
     return this.makeAuthenticatedRequest(
-      `${this.baseUrl}/admin/suggestions${q}`,
+      `${this.baseUrl}/admin/suggestions${queryString}`,
     );
   },
+
   async getSuggestionDetails(suggestionId) {
-    if (!suggestionId) throw new Error("Suggestion ID required.");
+    // Admin view of specific suggestion detail
+    if (!suggestionId) throw new Error("Suggestion ID is required.");
     return this.makeAuthenticatedRequest(
       `${this.baseUrl}/admin/suggestions/${suggestionId}`,
     );
   },
+
   async approveSuggestion(suggestionId) {
-    if (!suggestionId) throw new Error("Suggestion ID required.");
+    // Admin action
+    if (!suggestionId) throw new Error("Suggestion ID is required.");
     return this.makeAuthenticatedRequest(
       `${this.baseUrl}/admin/suggestions/${suggestionId}/approve`,
       "POST",
     );
   },
+
   async rejectSuggestion(suggestionId, adminComments = null) {
-    if (!suggestionId) throw new Error("Suggestion ID required.");
-    const body = adminComments ? { adminComments } : null;
+    // Admin action
+    if (!suggestionId) throw new Error("Suggestion ID is required.");
+    const body = adminComments ? { adminComments } : {}; // Send empty object if no comments
     return this.makeAuthenticatedRequest(
       `${this.baseUrl}/admin/suggestions/${suggestionId}/reject`,
       "POST",
       body,
     );
   },
-};
+
+  // +++ Method for moderators to get their own suggestions +++
+  async getMySuggestions() {
+    return this.makeAuthenticatedRequest(
+      `${this.baseUrl}/admin/suggestions/my`,
+    );
+  },
+  // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+}; // End of ApiService object
 
 // --- Auth Service ---
 const AuthService = {
   isLoggedIn() {
-    return localStorage.getItem("accessToken") !== null;
+    return (
+      localStorage.getItem("accessToken") !== null &&
+      localStorage.getItem("refreshToken") !== null
+    );
   },
   setTokens(accessToken, refreshToken) {
     localStorage.setItem("accessToken", accessToken);
@@ -292,8 +397,8 @@ const AuthService = {
   clearTokens() {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
-    ApiService.csrfToken = null;
-    console.log("Tokens cleared.");
+    ApiService.csrfToken = null; // Also clear the CSRF token from memory
+    console.log("Access and Refresh Tokens cleared from localStorage.");
   },
 };
 
@@ -310,65 +415,88 @@ const AdminUI = {
     cancelButton: document.getElementById("cancel-button"),
     articleFormContainer: document.getElementById("article-form-container"),
     formHeading: document.getElementById("form-heading"),
+    // Article form fields
     articleTitle_en: document.getElementById("article-title-en"),
     editorContainer_en: document.getElementById("editor-container-en"),
-    articleContent_en: document.getElementById("article-content-en"),
+    articleContent_en: document.getElementById("article-content-en"), // Hidden input
     articleExcerpt_en: document.getElementById("article-excerpt-en"),
     articleTitle_rus: document.getElementById("article-title-rus"),
     editorContainer_rus: document.getElementById("editor-container-rus"),
-    articleContent_rus: document.getElementById("article-content-rus"),
+    articleContent_rus: document.getElementById("article-content-rus"), // Hidden input
     articleExcerpt_rus: document.getElementById("article-excerpt-rus"),
     articleTitle_mng: document.getElementById("article-title-mng"),
     editorContainer_mng: document.getElementById("editor-container-mng"),
-    articleContent_mng: document.getElementById("article-content-mng"),
+    articleContent_mng: document.getElementById("article-content-mng"), // Hidden input
     articleExcerpt_mng: document.getElementById("article-excerpt-mng"),
-    articleId: document.getElementById("article-id"),
+    articleId: document.getElementById("article-id"), // Hidden input for ID
     articleCategory: document.getElementById("article-category"),
     articleAuthor: document.getElementById("article-author"),
     articleImage: document.getElementById("article-image"),
     articleSubmit: document.getElementById("article-submit"),
+    // Messages
     articleFormMessage: document.getElementById("article-form-message"),
     loginMessage: document.getElementById("login-message"),
+    createModeratorMessage: document.getElementById("create-moderator-message"),
+    // Containers
     articlesContainer: document.getElementById("articles-container"),
+    // Admin specific sections/buttons
     manageModeratorsButtonWrapper: document.getElementById(
       "manage-moderators-button-wrapper",
     ),
     manageModeratorsButton: document.getElementById("manage-moderators-button"),
-    moderatorsSection: document.getElementById("moderators-section"),
+    moderatorsSection: document.getElementById("moderators-section"), // Contains admin lists/forms
     moderatorsListContainer: document.getElementById(
       "moderators-list-container",
     ),
     createModeratorForm: document.getElementById("create-moderator-form"),
-    createModeratorMessage: document.getElementById("create-moderator-message"),
     suggestionsListContainer: document.getElementById(
       "suggestions-list-container",
+    ), // Admin list
+    // +++ Add new element ID for moderator's view +++
+    moderatorSuggestionsSection: document.getElementById(
+      "moderator-suggestions-section",
     ),
+    // ++++++++++++++++++++++++++++++++++++++++++++++++
+    // Modal elements (for admin viewing details)
     suggestionModal: document.getElementById("suggestion-modal"),
     modalTitle: document.getElementById("modal-title"),
     modalBody: document.getElementById("modal-body"),
     modalCloseButton: document.getElementById("modal-close-button"),
   },
-  currentUserRole: null,
-  quillInstances: { en: null, rus: null, mng: null },
+  currentUserRole: null, // Store the user's role ('admin' or 'moderator')
+  quillInstances: { en: null, rus: null, mng: null }, // Store Quill editor instances
 
   initialize() {
-    this.initQuillEditor();
+    // Ensure Quill is loaded before initializing editors
+    if (typeof Quill === "undefined") {
+      console.error("Quill.js not loaded. Cannot initialize editor.");
+      this.displayMessage(
+        this.elements.articleFormMessage,
+        "Text editor failed to load. Please refresh.",
+        true,
+      );
+    } else {
+      this.initQuillEditor();
+    }
     this.setupEventListeners();
-    this.updateUI();
+    this.updateUI(); // Initial UI setup based on login state
   },
 
   initQuillEditor() {
+    // Standard Quill toolbar options
     const toolbarOptions = [
       [{ header: [1, 2, 3, false] }],
       ["bold", "italic", "underline", "strike"],
       [{ list: "ordered" }, { list: "bullet" }],
-      [{ color: [] }, { background: [] }],
-      ["link", "image"],
-      ["clean"],
+      [{ color: [] }, { background: [] }], // Color options
+      ["link", "image"], // Link and image insertion
+      ["clean"], // Remove formatting button
     ];
+
     const initializeInstance = (lang) => {
       const container = this.elements[`editorContainer_${lang}`];
       const hiddenInput = this.elements[`articleContent_${lang}`];
+
       if (container && hiddenInput) {
         try {
           this.quillInstances[lang] = new Quill(container, {
@@ -376,13 +504,15 @@ const AdminUI = {
             modules: { toolbar: toolbarOptions },
             placeholder: `Write ${lang.toUpperCase()} content here...`,
           });
-          // Sync Quill content to hidden input on change
-          this.quillInstances[lang].on("text-change", () => {
-            // Check if instance still exists (might be destroyed on form reset/hide?)
-            if (this.quillInstances[lang]) {
-              hiddenInput.value = this.quillInstances[lang].root.innerHTML;
-            }
-          });
+
+          this.quillInstances[lang].on(
+            "text-change",
+            (delta, oldDelta, source) => {
+              if (source === "user" && this.quillInstances[lang]) {
+                hiddenInput.value = this.quillInstances[lang].root.innerHTML;
+              }
+            },
+          );
         } catch (error) {
           console.error(`Failed to initialize Quill for ${lang}:`, error);
           this.displayMessage(
@@ -393,10 +523,11 @@ const AdminUI = {
         }
       } else {
         console.warn(
-          `Quill container/input elements not found for language: ${lang}`,
+          `Quill container or hidden input elements not found for language: ${lang}`,
         );
       }
     };
+
     initializeInstance("en");
     initializeInstance("rus");
     initializeInstance("mng");
@@ -411,6 +542,10 @@ const AdminUI = {
       "submit",
       this.handleArticleSubmit.bind(this),
     );
+    this.elements.createModeratorForm?.addEventListener(
+      "submit",
+      this.handleCreateModeratorSubmit.bind(this),
+    );
     this.elements.newArticleButton?.addEventListener(
       "click",
       this.handleNewArticleClick.bind(this),
@@ -423,14 +558,24 @@ const AdminUI = {
       "click",
       this.handleLogout.bind(this),
     );
-    this.elements.createModeratorForm?.addEventListener(
-      "submit",
-      this.handleCreateModeratorSubmit.bind(this),
-    );
     this.elements.manageModeratorsButton?.addEventListener(
       "click",
       this.handleManageModeratorsClick.bind(this),
-    ); // Use bound method
+    );
+
+    this.elements.articlesContainer?.addEventListener("click", (event) => {
+      const button = event.target.closest("button");
+      if (!button) return;
+      const articleId = button.dataset.id;
+      if (!articleId) return;
+      if (button.classList.contains("edit-article"))
+        this.loadArticleForEditing(articleId);
+      else if (button.classList.contains("delete-article"))
+        this.handleDeleteArticle(articleId);
+      else if (button.classList.contains("suggest-edit-article"))
+        this.handleSuggestEditClick(articleId);
+    });
+
     this.elements.suggestionsListContainer?.addEventListener(
       "click",
       (event) => {
@@ -438,29 +583,31 @@ const AdminUI = {
         if (!button) return;
         const suggestionId = button.dataset.suggestionId;
         if (!suggestionId) return;
-        if (button.classList.contains("approve-suggestion")) {
+        if (button.classList.contains("approve-suggestion"))
           this.handleApproveSuggestion(suggestionId, button);
-        } else if (button.classList.contains("reject-suggestion")) {
+        else if (button.classList.contains("reject-suggestion"))
           this.handleRejectSuggestion(suggestionId, button);
-        } else if (button.classList.contains("view-suggestion")) {
+        else if (button.classList.contains("view-suggestion"))
           this.showSuggestionDetails(suggestionId);
-        }
       },
     );
+
     this.elements.modalCloseButton?.addEventListener("click", () =>
       this.closeSuggestionModal(),
     );
     this.elements.suggestionModal?.addEventListener("click", (event) => {
-      if (event.target === this.elements.suggestionModal) {
+      if (event.target === this.elements.suggestionModal)
         this.closeSuggestionModal();
-      }
     });
   },
 
   handleManageModeratorsClick() {
     console.log("[AdminUI] Manage Moderators button clicked.");
-    this.elements.moderatorsSection?.classList.toggle("hidden");
-    if (!this.elements.moderatorsSection?.classList.contains("hidden")) {
+    if (this.currentUserRole !== "admin") return;
+    const section = this.elements.moderatorsSection;
+    if (!section) return;
+    section.classList.toggle("hidden");
+    if (!section.classList.contains("hidden")) {
       console.log("[AdminUI] Moderators section visible, loading data...");
       this.loadModerators();
       this.loadSuggestions();
@@ -472,28 +619,39 @@ const AdminUI = {
   async updateUI() {
     const loggedIn = AuthService.isLoggedIn();
     this.currentUserRole = null;
+
     if (loggedIn) {
       this.elements.loginPanel?.classList.add("hidden");
       this.elements.adminPanel?.classList.remove("hidden");
       try {
         const userInfo = await ApiService.getMe();
-        if (userInfo && userInfo.role) {
-          this.currentUserRole = userInfo.role;
-          console.log("[Admin UI] Role:", this.currentUserRole);
-        } else {
-          console.error("[Admin UI] No role.");
+        this.currentUserRole = userInfo?.role;
+        if (
+          !this.currentUserRole ||
+          !["admin", "moderator"].includes(this.currentUserRole)
+        ) {
+          console.error("[Admin UI] Invalid or missing user role:", userInfo);
           AuthService.clearTokens();
           window.location.reload();
           return;
         }
+        console.log("[Admin UI] User Role:", this.currentUserRole);
         this.renderUIForRole();
         this.loadArticles();
+        if (this.currentUserRole === "moderator") {
+          this.loadMySuggestions(); // Load suggestions for moderators
+        }
       } catch (error) {
-        console.error("[Admin UI] Error getting user info:", error);
+        console.error("[Admin UI] Error updating UI:", error);
         AuthService.clearTokens();
         this.elements.loginPanel?.classList.remove("hidden");
         this.elements.adminPanel?.classList.add("hidden");
         this.clearAdminContent();
+        this.displayMessage(
+          this.elements.loginMessage,
+          "Session error. Please log in again.",
+          true,
+        );
       }
     } else {
       this.elements.loginPanel?.classList.remove("hidden");
@@ -505,28 +663,39 @@ const AdminUI = {
   renderUIForRole() {
     this.elements.manageModeratorsButtonWrapper?.classList.add("hidden");
     this.elements.moderatorsSection?.classList.add("hidden");
+    this.elements.moderatorSuggestionsSection?.classList.add("hidden"); // Hide by default
     this.elements.newArticleButton?.classList.add("hidden");
+
     if (this.currentUserRole === "admin") {
-      console.log("[Admin UI] Render ADMIN");
+      console.log("[Admin UI] Rendering for ADMIN");
       this.elements.manageModeratorsButtonWrapper?.classList.remove("hidden");
-      this.elements.newArticleButton?.classList.remove("hidden");
-      if (this.elements.newArticleButton)
+      if (this.elements.newArticleButton) {
         this.elements.newArticleButton.textContent = "Create New Article";
+        this.elements.newArticleButton.classList.remove("hidden");
+      }
+      if (this.elements.articleSubmit)
+        this.elements.articleSubmit.textContent = this.elements.articleId.value
+          ? "Update Article"
+          : "Create Article";
+      if (this.elements.formHeading)
+        this.elements.formHeading.textContent = this.elements.articleId.value
+          ? "Edit Article"
+          : "Create New Article";
     } else if (this.currentUserRole === "moderator") {
-      console.log("[Admin UI] Render MODERATOR");
+      console.log("[Admin UI] Rendering for MODERATOR");
+      this.elements.moderatorSuggestionsSection?.classList.remove("hidden"); // Show moderator section
       if (this.elements.newArticleButton) {
         this.elements.newArticleButton.textContent = "Suggest New Article";
         this.elements.newArticleButton.classList.remove("hidden");
       }
+      if (this.elements.articleSubmit)
+        this.elements.articleSubmit.textContent = "Submit Suggestion";
+      if (this.elements.formHeading)
+        this.elements.formHeading.textContent = this.elements.articleId.value
+          ? "Suggest Edits For Article"
+          : "Suggest New Article";
     } else {
-      console.log("[Admin UI] Render UNKNOWN");
-    }
-    // Only reload articles if container exists and isn't showing 'loading'
-    if (
-      this.elements.articlesContainer?.innerHTML &&
-      !this.elements.articlesContainer.innerHTML.includes("Loading articles...")
-    ) {
-      this.loadArticles();
+      console.log("[Admin UI] Rendering for UNKNOWN role");
     }
   },
 
@@ -541,6 +710,10 @@ const AdminUI = {
       this.elements.moderatorsListContainer.innerHTML = "";
     if (this.elements.suggestionsListContainer)
       this.elements.suggestionsListContainer.innerHTML = "";
+    if (this.elements.moderatorSuggestionsSection)
+      this.elements.moderatorSuggestionsSection.innerHTML = ""; // Clear moderator view
+    this.closeSuggestionModal();
+    this.resetForm();
   },
 
   async loadArticles() {
@@ -549,11 +722,8 @@ const AdminUI = {
       '<p class="text-center p-4 col-span-full">Loading articles...</p>';
     try {
       const articlesArray = await ApiService.getArticles();
-      if (!Array.isArray(articlesArray)) {
-        throw new Error(
-          "Received unexpected data format fetching articles list.",
-        );
-      }
+      if (!Array.isArray(articlesArray))
+        throw new Error("Invalid articles list format.");
       console.log("[Admin] Received articles:", articlesArray);
       this.renderArticles(articlesArray);
     } catch (err) {
@@ -581,41 +751,21 @@ const AdminUI = {
           console.warn("[Admin] Skipping invalid article object:", article);
           return "";
         }
-        const title = article.title || article.title_en || "Untitled";
+        const title = article.title_en || article.title || "Untitled Article";
         const category = article.category || "?";
         const author = article.author || "?";
         const imageUrl = article.imageUrl;
         const status = article.status || "?";
         let buttonsHTML = "";
         if (this.currentUserRole === "admin") {
-          buttonsHTML = ` <button class="edit-article btn btn-blue text-sm py-1 px-3" data-id="${article.id}">Edit</button> <button class="delete-article btn btn-red text-sm py-1 px-3" data-id="${article.id}">Delete</button> `;
+          buttonsHTML = `<button class="edit-article btn btn-blue text-sm py-1 px-3" data-id="${article.id}">Edit</button> <button class="delete-article btn btn-red text-sm py-1 px-3" data-id="${article.id}">Delete</button>`;
         } else if (this.currentUserRole === "moderator") {
-          buttonsHTML = ` <button class="suggest-edit-article btn btn-blue text-sm py-1 px-3" data-id="${article.id}">Suggest Edit</button> `;
+          buttonsHTML = `<button class="suggest-edit-article btn btn-blue text-sm py-1 px-3" data-id="${article.id}">Suggest Edit</button>`;
         }
-        return ` <div class="article-card border dark:border-gray-600 rounded-lg shadow-md overflow-hidden bg-white dark:bg-gray-700 flex flex-col"> ${imageUrl ? `<img src="${imageUrl}" alt="${title}" class="w-full h-48 object-cover">` : '<div class="w-full h-48 bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-400 dark:text-gray-300">No Image</div>'} <div class="p-4 flex flex-col flex-grow"> <h3 class="text-lg font-bold mb-1 dark:text-white flex-grow">${title}</h3> <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Cat: ${category}</p> <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">By: ${author}</p> <p class="text-sm font-medium ${status === "published" ? "text-green-600 dark:text-green-400" : "text-yellow-600 dark:text-yellow-400"} mb-2 capitalize">Status: ${status}</p> <div class="mt-auto pt-2 flex space-x-2"> ${buttonsHTML} </div> </div> </div> `;
+        return `<div class="article-card border dark:border-gray-600 rounded-lg shadow-md overflow-hidden bg-white dark:bg-gray-700 flex flex-col"> ${imageUrl ? `<img src="${imageUrl}" alt="${title}" class="w-full h-48 object-cover">` : '<div class="w-full h-48 bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-400 dark:text-gray-300">No Image</div>'} <div class="p-4 flex flex-col flex-grow"> <h3 class="text-lg font-bold mb-1 dark:text-white flex-grow">${title}</h3> <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Cat: ${category}</p> <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">By: ${author}</p> <p class="text-sm font-medium ${status === "published" ? "text-green-600 dark:text-green-400" : "text-yellow-600 dark:text-yellow-400"} mb-2 capitalize">Status: ${status}</p> <div class="mt-auto pt-2 flex space-x-2">${buttonsHTML}</div> </div> </div>`;
       })
       .join("");
-    this.elements.articlesContainer
-      .querySelectorAll(".edit-article")
-      .forEach((button) => {
-        button.addEventListener("click", (e) =>
-          this.loadArticleForEditing(e.currentTarget.dataset.id),
-        );
-      });
-    this.elements.articlesContainer
-      .querySelectorAll(".delete-article")
-      .forEach((button) => {
-        button.addEventListener("click", (e) =>
-          this.handleDeleteArticle(e.currentTarget.dataset.id),
-        );
-      });
-    this.elements.articlesContainer
-      .querySelectorAll(".suggest-edit-article")
-      .forEach((button) => {
-        button.addEventListener("click", (e) =>
-          this.handleSuggestEditClick(e.currentTarget.dataset.id),
-        );
-      });
+    // Listeners handled by delegation
   },
 
   async loadModerators() {
@@ -652,10 +802,11 @@ const AdminUI = {
         '<p class="text-center p-4">No moderators found.</p>';
       return;
     }
-    this.elements.moderatorsListContainer.innerHTML = ` <ul class="space-y-2"> ${moderators.map((mod) => ` <li class="flex justify-between items-center p-2 border dark:border-gray-600 rounded bg-white dark:bg-gray-800"> <span>${mod.username} (<span class="text-xs text-gray-500 dark:text-gray-400">${mod.email}</span>) ${mod.needsPasswordChange ? '<span class="text-xs text-orange-500 ml-2 font-semibold">(Needs PW Reset)</span>' : ""}</span> </li> `).join("")} </ul>`;
+    this.elements.moderatorsListContainer.innerHTML = `<ul class="space-y-2"> ${moderators.map((mod) => `<li class="flex justify-between items-center p-2 border dark:border-gray-600 rounded bg-white dark:bg-gray-800"> <span>${mod.username} (<span class="text-xs text-gray-500 dark:text-gray-400">${mod.email}</span>) ${mod.needsPasswordChange ? '<span class="text-xs text-orange-500 ml-2 font-semibold">(Needs PW Reset)</span>' : ""}</span> </li>`).join("")} </ul>`;
   },
 
   async loadSuggestions() {
+    // Admin loads pending suggestions
     if (
       this.currentUserRole !== "admin" ||
       !this.elements.suggestionsListContainer
@@ -666,15 +817,16 @@ const AdminUI = {
       '<p class="text-center p-4">Loading suggestions...</p>';
     try {
       const suggestions = await ApiService.getSuggestions("pending");
-      console.log("[Admin] Received suggestions data from API:", suggestions);
+      console.log("[Admin] Received pending suggestions data:", suggestions);
       this.renderSuggestions(suggestions);
     } catch (error) {
       console.error("[Admin] Error loading suggestions:", error);
-      this.elements.suggestionsListContainer.innerHTML = `<p class="text-red-500 text-center p-4">Failed to load suggestions: ${error.message}</p>`;
+      this.elements.suggestionsListContainer.innerHTML = `<p class="text-red-500 text-center p-4">Failed: ${error.message}</p>`;
     }
   },
 
   renderSuggestions(suggestions) {
+    // Admin renders list of pending suggestions
     if (
       this.currentUserRole !== "admin" ||
       !this.elements.suggestionsListContainer
@@ -682,30 +834,35 @@ const AdminUI = {
       return;
     console.log("[Admin] renderSuggestions called with:", suggestions);
     if (!Array.isArray(suggestions)) {
-      console.error("[Admin] renderSuggestions received non-array.");
+      console.error("[Admin] Invalid suggestion data received.");
       this.elements.suggestionsListContainer.innerHTML =
-        '<p class="text-red-500 text-center p-4">Error: Invalid suggestion data received.</p>';
+        '<p class="text-red-500 text-center p-4">Error: Invalid data.</p>';
       return;
     }
     if (suggestions.length === 0) {
-      console.log("[Admin] No pending suggestions found to render.");
       this.elements.suggestionsListContainer.innerHTML =
-        '<p class="text-center p-4 text-gray-500 dark:text-gray-400">No pending suggestions found.</p>';
+        '<p class="text-center p-4 text-gray-500 dark:text-gray-400">No pending suggestions.</p>';
       return;
     }
     console.log(`[Admin] Rendering ${suggestions.length} suggestions.`);
     this.elements.suggestionsListContainer.innerHTML = suggestions
       .map((suggestion) => {
         let articleTitle;
-        if (suggestion.articleId && suggestion.article) {
+        const isNew = !suggestion.articleId; // Use !articleId to check if it's a new proposal
+        if (!isNew && suggestion.article) {
           articleTitle =
             suggestion.article.title_en ||
             `Article ID: ${suggestion.articleId}`;
-        } else {
-          articleTitle =
-            suggestion.proposedData?.title_en || "(New Article Proposal)";
+        } else if (isNew) {
+          // Use proposedTitle field added by backend processing
+          articleTitle = suggestion.proposedTitle || "(New Article Proposal)";
           articleTitle +=
             ' <span class="text-xs font-normal text-blue-500 dark:text-blue-400">(New)</span>';
+        } else {
+          articleTitle = `Article ID: ${suggestion.articleId || "(Unknown)"}`;
+          if (isNew)
+            articleTitle +=
+              ' <span class="text-xs font-normal text-blue-500 dark:text-blue-400">(New)</span>';
         }
         const moderatorName =
           suggestion.moderator?.username ||
@@ -713,13 +870,14 @@ const AdminUI = {
         const suggestionDate = suggestion.createdAt
           ? new Date(suggestion.createdAt).toLocaleDateString()
           : "?";
-        const isNew = !suggestion.articleId;
-        return ` <div class="suggestion-item p-3 border dark:border-gray-600 rounded bg-white dark:bg-gray-800 shadow-sm"> <div class="flex flex-wrap justify-between items-center gap-2 mb-2"> <div> <span class="block font-semibold dark:text-white">Article: ${articleTitle}</span> <span class="block text-sm text-gray-600 dark:text-gray-400">By: ${moderatorName} on ${suggestionDate}</span> </div> <div class="flex justify-end items-center gap-2 mt-2 sm:mt-0 suggestion-actions flex-shrink-0"> <span class="text-sm text-green-600 dark:text-green-400 hidden success-message">Approved!</span> <span class="text-sm text-red-600 dark:text-red-400 hidden reject-message">Rejected!</span> <span class="text-sm text-red-600 dark:text-red-400 hidden error-message"></span> <button class="view-suggestion btn btn-gray text-xs py-1 px-2" data-suggestion-id="${suggestion.id}" data-is-new="${isNew}">Details</button> <button class="reject-suggestion btn btn-red text-xs py-1 px-2" data-suggestion-id="${suggestion.id}" data-is-new="${isNew}">Reject</button> <button class="approve-suggestion btn btn-green text-xs py-1 px-2" data-suggestion-id="${suggestion.id}" data-is-new="${isNew}">Approve</button> </div> </div> </div>`;
+        return `<div class="suggestion-item p-3 border dark:border-gray-600 rounded bg-white dark:bg-gray-800 shadow-sm"> <div class="flex flex-wrap justify-between items-center gap-2 mb-2"> <div> <span class="block font-semibold dark:text-white">Article: ${articleTitle}</span> <span class="block text-sm text-gray-600 dark:text-gray-400">By: ${moderatorName} on ${suggestionDate}</span> </div> <div class="flex justify-end items-center gap-2 mt-2 sm:mt-0 suggestion-actions flex-shrink-0"> <span class="text-sm text-green-600 dark:text-green-400 hidden success-message">Approved!</span> <span class="text-sm text-red-600 dark:text-red-400 hidden reject-message">Rejected!</span> <span class="text-sm text-red-600 dark:text-red-400 hidden error-message"></span> <button class="view-suggestion btn btn-gray text-xs py-1 px-2" data-suggestion-id="${suggestion.id}">Details</button> <button class="reject-suggestion btn btn-red text-xs py-1 px-2" data-suggestion-id="${suggestion.id}">Reject</button> <button class="approve-suggestion btn btn-green text-xs py-1 px-2" data-suggestion-id="${suggestion.id}">Approve</button> </div> </div> </div>`;
       })
       .join("");
+    // Listeners handled by delegation
   },
 
   async showSuggestionDetails(suggestionId) {
+    // Admin views details in modal
     if (!this.elements.suggestionModal || !this.elements.modalBody) return;
     console.log(`[Admin] Showing details for suggestion ${suggestionId}`);
     this.elements.modalBody.innerHTML =
@@ -728,33 +886,32 @@ const AdminUI = {
     this.elements.suggestionModal.classList.add("flex");
     try {
       const suggestion = await ApiService.getSuggestionDetails(suggestionId);
-      if (!suggestion || !suggestion.proposedData) {
-        throw new Error("Suggestion data or proposed changes missing.");
-      }
+      if (!suggestion || !suggestion.proposedData)
+        throw new Error("Suggestion data missing.");
       const proposed = suggestion.proposedData;
       const isNew = !suggestion.articleId;
       const articleTitle = isNew
-        ? suggestion.proposedData?.title_en || "(New Article Proposal)"
+        ? proposed.title_en || "(New Article)"
         : suggestion.article?.title_en || `Article ID: ${suggestion.articleId}`;
       const moderatorName =
         suggestion.moderator?.username || `User ID: ${suggestion.moderatorId}`;
-      if (this.elements.modalTitle) {
+      if (this.elements.modalTitle)
         this.elements.modalTitle.textContent = `Suggestion for: ${articleTitle} ${isNew ? "(New)" : ""}`;
-      }
-      this.elements.modalBody.innerHTML = ` <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">Submitted by: ${moderatorName}</p> <div class="space-y-4"> <h4 class="font-bold text-lg border-b dark:border-gray-600 pb-1 mb-2">Proposed Changes:</h4> ${this.renderProposedField("Title (EN)", proposed.title_en)} ${this.renderProposedField("Content (EN)", proposed.content_en, true)} ${this.renderProposedField("Excerpt (EN)", proposed.excerpt_en)} <hr class="dark:border-gray-600 my-3"> ${this.renderProposedField("Title (RU)", proposed.title_rus)} ${this.renderProposedField("Content (RU)", proposed.content_rus, true)} ${this.renderProposedField("Excerpt (RU)", proposed.excerpt_rus)} <hr class="dark:border-gray-600 my-3"> ${this.renderProposedField("Title (MN)", proposed.title_mng)} ${this.renderProposedField("Content (MN)", proposed.content_mng, true)} ${this.renderProposedField("Excerpt (MN)", proposed.excerpt_mng)} <hr class="dark:border-gray-600 my-3"> ${this.renderProposedField("Category", proposed.category)} ${this.renderProposedField("Author", proposed.author)} ${this.renderProposedField("Image URL", proposed.imageUrl)} </div>`;
+      this.elements.modalBody.innerHTML = `<p class="text-sm text-gray-600 dark:text-gray-400 mb-3">Submitted by: ${moderatorName}</p> <div class="space-y-4"> <h4 class="font-bold text-lg border-b dark:border-gray-600 pb-1 mb-2">Proposed Changes:</h4> ${this.renderProposedField("Title (EN)", proposed.title_en)} ${this.renderProposedField("Content (EN)", proposed.content_en, true)} ${this.renderProposedField("Excerpt (EN)", proposed.excerpt_en)} <hr class="dark:border-gray-600 my-3"> ${this.renderProposedField("Title (RU)", proposed.title_rus)} ${this.renderProposedField("Content (RU)", proposed.content_rus, true)} ${this.renderProposedField("Excerpt (RU)", proposed.excerpt_rus)} <hr class="dark:border-gray-600 my-3"> ${this.renderProposedField("Title (MN)", proposed.title_mng)} ${this.renderProposedField("Content (MN)", proposed.content_mng, true)} ${this.renderProposedField("Excerpt (MN)", proposed.excerpt_mng)} <hr class="dark:border-gray-600 my-3"> ${this.renderProposedField("Category", proposed.category)} ${this.renderProposedField("Author", proposed.author)} ${this.renderProposedField("Image URL", proposed.imageUrl)} </div>`;
     } catch (error) {
       console.error(
         `Error fetching suggestion details ${suggestionId}:`,
         error,
       );
-      this.elements.modalBody.innerHTML = `<p class="p-4 text-center text-red-500">Error loading details: ${error.message}</p>`;
+      this.elements.modalBody.innerHTML = `<p class="p-4 text-center text-red-500">Error: ${error.message}</p>`;
     }
   },
 
   renderProposedField(label, value, isHtml = false) {
-    const displayValue =
-      value || '<span class="text-gray-400 italic"> (empty/no change)</span>';
-    return ` <div class="mb-2"> <strong class="block text-sm font-medium text-gray-700 dark:text-gray-300">${label}:</strong> ${isHtml ? `<div class="mt-1 text-sm text-gray-900 dark:text-gray-100 prose prose-sm dark:prose-invert max-w-none">${displayValue}</div>` : `<span class="mt-1 text-sm text-gray-900 dark:text-gray-100">${displayValue}</span>`} </div>`;
+    const displayValue = value
+      ? value
+      : '<span class="text-gray-400 italic">(no change or empty)</span>';
+    return `<div class="mb-2"> <strong class="block text-sm font-medium text-gray-700 dark:text-gray-300">${label}:</strong> ${isHtml ? `<div class="mt-1 text-sm text-gray-900 dark:text-gray-100 prose prose-sm dark:prose-invert max-w-none border dark:border-gray-600 p-2 rounded">${displayValue}</div>` : `<span class="mt-1 text-sm text-gray-900 dark:text-gray-100">${displayValue}</span>`} </div>`;
   },
 
   closeSuggestionModal() {
@@ -766,21 +923,134 @@ const AdminUI = {
       this.elements.modalTitle.textContent = "Suggestion Details";
   },
 
+  // +++ Moderator: Own Suggestions View +++
+  async loadMySuggestions() {
+    const container = this.elements.moderatorSuggestionsSection;
+    if (!container) {
+      console.warn("[Moderator] Suggestions section element not found.");
+      return;
+    }
+    container.innerHTML =
+      '<p class="text-center p-4">Loading your suggestions...</p>';
+    try {
+      const suggestions = await ApiService.getMySuggestions();
+      console.log("[Moderator] Received my suggestions:", suggestions);
+      this.renderMySuggestions(suggestions);
+    } catch (error) {
+      console.error("[Moderator] Error loading own suggestions:", error);
+      container.innerHTML = `<p class="text-red-500 text-center p-4">Failed to load suggestions: ${error.message}</p>`;
+    }
+  },
+
+  renderMySuggestions(suggestions) {
+    const container = this.elements.moderatorSuggestionsSection;
+    if (!container) return;
+
+    if (!Array.isArray(suggestions)) {
+      console.error("[Moderator] Invalid suggestion data received.");
+      container.innerHTML =
+        '<p class="text-red-500 text-center p-4">Error: Invalid data.</p>';
+      return;
+    }
+
+    if (suggestions.length === 0) {
+      container.innerHTML =
+        '<p class="text-center p-4 text-gray-500 dark:text-gray-400">You have not submitted any suggestions yet.</p>';
+      return;
+    }
+
+    const formatBasicDate = (dateString) => {
+      if (!dateString) return "N/A";
+      try {
+        return new Date(dateString).toLocaleDateString(undefined, {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        });
+      } catch (e) {
+        return "Invalid Date";
+      }
+    };
+
+    const getStatusClass = (status) => {
+      switch (status) {
+        case "approved":
+          return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
+        case "rejected":
+          return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300";
+        case "pending":
+        default:
+          return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300";
+      }
+    };
+
+    const escapeHTML = (str) =>
+      str ? str.replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">") : "";
+
+    container.innerHTML = `
+          <h2 class="text-xl font-semibold mb-4 border-b pb-2 dark:border-gray-600 dark:text-white">My Submitted Suggestions</h2>
+          <div class="space-y-4">
+              ${suggestions
+                .map((suggestion) => {
+                  const isNew = !suggestion.articleId;
+                  const articleTitle = escapeHTML(
+                    isNew
+                      ? suggestion.proposedTitle || "(New Article Proposal)"
+                      : suggestion.article?.title_en ||
+                          `(Edit for Article ID: ${suggestion.articleId})`,
+                  );
+                  const submissionDate = formatBasicDate(suggestion.createdAt);
+                  const updatedDate = formatBasicDate(
+                    suggestion.updatedAt || suggestion.createdAt,
+                  );
+                  return `
+                      <div class="p-4 border dark:border-gray-600 rounded bg-white dark:bg-gray-800 shadow-sm">
+                          <div class="flex flex-wrap justify-between items-start gap-2 mb-2">
+                              <div>
+                                  <span class="block font-semibold dark:text-white text-lg">
+                                      ${articleTitle} ${isNew ? '<span class="text-xs font-normal text-blue-500 dark:text-blue-400">(New)</span>' : ""}
+                                  </span>
+                                  <span class="block text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                      Submitted: ${submissionDate} | Last Update: ${updatedDate}
+                                  </span>
+                              </div>
+                              <span class="text-xs font-medium px-2.5 py-0.5 rounded ${getStatusClass(suggestion.status)} capitalize self-center flex-shrink-0">
+                                  ${escapeHTML(suggestion.status)}
+                              </span>
+                          </div>
+                          ${
+                            suggestion.status === "rejected" &&
+                            suggestion.adminComments
+                              ? `
+                              <div class="mt-2 p-3 bg-red-50 dark:bg-red-900/50 border-l-4 border-red-400 dark:border-red-600 rounded">
+                                  <p class="text-sm font-semibold text-red-700 dark:text-red-300">Admin Feedback:</p>
+                                  <p class="text-sm text-red-600 dark:text-red-200 italic">${escapeHTML(suggestion.adminComments)}</p>
+                              </div>
+                          `
+                              : ""
+                          }
+                      </div>`;
+                })
+                .join("")}
+          </div>`;
+  },
+  // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
   async loadArticleForEditing(articleId) {
     if (!this.elements.articleFormContainer || !this.elements.articleForm)
       return;
     this.displayMessage(
       this.elements.articleFormMessage,
       "Loading article data...",
-      !1,
+      false,
     );
-    this.elements.articleSubmit.disabled = !0;
+    this.elements.articleSubmit.disabled = true;
     try {
       const article = await ApiService.getArticle(articleId);
-      if (!article) throw new Error("Article not found by API");
+      if (!article) throw new Error("Article not found");
       this.elements.articleId.value = article.id;
-      this.elements.articleCategory.value = article.category;
-      this.elements.articleAuthor.value = article.author;
+      this.elements.articleCategory.value = article.category || "";
+      this.elements.articleAuthor.value = article.author || "";
       this.elements.articleImage.value = article.imageUrl || "";
       ["en", "rus", "mng"].forEach((lang) => {
         const titleInput = this.elements[`articleTitle_${lang}`];
@@ -793,174 +1063,123 @@ const AdminUI = {
         if (quillInstance) quillInstance.root.innerHTML = contentToLoad;
         if (hiddenContentInput) hiddenContentInput.value = contentToLoad;
       });
-      this.elements.articleSubmit.textContent =
-        this.currentUserRole === "admin"
-          ? "Update Article"
-          : "Submit Suggestion";
-      this.elements.formHeading &&
-        (this.elements.formHeading.textContent =
-          this.currentUserRole === "admin"
-            ? "Edit Article"
-            : "Suggest Edits For Article");
-      this.displayMessage(this.elements.articleFormMessage, "", !1);
+      this.renderUIForRole(); // Update form button/heading text
+      this.displayMessage(this.elements.articleFormMessage, "", false);
       this.elements.articleFormContainer.classList.remove("hidden");
       this.elements.articleForm.scrollIntoView({
         behavior: "smooth",
         block: "start",
       });
     } catch (err) {
-      console.error("Error loading article for editing:", err);
+      console.error("Error loading article:", err);
       this.displayMessage(
         this.elements.articleFormMessage,
-        `Error loading article: ${err.message}`,
-        !0,
+        `Error: ${err.message}`,
+        true,
       );
     } finally {
-      this.elements.articleSubmit.disabled = !1;
+      this.elements.articleSubmit.disabled = false;
     }
   },
+
   resetForm() {
     if (!this.elements.articleForm) return;
     this.elements.articleForm.reset();
-    ["en", "rus", "mng"].forEach((e) => {
-      const t = this.quillInstances[e],
-        n = this.elements[`articleContent_${e}`];
-      t && (t.root.innerHTML = "");
-      n && (n.value = "");
+    ["en", "rus", "mng"].forEach((lang) => {
+      const quill = this.quillInstances[lang];
+      const input = this.elements[`articleContent_${lang}`];
+      if (quill) quill.setText("");
+      if (input) input.value = "";
     });
     this.elements.articleId.value = "";
-    this.elements.articleSubmit.textContent = "Create Article";
-    if (this.elements.formHeading)
-      this.elements.formHeading.textContent = "Create Article";
-    if (this.elements.articleFormMessage) {
-      this.elements.articleFormMessage.textContent = "";
-      this.elements.articleFormMessage.className = "mt-4 text-center text-sm";
-    }
-  },
-  displayMessage(e, t, n = !1) {
-    if (!e) return void console.warn("Message element missing.");
-    e.textContent = t;
-    e.className = `mt-4 text-center text-sm ${n ? "text-red-500 dark:text-red-400" : "text-green-600 dark:text-green-400"}`;
+    this.renderUIForRole(); // Reset button/heading text
+    this.displayMessage(this.elements.articleFormMessage, "", false);
   },
 
-  // --- Event Handlers ---
+  displayMessage(element, message, isError = false) {
+    if (!element) return;
+    element.textContent = message;
+    element.className = `mt-4 text-center text-sm ${isError ? "text-red-500 dark:text-red-400" : "text-green-600 dark:text-green-400"}`;
+    element.classList.toggle("hidden", !message);
+  },
+
   async handleLogin(event) {
-    /* ... keep implementation ... */ console.log(
-      "[Login Attempt] Form submitted.",
-    );
-    if (!event) {
-      console.error("[Login Attempt] Event missing!");
-      return;
-    }
     event.preventDefault();
-    event.stopPropagation();
-    console.log("[Login Attempt] Default prevented.");
-    if (!this.elements.loginForm) return;
-    const usernameInput = this.elements.loginForm.querySelector("#username");
-    const passwordInput = this.elements.loginForm.querySelector("#password");
-    const username = usernameInput?.value.trim();
-    const password = passwordInput?.value;
-    if (!username || !password) {
-      this.displayMessage(
-        this.elements.loginMessage,
+    const form = this.elements.loginForm;
+    const username = form.querySelector("#username")?.value.trim();
+    const password = form.querySelector("#password")?.value;
+    const messageEl = this.elements.loginMessage;
+    const submitBtn = form.querySelector('button[type="submit"]');
+
+    if (!username || !password)
+      return this.displayMessage(
+        messageEl,
         "Username and password required.",
         true,
       );
-      return;
-    }
-    this.displayMessage(this.elements.loginMessage, "Logging in...", false);
-    const submitButton = this.elements.loginForm.querySelector(
-      'button[type="submit"]',
-    );
-    if (submitButton) submitButton.disabled = true;
+    this.displayMessage(messageEl, "Logging in...", false);
+    if (submitBtn) submitBtn.disabled = true;
+
     try {
-      console.log("[Login Attempt] Calling ApiService.login...");
       const data = await ApiService.login(username, password);
-      if (data && data.accessToken) {
-        console.log("[Login Attempt] ApiService.login SUCCESS:", data);
+      if (data && data.accessToken && data.refreshToken) {
         AuthService.setTokens(data.accessToken, data.refreshToken);
-        this.displayMessage(
-          this.elements.loginMessage,
-          "Login successful!",
-          false,
-        );
+        this.displayMessage(messageEl, "Login successful!", false);
+        if (form.querySelector("#password"))
+          form.querySelector("#password").value = "";
         await this.updateUI();
-      } else {
-        console.error("[Login Attempt] Unexpected success response:", data);
-        throw new Error("Unexpected login response.");
-      }
+      } else throw new Error("Unexpected login response.");
     } catch (err) {
-      console.error("[Login Attempt] ApiService.login FAILED:", err);
-      let errorMessage = err.message || "An unknown error occurred";
-      let needsChange = false;
-      let changeToken = null;
+      console.error("Login Failed:", err);
+      let msg = err.message || "Unknown login error";
+      let needsChange = false,
+        changeToken = null;
       if (
-        err.data &&
-        err.data.needsPasswordChange === true &&
-        err.data.changePasswordToken
+        err.data?.needsPasswordChange === true &&
+        err.data?.changePasswordToken
       ) {
-        console.log(
-          "[Login Attempt] Password change required (from err.data).",
-        );
-        errorMessage = err.data.message || errorMessage;
+        msg = err.data.message || msg;
         needsChange = true;
         changeToken = err.data.changePasswordToken;
-      } else if (
-        err.statusCode === 400 &&
-        err.message.includes("Password change required")
-      ) {
-        console.log(
-          "[Login Attempt] Password change required (from status/message). Needs token check.",
-        );
-        if (err.data && err.data.changePasswordToken) {
-          needsChange = true;
-          changeToken = err.data.changePasswordToken;
-        } else {
-          errorMessage =
-            "Password change required, but token missing. Contact admin.";
-        }
       }
       if (needsChange && changeToken) {
         sessionStorage.setItem("changePasswordToken", changeToken);
         sessionStorage.setItem("changeUsername", username);
-        this.displayMessage(this.elements.loginMessage, errorMessage, true);
-        alert(errorMessage + " Redirecting...");
-        console.log("[Login Attempt] Scheduling redirect...");
-        setTimeout(() => {
-          console.log("[Login Attempt] Executing redirect.");
-          window.location.href = "/change-initial-password.html";
-        }, 50);
-      } else {
-        this.displayMessage(
-          this.elements.loginMessage,
-          `Login failed: ${errorMessage}`,
-          true,
+        this.displayMessage(messageEl, msg, true);
+        alert(msg + " Redirecting...");
+        setTimeout(
+          () => (window.location.href = "/change-initial-password.html"),
+          100,
         );
+      } else {
+        this.displayMessage(messageEl, `Login failed: ${msg}`, true);
+        if (submitBtn) submitBtn.disabled = false;
       }
-    } finally {
-      console.log("[Login Attempt] Finally block.");
-      if (submitButton) submitButton.disabled = false;
     }
+    // No finally block needed here as button re-enabling is handled in error/success paths
   },
-  async handleArticleSubmit(e) {
-    /* ... keep implementation ... */ e.preventDefault();
-    if (!this.elements.articleForm) return;
-    const submitAction = this.elements.articleSubmit?.textContent || "";
-    const isSuggestion = submitAction.includes("Suggestion");
-    if (isSuggestion && this.currentUserRole !== "moderator") {
-      alert("Only mods can suggest.");
-      return;
-    }
-    if (!isSuggestion && this.currentUserRole !== "admin") {
-      alert("Only admins can create/update.");
-      return;
+
+  async handleArticleSubmit(event) {
+    event.preventDefault();
+    const form = this.elements.articleForm;
+    if (!form) return;
+    const submitActionText = this.elements.articleSubmit?.textContent || "";
+    const isSuggestion = submitActionText.includes("Suggestion");
+    const articleId = this.elements.articleId.value;
+    const messageEl = this.elements.articleFormMessage;
+    const submitBtn = this.elements.articleSubmit;
+
+    if (
+      (isSuggestion && this.currentUserRole !== "moderator") ||
+      (!isSuggestion && this.currentUserRole !== "admin")
+    ) {
+      return alert("Permission denied for this action.");
     }
     ["en", "rus", "mng"].forEach((lang) => {
       const quill = this.quillInstances[lang];
       const input = this.elements[`articleContent_${lang}`];
       if (quill && input) input.value = quill.root.innerHTML;
     });
-    const articleId = this.elements.articleId.value;
     const articleData = {
       title_en: this.elements.articleTitle_en.value.trim(),
       content_en: this.elements.articleContent_en.value,
@@ -978,250 +1197,220 @@ const AdminUI = {
     if (
       !articleData.title_en ||
       !articleData.content_en ||
+      articleData.content_en === "<p><br></p>" ||
       !articleData.category ||
       !articleData.author
     ) {
-      this.displayMessage(
-        this.elements.articleFormMessage,
-        "Eng Title, Content, Cat, Author required.",
+      return this.displayMessage(
+        messageEl,
+        "Required fields: Eng Title, Eng Content, Category, Author.",
         true,
       );
-      return;
     }
-    let action = articleId
-      ? isSuggestion
-        ? "Suggesting Update for"
-        : "Updating"
-      : isSuggestion
-        ? "Suggesting New Article"
+    let actionVerb = isSuggestion
+      ? articleId
+        ? "Suggesting Edit"
+        : "Suggesting New"
+      : articleId
+        ? "Updating"
         : "Creating";
-    if (!articleId && isSuggestion) action = "Suggesting New Article";
-    console.log(
-      `${action} article ${articleId ? `(ID: ${articleId})` : ""}...`,
-    );
-    this.displayMessage(
-      this.elements.articleFormMessage,
-      `${action}...`,
-      false,
-    );
-    if (this.elements.articleSubmit)
-      this.elements.articleSubmit.disabled = true;
+    this.displayMessage(messageEl, `${actionVerb} article...`, false);
+    if (submitBtn) submitBtn.disabled = true;
+
     try {
       let resultMessage = "";
       if (isSuggestion) {
-        let result;
-        if (articleId) {
-          result = await ApiService.suggestArticleEdit(articleId, articleData);
-          resultMessage = result.message || "Edit suggestion submitted.";
-        } else {
-          result = await ApiService.suggestNewArticle(articleData);
-          resultMessage = result.message || "New article suggestion submitted.";
-        }
-        this.displayMessage(
-          this.elements.articleFormMessage,
-          resultMessage,
-          false,
-        );
+        const result = articleId
+          ? await ApiService.suggestArticleEdit(articleId, articleData)
+          : await ApiService.suggestNewArticle(articleData);
+        resultMessage = result.message || "Suggestion submitted.";
+        if (this.currentUserRole === "moderator")
+          setTimeout(() => this.loadMySuggestions(), 1000);
       } else {
-        let result;
-        if (articleId) {
-          result = await ApiService.updateArticle(articleId, articleData);
-          resultMessage = "Article updated!";
-        } else {
-          result = await ApiService.createArticle(articleData);
-          resultMessage = "Article created!";
-        }
-        console.log(`Article ${action} successful:`, result?.id);
-        this.displayMessage(
-          this.elements.articleFormMessage,
-          resultMessage,
-          false,
-        );
+        const result = articleId
+          ? await ApiService.updateArticle(articleId, articleData)
+          : await ApiService.createArticle(articleData);
+        resultMessage = articleId ? "Article updated!" : "Article created!";
         await this.loadArticles();
       }
+      this.displayMessage(messageEl, resultMessage, false);
       this.resetForm();
       this.elements.articleFormContainer?.classList.add("hidden");
       setTimeout(() => {
-        if (
-          this.elements.articleFormMessage?.textContent.includes("success") ||
-          this.elements.articleFormMessage?.textContent.includes("submitted")
-        ) {
-          this.displayMessage(this.elements.articleFormMessage, "", false);
-        }
+        if (messageEl?.textContent.includes(resultMessage))
+          this.displayMessage(messageEl, "", false);
       }, 5000);
     } catch (err) {
-      console.error(`Article ${action} Error:`, err);
+      console.error(`Article ${actionVerb} Error:`, err);
       let msg = `Error: ${err.message}`;
-      if (err.errors) {
-        msg = `Error: ${err.errors.map((e) => `${e.field || "Input"}: ${e.msg || e.message}`).join(", ")}`;
-      }
-      this.displayMessage(this.elements.articleFormMessage, msg, true);
+      if (err.data?.errors && Array.isArray(err.data.errors))
+        msg = `Error: ${err.data.errors.map((e) => `${e.param || e.field || "Input"}: ${e.msg || e.message}`).join(", ")}`;
+      this.displayMessage(messageEl, msg, true);
     } finally {
-      if (this.elements.articleSubmit)
-        this.elements.articleSubmit.disabled = false;
+      if (submitBtn) submitBtn.disabled = false;
     }
   },
+
   async handleDeleteArticle(articleId) {
-    /* ... keep implementation ... */ if (
-      !articleId ||
-      "admin" !== this.currentUserRole
-    )
-      return;
+    if (this.currentUserRole !== "admin" || !articleId) return;
     if (!confirm(`Delete article ID ${articleId}?`)) return;
-    console.log(`Deleting article ${articleId}...`);
+    const button = this.elements.articlesContainer?.querySelector(
+      `.delete-article[data-id="${articleId}"]`,
+    );
+    if (button) button.disabled = true;
     try {
       await ApiService.deleteArticle(articleId);
-      console.log(`Article ${articleId} deleted.`);
-      alert(`Article ${articleId} deleted.`);
-      this.loadArticles();
+      this.loadArticles(); // Refresh list
     } catch (err) {
-      console.error("Error deleting:", err);
-      alert(`Failed delete: ${err.message}`);
+      alert(`Delete failed: ${err.message}`);
+      if (button) button.disabled = false;
     }
   },
+
   handleNewArticleClick() {
-    /* ... keep implementation ... */ if (!this.elements.articleFormContainer)
-      return;
+    if (!this.elements.articleFormContainer) return;
     this.resetForm();
-    if (this.currentUserRole === "admin") {
-      if (this.elements.formHeading)
-        this.elements.formHeading.textContent = "Create New Article";
-      if (this.elements.articleSubmit)
-        this.elements.articleSubmit.textContent = "Create Article";
-    } else if (this.currentUserRole === "moderator") {
-      if (this.elements.formHeading)
-        this.elements.formHeading.textContent = "Suggest New Article";
-      if (this.elements.articleSubmit)
-        this.elements.articleSubmit.textContent = "Submit Suggestion";
-    }
+    this.renderUIForRole(); // Set correct heading/button
     this.elements.articleFormContainer.classList.remove("hidden");
     this.elements.articleForm?.scrollIntoView({
       behavior: "smooth",
       block: "start",
     });
   },
+
   handleCancelClick() {
-    /* ... keep implementation ... */ if (!this.elements.articleFormContainer)
-      return;
+    if (!this.elements.articleFormContainer) return;
     this.resetForm();
     this.elements.articleFormContainer.classList.add("hidden");
   },
+
   handleLogout() {
-    /* ... keep implementation ... */ console.log("Logout.");
     AuthService.clearTokens();
     this.updateUI();
   },
+
   handleSuggestEditClick(articleId) {
-    /* ... keep implementation ... */ if ("moderator" !== this.currentUserRole)
-      return;
-    console.log(`[Mod] Suggest edit ID: ${articleId}`);
+    if (this.currentUserRole !== "moderator" || !articleId) return;
     this.loadArticleForEditing(articleId);
-    setTimeout(() => {
-      if (this.elements.articleSubmit)
-        this.elements.articleSubmit.textContent = "Submit Suggestion";
-    }, 100);
   },
-  async handleCreateModeratorSubmit(e) {
-    /* ... keep implementation ... */ e.preventDefault();
-    if ("admin" !== this.currentUserRole || !this.elements.createModeratorForm)
+
+  async handleCreateModeratorSubmit(event) {
+    event.preventDefault();
+    if (this.currentUserRole !== "admin" || !this.elements.createModeratorForm)
       return;
-    const t = this.elements.createModeratorForm.querySelector("#mod-username"),
-      n = this.elements.createModeratorForm.querySelector("#mod-email"),
-      l = this.elements.createModeratorMessage,
-      o = t?.value.trim(),
-      s = n?.value.trim();
-    if (!o || !s)
-      return void this.displayMessage(l, "Username and Email required.", !0);
-    this.displayMessage(l, "Creating...", !1);
-    const i = this.elements.createModeratorForm.querySelector(
-      'button[type="submit"]',
-    );
-    i && (i.disabled = !0);
-    try {
-      const e = await ApiService.createUser({ username: o, email: s });
-      this.displayMessage(
-        l,
-        `Moderator ${o} created. Temp PW: ${e.temporaryPassword}`,
-        !1,
+    const form = this.elements.createModeratorForm;
+    const username = form.querySelector("#mod-username")?.value.trim();
+    const email = form.querySelector("#mod-email")?.value.trim();
+    const messageEl = this.elements.createModeratorMessage;
+    const submitBtn = form.querySelector('button[type="submit"]');
+
+    if (!username || !email)
+      return this.displayMessage(
+        messageEl,
+        "Username and Email required.",
+        true,
       );
-      this.elements.createModeratorForm.reset();
+    this.displayMessage(messageEl, "Creating...", false);
+    if (submitBtn) submitBtn.disabled = true;
+
+    try {
+      const response = await ApiService.createUser({ username, email });
+      this.displayMessage(
+        messageEl,
+        `Moderator '${username}' created. Temp PW: ${response.temporaryPassword}`,
+        false,
+      );
+      form.reset();
       this.loadModerators();
       setTimeout(() => {
-        l?.textContent.includes("created") && this.displayMessage(l, "", !1);
-      }, 1e4);
-    } catch (e) {
-      console.error("[Admin] Error creating moderator:", e);
-      let t = `Failed create: ${e.message}`;
-      e.errors &&
-        Array.isArray(e.errors) &&
-        (t = `Error: ${e.errors.map((e) => `${e.field || "Input"}: ${e.msg || e.message}`).join(", ")}`);
-      this.displayMessage(l, t, !0);
+        if (messageEl?.textContent.includes("created"))
+          this.displayMessage(messageEl, "", false);
+      }, 15000);
+    } catch (err) {
+      let msg = `Failed create: ${err.message}`;
+      if (err.data?.errors && Array.isArray(err.data.errors))
+        msg = `Error: ${err.data.errors.map((e) => `${e.param || e.field || "Input"}: ${e.msg || e.message}`).join(", ")}`;
+      this.displayMessage(messageEl, msg, true);
     } finally {
-      i && (i.disabled = !1);
+      if (submitBtn) submitBtn.disabled = false;
     }
   },
+
   async handleApproveSuggestion(suggestionId, buttonElement) {
-    /* ... keep implementation ... */ if (this.currentUserRole !== "admin")
-      return;
-    console.log(`[Admin] Approving suggestion ${suggestionId}...`);
-    const t = buttonElement.closest(".suggestion-actions"),
-      n = t?.querySelector(".error-message"),
-      l = t?.querySelector(".success-message");
-    n && ((n.textContent = ""), n.classList.add("hidden"));
-    l && l.classList.add("hidden");
-    buttonElement.disabled = !0;
-    t?.querySelector(".reject-suggestion")?.setAttribute("disabled", "true");
+    if (this.currentUserRole !== "admin") return;
+    const actionsContainer = buttonElement.closest(".suggestion-actions");
+    const errorEl = actionsContainer?.querySelector(".error-message");
+    const successEl = actionsContainer?.querySelector(".success-message");
+    const rejectBtn = actionsContainer?.querySelector(".reject-suggestion");
+    const viewBtn = actionsContainer?.querySelector(".view-suggestion");
+
+    if (errorEl) {
+      errorEl.textContent = "";
+      errorEl.classList.add("hidden");
+    }
+    if (successEl) successEl.classList.add("hidden");
+    buttonElement.disabled = true;
+    if (rejectBtn) rejectBtn.disabled = true;
+    if (viewBtn) viewBtn.disabled = true;
+
     try {
-      const e = await ApiService.approveSuggestion(suggestionId);
-      console.log(`[Admin] Suggestion ${suggestionId} approved:`, e);
-      l && l.classList.remove("hidden");
+      await ApiService.approveSuggestion(suggestionId);
+      if (successEl) successEl.classList.remove("hidden");
       buttonElement
         .closest(".suggestion-item")
         ?.classList.add("opacity-50", "bg-green-50", "dark:bg-green-900/30");
-      setTimeout(() => this.loadSuggestions(), 2e3);
-    } catch (e) {
-      console.error(`[Admin] Error approving suggestion ${suggestionId}:`, e);
-      if (n) {
-        n.textContent = `Error: ${e.message}`;
-        n.classList.remove("hidden");
-      } else alert(`Error approving: ${e.message}`);
-      buttonElement.disabled = !1;
-      t?.querySelector(".reject-suggestion")?.removeAttribute("disabled");
+      setTimeout(() => this.loadSuggestions(), 2000);
+      setTimeout(() => this.loadArticles(), 2100);
+    } catch (err) {
+      if (errorEl) {
+        errorEl.textContent = `Error: ${err.message}`;
+        errorEl.classList.remove("hidden");
+      } else alert(`Error: ${err.message}`);
+      buttonElement.disabled = false;
+      if (rejectBtn) rejectBtn.disabled = false;
+      if (viewBtn) viewBtn.disabled = false;
     }
   },
+
   async handleRejectSuggestion(suggestionId, buttonElement) {
-    /* ... keep implementation ... */ if (this.currentUserRole !== "admin")
-      return;
-    const t = prompt("Optional: Enter reason for rejection:");
-    console.log(`[Admin] Rejecting suggestion ${suggestionId}... Reason: ${t}`);
-    const n = buttonElement.closest(".suggestion-actions"),
-      l = n?.querySelector(".error-message"),
-      o = n?.querySelector(".reject-message");
-    l && ((l.textContent = ""), l.classList.add("hidden"));
-    o && o.classList.add("hidden");
-    buttonElement.disabled = !0;
-    n?.querySelector(".approve-suggestion")?.setAttribute("disabled", "true");
+    if (this.currentUserRole !== "admin") return;
+    const reason = prompt("Optional: Reason for rejection:");
+    const actionsContainer = buttonElement.closest(".suggestion-actions");
+    const errorEl = actionsContainer?.querySelector(".error-message");
+    const rejectMsgEl = actionsContainer?.querySelector(".reject-message");
+    const approveBtn = actionsContainer?.querySelector(".approve-suggestion");
+    const viewBtn = actionsContainer?.querySelector(".view-suggestion");
+
+    if (errorEl) {
+      errorEl.textContent = "";
+      errorEl.classList.add("hidden");
+    }
+    if (rejectMsgEl) rejectMsgEl.classList.add("hidden");
+    buttonElement.disabled = true;
+    if (approveBtn) approveBtn.disabled = true;
+    if (viewBtn) viewBtn.disabled = true;
+
     try {
-      const e = await ApiService.rejectSuggestion(suggestionId, t);
-      console.log(`[Admin] Suggestion ${suggestionId} rejected:`, e);
-      o && o.classList.remove("hidden");
+      await ApiService.rejectSuggestion(suggestionId, reason);
+      if (rejectMsgEl) rejectMsgEl.classList.remove("hidden");
       buttonElement
         .closest(".suggestion-item")
         ?.classList.add("opacity-50", "bg-red-50", "dark:bg-red-900/30");
-      setTimeout(() => this.loadSuggestions(), 2e3);
-    } catch (e) {
-      console.error(`[Admin] Error rejecting suggestion ${suggestionId}:`, e);
-      if (l) {
-        l.textContent = `Error: ${e.message}`;
-        l.classList.remove("hidden");
-      } else alert(`Error rejecting: ${e.message}`);
-      buttonElement.disabled = !1;
-      n?.querySelector(".approve-suggestion")?.removeAttribute("disabled");
+      setTimeout(() => this.loadSuggestions(), 2000);
+    } catch (err) {
+      if (errorEl) {
+        errorEl.textContent = `Error: ${err.message}`;
+        errorEl.classList.remove("hidden");
+      } else alert(`Error: ${err.message}`);
+      buttonElement.disabled = false;
+      if (approveBtn) approveBtn.disabled = false;
+      if (viewBtn) viewBtn.disabled = false;
     }
   },
-};
+}; // End of AdminUI object
 
 // --- Initialization ---
 document.addEventListener("DOMContentLoaded", () => {
+  console.log("Admin page DOM fully loaded and parsed");
   AdminUI.initialize();
 });
