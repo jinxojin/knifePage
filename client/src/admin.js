@@ -5,6 +5,7 @@ import "./style.css";
 const ApiService = {
   baseUrl: "https://localhost:3000/api",
   csrfToken: null,
+
   async fetchCsrfToken() {
     try {
       const response = await fetch(`${this.baseUrl}/csrf-token`, {
@@ -26,6 +27,7 @@ const ApiService = {
       throw error;
     }
   },
+
   async makeRequest(url, method = "GET", data = null, isRetry = false) {
     if (
       !this.csrfToken &&
@@ -57,6 +59,7 @@ const ApiService = {
     if (data) {
       options.body = JSON.stringify(data);
     }
+
     try {
       const response = await fetch(url, options);
       if (response.status === 403 && !isRetry) {
@@ -108,7 +111,7 @@ const ApiService = {
         const text = await response.text();
         console.log(`Non-JSON response for ${method} ${url}`, text);
         return text;
-      }
+      } // Return text for non-JSON OK response
     } catch (networkError) {
       console.error(`API error during ${method} ${url}:`, networkError);
       const errorToThrow = new Error(networkError.message || `Network error.`);
@@ -124,6 +127,7 @@ const ApiService = {
       throw errorToThrow;
     }
   },
+
   async login(username, password) {
     try {
       return await this.makeRequest(`${this.baseUrl}/admin/login`, "POST", {
@@ -131,7 +135,7 @@ const ApiService = {
         password,
       });
     } catch (error) {
-      /* console.error("Login Error in ApiService:", error); */ throw error;
+      throw error;
     }
   },
   async refreshToken() {
@@ -197,7 +201,7 @@ const ApiService = {
   },
   async getArticle(id) {
     return this.makeAuthenticatedRequest(`${this.baseUrl}/articles/${id}`);
-  }, // Backend returns all fields for :id
+  },
   async createArticle(articleData) {
     return this.makeAuthenticatedRequest(
       `${this.baseUrl}/admin/articles`,
@@ -239,6 +243,13 @@ const ApiService = {
       articleData,
     );
   },
+  async suggestNewArticle(articleData) {
+    return this.makeAuthenticatedRequest(
+      `${this.baseUrl}/admin/articles/suggest-new`,
+      "POST",
+      articleData,
+    );
+  },
   async getSuggestions(status = "pending") {
     const q = `?status=${encodeURIComponent(status)}`;
     return this.makeAuthenticatedRequest(
@@ -271,7 +282,7 @@ const ApiService = {
 
 // --- Auth Service ---
 const AuthService = {
-  /* ... keep implementation ... */ isLoggedIn() {
+  isLoggedIn() {
     return localStorage.getItem("accessToken") !== null;
   },
   setTokens(accessToken, refreshToken) {
@@ -289,8 +300,7 @@ const AuthService = {
 // --- UI Controller ---
 const AdminUI = {
   elements: {
-    /* ... keep all element definitions including modal ones ... */ loginForm:
-      document.getElementById("login-form"),
+    loginForm: document.getElementById("login-form"),
     articleForm: document.getElementById("article-form"),
     articlesList: document.getElementById("articles-list"),
     logoutButton: document.getElementById("logout-button"),
@@ -346,44 +356,50 @@ const AdminUI = {
     this.setupEventListeners();
     this.updateUI();
   },
+
   initQuillEditor() {
-    /* ... keep implementation ... */ const t = [
-      { header: [1, 2, 3, !1] },
+    const toolbarOptions = [
+      [{ header: [1, 2, 3, false] }],
       ["bold", "italic", "underline", "strike"],
       [{ list: "ordered" }, { list: "bullet" }],
       [{ color: [] }, { background: [] }],
-      "link",
-      "image",
-      "clean",
+      ["link", "image"],
+      ["clean"],
     ];
-    const e = (n) => {
-      const l = this.elements[`editorContainer_${n}`],
-        o = this.elements[`articleContent_${n}`];
-      if (l && o) {
+    const initializeInstance = (lang) => {
+      const container = this.elements[`editorContainer_${lang}`];
+      const hiddenInput = this.elements[`articleContent_${lang}`];
+      if (container && hiddenInput) {
         try {
-          this.quillInstances[n] = new Quill(l, {
+          this.quillInstances[lang] = new Quill(container, {
             theme: "snow",
-            modules: { toolbar: t },
-            placeholder: `Write ${n.toUpperCase()} content...`,
+            modules: { toolbar: toolbarOptions },
+            placeholder: `Write ${lang.toUpperCase()} content here...`,
           });
-          this.quillInstances[n].on("text-change", () => {
-            if (this.quillInstances[n]) {
-              o.value = this.quillInstances[n].root.innerHTML;
+          // Sync Quill content to hidden input on change
+          this.quillInstances[lang].on("text-change", () => {
+            // Check if instance still exists (might be destroyed on form reset/hide?)
+            if (this.quillInstances[lang]) {
+              hiddenInput.value = this.quillInstances[lang].root.innerHTML;
             }
           });
-        } catch (t) {
-          console.error(`Quill init fail ${n}:`, t);
+        } catch (error) {
+          console.error(`Failed to initialize Quill for ${lang}:`, error);
           this.displayMessage(
             this.elements.articleFormMessage,
-            `Fail load ${n.toUpperCase()} editor.`,
-            !0,
+            `Failed to load ${lang.toUpperCase()} text editor.`,
+            true,
           );
         }
-      } else console.warn(`Quill container missing: ${n}`);
+      } else {
+        console.warn(
+          `Quill container/input elements not found for language: ${lang}`,
+        );
+      }
     };
-    e("en");
-    e("rus");
-    e("mng");
+    initializeInstance("en");
+    initializeInstance("rus");
+    initializeInstance("mng");
   },
 
   setupEventListeners() {
@@ -411,14 +427,10 @@ const AdminUI = {
       "submit",
       this.handleCreateModeratorSubmit.bind(this),
     );
-
-    // Use bound method for Manage Mods button click
     this.elements.manageModeratorsButton?.addEventListener(
       "click",
       this.handleManageModeratorsClick.bind(this),
-    );
-
-    // Suggestion Buttons & Modal Event Delegation
+    ); // Use bound method
     this.elements.suggestionsListContainer?.addEventListener(
       "click",
       (event) => {
@@ -434,7 +446,7 @@ const AdminUI = {
           this.showSuggestionDetails(suggestionId);
         }
       },
-    ); // Added view
+    );
     this.elements.modalCloseButton?.addEventListener("click", () =>
       this.closeSuggestionModal(),
     );
@@ -442,11 +454,10 @@ const AdminUI = {
       if (event.target === this.elements.suggestionModal) {
         this.closeSuggestionModal();
       }
-    }); // Close on backdrop click
+    });
   },
 
   handleManageModeratorsClick() {
-    // Bound method
     console.log("[AdminUI] Manage Moderators button clicked.");
     this.elements.moderatorsSection?.classList.toggle("hidden");
     if (!this.elements.moderatorsSection?.classList.contains("hidden")) {
@@ -459,17 +470,17 @@ const AdminUI = {
   },
 
   async updateUI() {
-    /* ... keep implementation ... */ const e = AuthService.isLoggedIn();
+    const loggedIn = AuthService.isLoggedIn();
     this.currentUserRole = null;
-    if (e) {
+    if (loggedIn) {
       this.elements.loginPanel?.classList.add("hidden");
       this.elements.adminPanel?.classList.remove("hidden");
       try {
-        const e = await ApiService.getMe();
-        if (e && e.role)
-          (this.currentUserRole = e.role),
-            console.log("[Admin UI] Role:", this.currentUserRole);
-        else {
+        const userInfo = await ApiService.getMe();
+        if (userInfo && userInfo.role) {
+          this.currentUserRole = userInfo.role;
+          console.log("[Admin UI] Role:", this.currentUserRole);
+        } else {
           console.error("[Admin UI] No role.");
           AuthService.clearTokens();
           window.location.reload();
@@ -477,41 +488,50 @@ const AdminUI = {
         }
         this.renderUIForRole();
         this.loadArticles();
-      } catch (e) {
-        console.error("[Admin UI] Error getting user info:", e);
+      } catch (error) {
+        console.error("[Admin UI] Error getting user info:", error);
         AuthService.clearTokens();
         this.elements.loginPanel?.classList.remove("hidden");
         this.elements.adminPanel?.classList.add("hidden");
         this.clearAdminContent();
       }
-    } else
-      this.elements.loginPanel?.classList.remove("hidden"),
-        this.elements.adminPanel?.classList.add("hidden"),
-        this.clearAdminContent();
+    } else {
+      this.elements.loginPanel?.classList.remove("hidden");
+      this.elements.adminPanel?.classList.add("hidden");
+      this.clearAdminContent();
+    }
   },
+
   renderUIForRole() {
-    /* ... keep implementation ... */ this.elements.manageModeratorsButtonWrapper?.classList.add(
-      "hidden",
-    );
+    this.elements.manageModeratorsButtonWrapper?.classList.add("hidden");
     this.elements.moderatorsSection?.classList.add("hidden");
     this.elements.newArticleButton?.classList.add("hidden");
-    if ("admin" === this.currentUserRole) {
+    if (this.currentUserRole === "admin") {
       console.log("[Admin UI] Render ADMIN");
       this.elements.manageModeratorsButtonWrapper?.classList.remove("hidden");
       this.elements.newArticleButton?.classList.remove("hidden");
-    } else
-      "moderator" === this.currentUserRole
-        ? console.log("[Admin UI] Render MODERATOR")
-        : console.log("[Admin UI] Render UNKNOWN");
+      if (this.elements.newArticleButton)
+        this.elements.newArticleButton.textContent = "Create New Article";
+    } else if (this.currentUserRole === "moderator") {
+      console.log("[Admin UI] Render MODERATOR");
+      if (this.elements.newArticleButton) {
+        this.elements.newArticleButton.textContent = "Suggest New Article";
+        this.elements.newArticleButton.classList.remove("hidden");
+      }
+    } else {
+      console.log("[Admin UI] Render UNKNOWN");
+    }
+    // Only reload articles if container exists and isn't showing 'loading'
     if (
       this.elements.articlesContainer?.innerHTML &&
-      !this.elements.articlesContainer.innerHTML.includes("Loading")
+      !this.elements.articlesContainer.innerHTML.includes("Loading articles...")
     ) {
       this.loadArticles();
     }
   },
+
   clearAdminContent() {
-    /* ... keep implementation ... */ if (this.elements.articlesContainer)
+    if (this.elements.articlesContainer)
       this.elements.articlesContainer.innerHTML = "";
     if (this.elements.articleFormContainer)
       this.elements.articleFormContainer.classList.add("hidden");
@@ -522,115 +542,121 @@ const AdminUI = {
     if (this.elements.suggestionsListContainer)
       this.elements.suggestionsListContainer.innerHTML = "";
   },
+
   async loadArticles() {
-    /* ... keep implementation ... */ if (!this.elements.articlesContainer)
-      return;
+    if (!this.elements.articlesContainer) return;
     this.elements.articlesContainer.innerHTML =
-      '<p class="tc p-4 col-span-full">Loading articles...</p>';
+      '<p class="text-center p-4 col-span-full">Loading articles...</p>';
     try {
-      const e = await ApiService.getArticles();
-      if (!Array.isArray(e)) throw new Error("Unexpected articles format.");
-      console.log("[Admin] Received articles:", e);
-      this.renderArticles(e);
-    } catch (e) {
-      console.error("[Admin] Error loading articles:", e);
-      this.elements.articlesContainer.innerHTML = `<p class="text-red-500 tc p-4 col-span-full">Failed: ${e.message}</p>`;
+      const articlesArray = await ApiService.getArticles();
+      if (!Array.isArray(articlesArray)) {
+        throw new Error(
+          "Received unexpected data format fetching articles list.",
+        );
+      }
+      console.log("[Admin] Received articles:", articlesArray);
+      this.renderArticles(articlesArray);
+    } catch (err) {
+      console.error("[Admin] Error loading articles:", err);
+      this.elements.articlesContainer.innerHTML = `<p class="text-red-500 text-center p-4 col-span-full">Failed to load articles: ${err.message}</p>`;
     }
   },
-  renderArticles(e) {
-    /* ... keep implementation with role checks for buttons ... */ if (
-      !this.elements.articlesContainer
-    )
-      return;
-    if (!Array.isArray(e)) {
-      console.error("[Admin] renderArticles non-array:", e);
+
+  renderArticles(articles) {
+    if (!this.elements.articlesContainer) return;
+    if (!Array.isArray(articles)) {
+      console.error("[Admin] renderArticles received non-array:", articles);
       this.elements.articlesContainer.innerHTML =
-        "<p class='text-red-500 tc p-4 col-span-full'>Error: Invalid data.</p>";
+        "<p class='text-red-500 text-center p-4 col-span-full'>Error: Invalid article data.</p>";
       return;
     }
-    if (0 === e.length) {
+    if (articles.length === 0) {
       this.elements.articlesContainer.innerHTML =
-        "<p class='tc p-4 col-span-full'>No articles.</p>";
+        "<p class='text-center p-4 col-span-full'>No articles found.</p>";
       return;
     }
-    this.elements.articlesContainer.innerHTML = e
-      .map((e) => {
-        if (!e || "object" != typeof e || !e.id)
-          return console.warn("[Admin] Invalid article:", e), "";
-        const t = e.title || e.title_en || "Untitled",
-          n = e.category || "?",
-          l = e.author || "?",
-          o = e.imageUrl,
-          s = e.status || "?";
-        let i = "";
-        return (
-          "admin" === this.currentUserRole
-            ? (i = ` <button class="edit-article btn btn-blue text-sm py-1 px-3" data-id="${e.id}">Edit</button> <button class="delete-article btn btn-red text-sm py-1 px-3" data-id="${e.id}">Delete</button> `)
-            : "moderator" === this.currentUserRole &&
-              (i = ` <button class="suggest-edit-article btn btn-blue text-sm py-1 px-3" data-id="${e.id}">Suggest Edit</button> `),
-          ` <div class="article-card border dark:border-gray-600 rounded-lg shadow-md overflow-hidden bg-white dark:bg-gray-700 flex flex-col"> ${o ? `<img src="${o}" alt="${t}" class="w-full h-48 object-cover">` : '<div class="w-full h-48 bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-400 dark:text-gray-300">No Image</div>'} <div class="p-4 flex flex-col flex-grow"> <h3 class="text-lg font-bold mb-1 dark:text-white flex-grow">${t}</h3> <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Cat: ${n}</p> <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">By: ${l}</p> <p class="text-sm font-medium ${"published" === s ? "text-green-600 dark:text-green-400" : "text-yellow-600 dark:text-yellow-400"} mb-2 capitalize">Status: ${s}</p> <div class="mt-auto pt-2 flex space-x-2"> ${i} </div> </div> </div> `
-        );
+    this.elements.articlesContainer.innerHTML = articles
+      .map((article) => {
+        if (!article || typeof article !== "object" || !article.id) {
+          console.warn("[Admin] Skipping invalid article object:", article);
+          return "";
+        }
+        const title = article.title || article.title_en || "Untitled";
+        const category = article.category || "?";
+        const author = article.author || "?";
+        const imageUrl = article.imageUrl;
+        const status = article.status || "?";
+        let buttonsHTML = "";
+        if (this.currentUserRole === "admin") {
+          buttonsHTML = ` <button class="edit-article btn btn-blue text-sm py-1 px-3" data-id="${article.id}">Edit</button> <button class="delete-article btn btn-red text-sm py-1 px-3" data-id="${article.id}">Delete</button> `;
+        } else if (this.currentUserRole === "moderator") {
+          buttonsHTML = ` <button class="suggest-edit-article btn btn-blue text-sm py-1 px-3" data-id="${article.id}">Suggest Edit</button> `;
+        }
+        return ` <div class="article-card border dark:border-gray-600 rounded-lg shadow-md overflow-hidden bg-white dark:bg-gray-700 flex flex-col"> ${imageUrl ? `<img src="${imageUrl}" alt="${title}" class="w-full h-48 object-cover">` : '<div class="w-full h-48 bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-400 dark:text-gray-300">No Image</div>'} <div class="p-4 flex flex-col flex-grow"> <h3 class="text-lg font-bold mb-1 dark:text-white flex-grow">${title}</h3> <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Cat: ${category}</p> <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">By: ${author}</p> <p class="text-sm font-medium ${status === "published" ? "text-green-600 dark:text-green-400" : "text-yellow-600 dark:text-yellow-400"} mb-2 capitalize">Status: ${status}</p> <div class="mt-auto pt-2 flex space-x-2"> ${buttonsHTML} </div> </div> </div> `;
       })
       .join("");
     this.elements.articlesContainer
       .querySelectorAll(".edit-article")
-      .forEach((e) => {
-        e.addEventListener("click", (t) =>
-          this.loadArticleForEditing(t.currentTarget.dataset.id),
+      .forEach((button) => {
+        button.addEventListener("click", (e) =>
+          this.loadArticleForEditing(e.currentTarget.dataset.id),
         );
       });
     this.elements.articlesContainer
       .querySelectorAll(".delete-article")
-      .forEach((e) => {
-        e.addEventListener("click", (t) =>
-          this.handleDeleteArticle(t.currentTarget.dataset.id),
+      .forEach((button) => {
+        button.addEventListener("click", (e) =>
+          this.handleDeleteArticle(e.currentTarget.dataset.id),
         );
       });
     this.elements.articlesContainer
       .querySelectorAll(".suggest-edit-article")
-      .forEach((e) => {
-        e.addEventListener("click", (t) =>
-          this.handleSuggestEditClick(t.currentTarget.dataset.id),
+      .forEach((button) => {
+        button.addEventListener("click", (e) =>
+          this.handleSuggestEditClick(e.currentTarget.dataset.id),
         );
       });
   },
+
   async loadModerators() {
-    /* ... keep implementation ... */ if (
-      "admin" !== this.currentUserRole ||
+    if (
+      this.currentUserRole !== "admin" ||
       !this.elements.moderatorsListContainer
     )
       return;
     console.log("[Admin] Loading moderators...");
     this.elements.moderatorsListContainer.innerHTML =
-      '<p class="tc p-4">Loading...</p>';
+      '<p class="text-center p-4">Loading...</p>';
     try {
-      const e = await ApiService.getUsers({ role: "moderator" });
-      this.renderModerators(e);
-    } catch (e) {
-      console.error("[Admin] Error loading moderators:", e);
-      this.elements.moderatorsListContainer.innerHTML = `<p class="text-red-500 tc p-4">Failed: ${e.message}</p>`;
+      const moderators = await ApiService.getUsers({ role: "moderator" });
+      this.renderModerators(moderators);
+    } catch (error) {
+      console.error("[Admin] Error loading moderators:", error);
+      this.elements.moderatorsListContainer.innerHTML = `<p class="text-red-500 text-center p-4">Failed: ${error.message}</p>`;
     }
   },
-  renderModerators(e) {
-    /* ... keep implementation ... */ if (
-      "admin" !== this.currentUserRole ||
+
+  renderModerators(moderators) {
+    if (
+      this.currentUserRole !== "admin" ||
       !this.elements.moderatorsListContainer
     )
       return;
-    if (!Array.isArray(e)) {
+    if (!Array.isArray(moderators)) {
       this.elements.moderatorsListContainer.innerHTML =
-        '<p class="text-red-500 tc p-4">Error: Invalid data.</p>';
+        '<p class="text-red-500 text-center p-4">Error: Invalid data.</p>';
       return;
     }
-    if (0 === e.length) {
+    if (moderators.length === 0) {
       this.elements.moderatorsListContainer.innerHTML =
-        '<p class="tc p-4">No moderators.</p>';
+        '<p class="text-center p-4">No moderators found.</p>';
       return;
     }
-    this.elements.moderatorsListContainer.innerHTML = ` <ul class="space-y-2"> ${e.map((e) => ` <li class="flex justify-between items-center p-2 border dark:border-gray-600 rounded bg-white dark:bg-gray-800"> <span>${e.username} (<span class="text-xs text-gray-500 dark:text-gray-400">${e.email}</span>) ${e.needsPasswordChange ? '<span class="text-xs text-orange-500 ml-2 font-semibold">(Needs PW Reset)</span>' : ""}</span> </li> `).join("")} </ul>`;
+    this.elements.moderatorsListContainer.innerHTML = ` <ul class="space-y-2"> ${moderators.map((mod) => ` <li class="flex justify-between items-center p-2 border dark:border-gray-600 rounded bg-white dark:bg-gray-800"> <span>${mod.username} (<span class="text-xs text-gray-500 dark:text-gray-400">${mod.email}</span>) ${mod.needsPasswordChange ? '<span class="text-xs text-orange-500 ml-2 font-semibold">(Needs PW Reset)</span>' : ""}</span> </li> `).join("")} </ul>`;
   },
+
   async loadSuggestions() {
-    /* ... keep implementation ... */ if (
+    if (
       this.currentUserRole !== "admin" ||
       !this.elements.suggestionsListContainer
     )
@@ -639,16 +665,17 @@ const AdminUI = {
     this.elements.suggestionsListContainer.innerHTML =
       '<p class="text-center p-4">Loading suggestions...</p>';
     try {
-      const e = await ApiService.getSuggestions("pending");
-      console.log("[Admin] Received suggestions data from API:", e);
-      this.renderSuggestions(e);
-    } catch (e) {
-      console.error("[Admin] Error loading suggestions:", e);
-      this.elements.suggestionsListContainer.innerHTML = `<p class="text-red-500 text-center p-4">Failed to load suggestions: ${e.message}</p>`;
+      const suggestions = await ApiService.getSuggestions("pending");
+      console.log("[Admin] Received suggestions data from API:", suggestions);
+      this.renderSuggestions(suggestions);
+    } catch (error) {
+      console.error("[Admin] Error loading suggestions:", error);
+      this.elements.suggestionsListContainer.innerHTML = `<p class="text-red-500 text-center p-4">Failed to load suggestions: ${error.message}</p>`;
     }
   },
+
   renderSuggestions(suggestions) {
-    /* ... keep implementation ... */ if (
+    if (
       this.currentUserRole !== "admin" ||
       !this.elements.suggestionsListContainer
     )
@@ -660,7 +687,7 @@ const AdminUI = {
         '<p class="text-red-500 text-center p-4">Error: Invalid suggestion data received.</p>';
       return;
     }
-    if (0 === suggestions.length) {
+    if (suggestions.length === 0) {
       console.log("[Admin] No pending suggestions found to render.");
       this.elements.suggestionsListContainer.innerHTML =
         '<p class="text-center p-4 text-gray-500 dark:text-gray-400">No pending suggestions found.</p>';
@@ -669,62 +696,78 @@ const AdminUI = {
     console.log(`[Admin] Rendering ${suggestions.length} suggestions.`);
     this.elements.suggestionsListContainer.innerHTML = suggestions
       .map((suggestion) => {
-        const articleTitle =
-          suggestion.article?.title_en || `Article ID: ${suggestion.articleId}`;
+        let articleTitle;
+        if (suggestion.articleId && suggestion.article) {
+          articleTitle =
+            suggestion.article.title_en ||
+            `Article ID: ${suggestion.articleId}`;
+        } else {
+          articleTitle =
+            suggestion.proposedData?.title_en || "(New Article Proposal)";
+          articleTitle +=
+            ' <span class="text-xs font-normal text-blue-500 dark:text-blue-400">(New)</span>';
+        }
         const moderatorName =
           suggestion.moderator?.username ||
           `User ID: ${suggestion.moderatorId}`;
         const suggestionDate = suggestion.createdAt
           ? new Date(suggestion.createdAt).toLocaleDateString()
           : "?";
-        return `\n            <div class="suggestion-item p-3 border dark:border-gray-600 rounded bg-white dark:bg-gray-800 shadow-sm">\n                <div class="flex flex-wrap justify-between items-center gap-2 mb-2">\n                    <div> \n                        <span class="block font-semibold dark:text-white">Article: ${articleTitle}</span>\n                        <span class="block text-sm text-gray-600 dark:text-gray-400">By: ${moderatorName} on ${suggestionDate}</span>\n                    </div>\n                    \n                    <div class="flex justify-end items-center gap-2 mt-2 sm:mt-0 suggestion-actions flex-shrink-0">\n                        <span class="text-sm text-green-600 dark:text-green-400 hidden success-message">Approved!</span>\n                        <span class="text-sm text-red-600 dark:text-red-400 hidden reject-message">Rejected!</span>\n                        <span class="text-sm text-red-600 dark:text-red-400 hidden error-message"></span>\n                        \n                        <button class="view-suggestion btn btn-gray text-xs py-1 px-2" data-suggestion-id="${suggestion.id}">Details</button>\n                        <button class="reject-suggestion btn btn-red text-xs py-1 px-2" data-suggestion-id="${suggestion.id}">Reject</button>\n                        <button class="approve-suggestion btn btn-green text-xs py-1 px-2" data-suggestion-id="${suggestion.id}">Approve</button>\n                    </div>\n                </div>\n            </div>\n            `;
+        const isNew = !suggestion.articleId;
+        return ` <div class="suggestion-item p-3 border dark:border-gray-600 rounded bg-white dark:bg-gray-800 shadow-sm"> <div class="flex flex-wrap justify-between items-center gap-2 mb-2"> <div> <span class="block font-semibold dark:text-white">Article: ${articleTitle}</span> <span class="block text-sm text-gray-600 dark:text-gray-400">By: ${moderatorName} on ${suggestionDate}</span> </div> <div class="flex justify-end items-center gap-2 mt-2 sm:mt-0 suggestion-actions flex-shrink-0"> <span class="text-sm text-green-600 dark:text-green-400 hidden success-message">Approved!</span> <span class="text-sm text-red-600 dark:text-red-400 hidden reject-message">Rejected!</span> <span class="text-sm text-red-600 dark:text-red-400 hidden error-message"></span> <button class="view-suggestion btn btn-gray text-xs py-1 px-2" data-suggestion-id="${suggestion.id}" data-is-new="${isNew}">Details</button> <button class="reject-suggestion btn btn-red text-xs py-1 px-2" data-suggestion-id="${suggestion.id}" data-is-new="${isNew}">Reject</button> <button class="approve-suggestion btn btn-green text-xs py-1 px-2" data-suggestion-id="${suggestion.id}" data-is-new="${isNew}">Approve</button> </div> </div> </div>`;
       })
       .join("");
   },
+
   async showSuggestionDetails(suggestionId) {
-    /* ... keep implementation ... */ if (
-      !this.elements.suggestionModal ||
-      !this.elements.modalBody
-    )
-      return;
+    if (!this.elements.suggestionModal || !this.elements.modalBody) return;
     console.log(`[Admin] Showing details for suggestion ${suggestionId}`);
     this.elements.modalBody.innerHTML =
       '<p class="p-4 text-center">Loading details...</p>';
     this.elements.suggestionModal.classList.remove("hidden");
     this.elements.suggestionModal.classList.add("flex");
     try {
-      const e = await ApiService.getSuggestionDetails(suggestionId);
-      if (!e || !e.proposedData)
+      const suggestion = await ApiService.getSuggestionDetails(suggestionId);
+      if (!suggestion || !suggestion.proposedData) {
         throw new Error("Suggestion data or proposed changes missing.");
-      const t = e.proposedData,
-        n = e.article?.title_en || `Article ID: ${e.articleId}`,
-        l = e.moderator?.username || `User ID: ${e.moderatorId}`;
-      this.elements.modalTitle &&
-        (this.elements.modalTitle.textContent = `Suggestion for: ${n}`);
-      this.elements.modalBody.innerHTML = `\n                <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">Submitted by: ${l}</p>\n                <div class="space-y-4">\n                    <h4 class="font-bold text-lg border-b dark:border-gray-600 pb-1 mb-2">Proposed Changes:</h4>\n                    ${this.renderProposedField("Title (EN)", t.title_en)}\n                    ${this.renderProposedField("Content (EN)", t.content_en, !0)}\n                    ${this.renderProposedField("Excerpt (EN)", t.excerpt_en)}\n                    <hr class="dark:border-gray-600 my-3">\n                    ${this.renderProposedField("Title (RU)", t.title_rus)}\n                    ${this.renderProposedField("Content (RU)", t.content_rus, !0)}\n                    ${this.renderProposedField("Excerpt (RU)", t.excerpt_rus)}\n                    <hr class="dark:border-gray-600 my-3">\n                    ${this.renderProposedField("Title (MN)", t.title_mng)}\n                    ${this.renderProposedField("Content (MN)", t.content_mng, !0)}\n                    ${this.renderProposedField("Excerpt (MN)", t.excerpt_mng)}\n                    <hr class="dark:border-gray-600 my-3">\n                    ${this.renderProposedField("Category", t.category)}\n                    ${this.renderProposedField("Author", t.author)}\n                    ${this.renderProposedField("Image URL", t.imageUrl)}\n                </div>`;
-    } catch (e) {
-      console.error(`Error fetching suggestion details ${suggestionId}:`, e);
-      this.elements.modalBody.innerHTML = `<p class="p-4 text-center text-red-500">Error loading details: ${e.message}</p>`;
+      }
+      const proposed = suggestion.proposedData;
+      const isNew = !suggestion.articleId;
+      const articleTitle = isNew
+        ? suggestion.proposedData?.title_en || "(New Article Proposal)"
+        : suggestion.article?.title_en || `Article ID: ${suggestion.articleId}`;
+      const moderatorName =
+        suggestion.moderator?.username || `User ID: ${suggestion.moderatorId}`;
+      if (this.elements.modalTitle) {
+        this.elements.modalTitle.textContent = `Suggestion for: ${articleTitle} ${isNew ? "(New)" : ""}`;
+      }
+      this.elements.modalBody.innerHTML = ` <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">Submitted by: ${moderatorName}</p> <div class="space-y-4"> <h4 class="font-bold text-lg border-b dark:border-gray-600 pb-1 mb-2">Proposed Changes:</h4> ${this.renderProposedField("Title (EN)", proposed.title_en)} ${this.renderProposedField("Content (EN)", proposed.content_en, true)} ${this.renderProposedField("Excerpt (EN)", proposed.excerpt_en)} <hr class="dark:border-gray-600 my-3"> ${this.renderProposedField("Title (RU)", proposed.title_rus)} ${this.renderProposedField("Content (RU)", proposed.content_rus, true)} ${this.renderProposedField("Excerpt (RU)", proposed.excerpt_rus)} <hr class="dark:border-gray-600 my-3"> ${this.renderProposedField("Title (MN)", proposed.title_mng)} ${this.renderProposedField("Content (MN)", proposed.content_mng, true)} ${this.renderProposedField("Excerpt (MN)", proposed.excerpt_mng)} <hr class="dark:border-gray-600 my-3"> ${this.renderProposedField("Category", proposed.category)} ${this.renderProposedField("Author", proposed.author)} ${this.renderProposedField("Image URL", proposed.imageUrl)} </div>`;
+    } catch (error) {
+      console.error(
+        `Error fetching suggestion details ${suggestionId}:`,
+        error,
+      );
+      this.elements.modalBody.innerHTML = `<p class="p-4 text-center text-red-500">Error loading details: ${error.message}</p>`;
     }
   },
-  renderProposedField(e, t, n = !1) {
-    const l =
-      t || '<span class="text-gray-400 italic"> (empty/no change)</span>';
-    return `\n            <div class="mb-2">\n                <strong class="block text-sm font-medium text-gray-700 dark:text-gray-300">${e}:</strong>\n                ${n ? `<div class="mt-1 text-sm text-gray-900 dark:text-gray-100 prose prose-sm dark:prose-invert max-w-none">${l}</div>` : `<span class="mt-1 text-sm text-gray-900 dark:text-gray-100">${l}</span>`}\n            </div>`;
+
+  renderProposedField(label, value, isHtml = false) {
+    const displayValue =
+      value || '<span class="text-gray-400 italic"> (empty/no change)</span>';
+    return ` <div class="mb-2"> <strong class="block text-sm font-medium text-gray-700 dark:text-gray-300">${label}:</strong> ${isHtml ? `<div class="mt-1 text-sm text-gray-900 dark:text-gray-100 prose prose-sm dark:prose-invert max-w-none">${displayValue}</div>` : `<span class="mt-1 text-sm text-gray-900 dark:text-gray-100">${displayValue}</span>`} </div>`;
   },
+
   closeSuggestionModal() {
     if (!this.elements.suggestionModal) return;
     this.elements.suggestionModal.classList.add("hidden");
     this.elements.suggestionModal.classList.remove("flex");
-    this.elements.modalBody && (this.elements.modalBody.innerHTML = "");
-    this.elements.modalTitle &&
-      (this.elements.modalTitle.textContent = "Suggestion Details");
+    if (this.elements.modalBody) this.elements.modalBody.innerHTML = "";
+    if (this.elements.modalTitle)
+      this.elements.modalTitle.textContent = "Suggestion Details";
   },
+
   async loadArticleForEditing(articleId) {
-    /* ... keep implementation ... */ if (
-      !this.elements.articleFormContainer ||
-      !this.elements.articleForm
-    )
+    if (!this.elements.articleFormContainer || !this.elements.articleForm)
       return;
     this.displayMessage(
       this.elements.articleFormMessage,
@@ -777,7 +820,7 @@ const AdminUI = {
     }
   },
   resetForm() {
-    /* ... keep implementation ... */ if (!this.elements.articleForm) return;
+    if (!this.elements.articleForm) return;
     this.elements.articleForm.reset();
     ["en", "rus", "mng"].forEach((e) => {
       const t = this.quillInstances[e],
@@ -795,8 +838,7 @@ const AdminUI = {
     }
   },
   displayMessage(e, t, n = !1) {
-    /* ... keep implementation ... */ if (!e)
-      return void console.warn("Message element missing.");
+    if (!e) return void console.warn("Message element missing.");
     e.textContent = t;
     e.className = `mt-4 text-center text-sm ${n ? "text-red-500 dark:text-red-400" : "text-green-600 dark:text-green-400"}`;
   },
@@ -946,21 +988,20 @@ const AdminUI = {
       );
       return;
     }
-    const action = articleId
+    let action = articleId
       ? isSuggestion
         ? "Suggesting Update for"
         : "Updating"
-      : "Creating";
-    if (!articleId && isSuggestion) {
-      alert("Cannot suggest edit for new article.");
-      return;
-    }
+      : isSuggestion
+        ? "Suggesting New Article"
+        : "Creating";
+    if (!articleId && isSuggestion) action = "Suggesting New Article";
     console.log(
       `${action} article ${articleId ? `(ID: ${articleId})` : ""}...`,
     );
     this.displayMessage(
       this.elements.articleFormMessage,
-      `${action} article...`,
+      `${action}...`,
       false,
     );
     if (this.elements.articleSubmit)
@@ -968,11 +1009,14 @@ const AdminUI = {
     try {
       let resultMessage = "";
       if (isSuggestion) {
-        const result = await ApiService.suggestArticleEdit(
-          articleId,
-          articleData,
-        );
-        resultMessage = result.message || "Suggestion submitted.";
+        let result;
+        if (articleId) {
+          result = await ApiService.suggestArticleEdit(articleId, articleData);
+          resultMessage = result.message || "Edit suggestion submitted.";
+        } else {
+          result = await ApiService.suggestNewArticle(articleData);
+          resultMessage = result.message || "New article suggestion submitted.";
+        }
         this.displayMessage(
           this.elements.articleFormMessage,
           resultMessage,
@@ -1036,12 +1080,20 @@ const AdminUI = {
     }
   },
   handleNewArticleClick() {
-    /* ... keep implementation ... */ if (
-      !this.elements.articleFormContainer ||
-      "admin" !== this.currentUserRole
-    )
+    /* ... keep implementation ... */ if (!this.elements.articleFormContainer)
       return;
     this.resetForm();
+    if (this.currentUserRole === "admin") {
+      if (this.elements.formHeading)
+        this.elements.formHeading.textContent = "Create New Article";
+      if (this.elements.articleSubmit)
+        this.elements.articleSubmit.textContent = "Create Article";
+    } else if (this.currentUserRole === "moderator") {
+      if (this.elements.formHeading)
+        this.elements.formHeading.textContent = "Suggest New Article";
+      if (this.elements.articleSubmit)
+        this.elements.articleSubmit.textContent = "Submit Suggestion";
+    }
     this.elements.articleFormContainer.classList.remove("hidden");
     this.elements.articleForm?.scrollIntoView({
       behavior: "smooth",

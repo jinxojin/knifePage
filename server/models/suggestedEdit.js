@@ -9,7 +9,7 @@ SuggestedEdit.init(
     // id, createdAt, updatedAt are handled by Sequelize automatically
     articleId: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
     },
     moderatorId: {
       type: DataTypes.INTEGER,

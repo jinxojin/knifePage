@@ -9,7 +9,7 @@ const sanitizeHtml = require("sanitize-html");
 
 // Ensure models AND sequelize instance are correctly required AT THE TOP
 const { Article, User, SuggestedEdit, sequelize } = require("../models");
-const { Op } = require("sequelize"); // Make sure Op is imported
+const { Op } = require("sequelize");
 
 const authenticateToken = require("../middleware/auth");
 const ErrorHandler = require("../utils/errorHandler");
@@ -243,11 +243,13 @@ router.post("/login", validateLoginBody, async (req, res, next) => {
         process.env.JWT_SECRET,
         { expiresIn: "10m" }
       );
-      return res.status(400).json({
-        message: "Password change required.",
-        needsPasswordChange: true,
-        changePasswordToken: changePasswordToken,
-      });
+      return res
+        .status(400)
+        .json({
+          message: "Password change required.",
+          needsPasswordChange: true,
+          changePasswordToken: changePasswordToken,
+        });
     }
     const accessToken = generateAccessToken(user);
     const refreshToken = crypto.randomBytes(64).toString("hex");
@@ -263,7 +265,6 @@ router.post("/login", validateLoginBody, async (req, res, next) => {
     next(err);
   }
 });
-
 // POST /api/admin/refresh
 router.post("/refresh", validateRefreshTokenBody, async (req, res, next) => {
   /* ... implementation ... */ const errors = validationResult(req);
@@ -294,7 +295,6 @@ router.post("/refresh", validateRefreshTokenBody, async (req, res, next) => {
     next(e);
   }
 });
-
 // GET /api/admin/me
 router.get("/me", authenticateToken, async (req, res, next) => {
   /* ... implementation ... */ try {
@@ -314,7 +314,6 @@ router.get("/me", authenticateToken, async (req, res, next) => {
     next(e);
   }
 });
-
 // GET /api/admin/users
 router.get(
   "/users",
@@ -348,7 +347,6 @@ router.get(
     }
   }
 );
-
 // POST /api/admin/users
 router.post(
   "/users",
@@ -375,13 +373,15 @@ router.post(
         id: r.id,
         username: r.username,
       });
-      res.status(201).json({
-        message: "Moderator created successfully.",
-        userId: r.id,
-        username: r.username,
-        email: r.email,
-        temporaryPassword: s,
-      });
+      res
+        .status(201)
+        .json({
+          message: "Moderator created successfully.",
+          userId: r.id,
+          username: r.username,
+          email: r.email,
+          temporaryPassword: s,
+        });
     } catch (t) {
       console.error(`[${t}] POST /api/admin/users - Error:`, t);
       if ("SequelizeUniqueConstraintError" === t.name)
@@ -390,7 +390,6 @@ router.post(
     }
   }
 );
-
 // POST /api/admin/force-change-password
 router.post(
   "/force-change-password",
@@ -442,10 +441,12 @@ router.post(
       a.needsPasswordChange = !1;
       await a.save();
       console.log(`[${t}] Force Change PW - Success for user ${r}.`);
-      res.status(200).json({
-        message:
-          "Password successfully changed. Please log in with your new password.",
-      });
+      res
+        .status(200)
+        .json({
+          message:
+            "Password successfully changed. Please log in with your new password.",
+        });
     } catch (e) {
       console.error(`[${t}] Force Change PW - Error:`, e);
       next(e);
@@ -646,17 +647,91 @@ router.post(
       console.log(
         `[${t}] Suggestion created (ID: ${f.id}) for Article ${e} by User ${n}.`
       );
-      res.status(201).json({
-        message: "Suggestion submitted successfully and is pending review.",
-        suggestionId: f.id,
-      });
+      res
+        .status(201)
+        .json({
+          message: "Suggestion submitted successfully and is pending review.",
+          suggestionId: f.id,
+        });
     } catch (o) {
       console.error(`[${t}] POST /api/admin/articles/${e}/suggest - Error:`, o);
       next(o);
     }
   }
 );
+router.post(
+  "/articles/suggest-new",
+  authenticateToken,
+  isModeratorOrAdmin,
+  validateArticleBody,
+  async (req, res, next) => {
+    /* ... implementation ... */ const t = new Date().toISOString();
+    const n = req.user.userId;
+    const o = validationResult(req);
+    if (!o.isEmpty())
+      return (
+        console.warn(`[${t}] Suggest New Validation Errors:`, o.array()),
+        next(new ErrorHandler("Validation Error", 400, o.array()))
+      );
+    console.log(
+      `[${t}] POST /api/admin/articles/suggest-new - User ${n} submitting NEW suggestion.`
+    );
+    try {
+      let {
+        title_en: s,
+        content_en: r,
+        excerpt_en: a,
+        title_rus: l,
+        content_rus: i,
+        excerpt_rus: c,
+        title_mng: d,
+        content_mng: u,
+        excerpt_mng: m,
+        category: g,
+        author: h,
+        imageUrl: p,
+      } = req.body;
+      r = sanitizeHtml(r || "", sanitizeOptions);
+      i = sanitizeHtml(i || "", sanitizeOptions);
+      u = sanitizeHtml(u || "", sanitizeOptions);
+      const y = {
+        title_en: s,
+        content_en: r,
+        excerpt_en: a,
+        title_rus: l,
+        content_rus: i,
+        excerpt_rus: c,
+        title_mng: d,
+        content_mng: u,
+        excerpt_mng: m,
+        category: g,
+        author: h,
+        imageUrl: p || null,
+      };
+      const f = await SuggestedEdit.create({
+        articleId: null,
+        moderatorId: n,
+        proposedData: y,
+        status: "pending",
+      });
+      console.log(
+        `[${t}] NEW Article Suggestion created (ID: ${f.id}) by User ${n}.`
+      );
+      res
+        .status(201)
+        .json({
+          message:
+            "New article suggestion submitted successfully and is pending review.",
+          suggestionId: f.id,
+        });
+    } catch (o) {
+      console.error(`[${t}] POST /api/admin/articles/suggest-new - Error:`, o);
+      next(o);
+    }
+  }
+);
 
+// --- Admin Suggestion Management Routes ---
 router.get(
   "/suggestions",
   authenticateToken,
@@ -681,10 +756,15 @@ router.get(
       const o = await SuggestedEdit.findAll({
         where: e,
         include: [
-          { model: Article, as: "article", attributes: ["id", "title_en"] },
+          {
+            model: Article,
+            as: "article",
+            attributes: ["id", "title_en"],
+            required: !1,
+          },
           { model: User, as: "moderator", attributes: ["id", "username"] },
         ],
-        attributes: ["id", "status", "createdAt", "updatedAt"],
+        attributes: ["id", "status", "createdAt", "updatedAt", "articleId"],
         order: [["createdAt", "ASC"]],
       });
       console.log(`[${t}] GET /suggestions - Found ${o.length} suggestions.`);
@@ -695,14 +775,13 @@ router.get(
     }
   }
 );
-
 router.post(
   "/suggestions/:suggestionId/approve",
   authenticateToken,
   isAdmin,
   param("suggestionId").isInt({ min: 1 }).toInt(),
   async (req, res, next) => {
-    /* ... implementation ... */ const t = new Date().toISOString();
+    const t = new Date().toISOString();
     const e = req.params.suggestionId;
     const n = req.user.userId;
     const o = validationResult(req);
@@ -717,60 +796,96 @@ router.post(
     console.log(
       `[${t}] POST /suggestions/${e}/approve - Admin ${n} attempting approval.`
     );
-    const s = await sequelize.transaction();
+    let suggestion;
     try {
-      const n = await SuggestedEdit.findByPk(e, {
-        include: [{ model: Article, as: "article" }],
-        transaction: s,
-      });
-      if (!n)
-        return (
-          await s.rollback(),
-          next(new ErrorHandler("Suggestion not found", 404))
+      suggestion = await SuggestedEdit.findByPk(e);
+      if (!suggestion) {
+        return next(new ErrorHandler("Suggestion not found", 404));
+      }
+      if (suggestion.status !== "pending") {
+        return next(
+          new ErrorHandler(`Suggestion is already ${suggestion.status}`, 400)
         );
-      if ("pending" !== n.status)
-        return (
-          await s.rollback(),
-          next(new ErrorHandler(`Suggestion is already ${n.status}`, 400))
+      }
+    } catch (findError) {
+      console.error(
+        `[${t}] Approve Error - Failed to find suggestion ${e}:`,
+        findError
+      );
+      return next(findError);
+    }
+    const transaction = await sequelize.transaction();
+    try {
+      const proposedData =
+        typeof suggestion.proposedData === "string"
+          ? JSON.parse(suggestion.proposedData)
+          : suggestion.proposedData;
+      let articleId = suggestion.articleId;
+      let article;
+      if (articleId) {
+        console.log(
+          `[${t}] Approving EDIT suggestion for Article ${articleId}`
         );
-      if (!n.article)
-        return (
-          await s.rollback(),
-          console.error(
-            `[${t}] Approve Error - Suggestion ${e} missing article!`
-          ),
-          next(
-            new ErrorHandler("Cannot approve: Associated article missing.", 500)
-          )
+        article = await Article.findByPk(articleId, {
+          transaction,
+          lock: true,
+        });
+        if (!article) {
+          await transaction.rollback();
+          return next(
+            new ErrorHandler(
+              "Cannot approve edit: Original article missing.",
+              500
+            )
+          );
+        }
+        await article.update(proposedData, { transaction });
+      } else {
+        console.log(
+          `[${t}] Approving NEW article suggestion from suggestion ${e}`
         );
-      const o =
-        "string" == typeof n.proposedData
-          ? JSON.parse(n.proposedData)
-          : n.proposedData;
-      await n.article.update(o, { transaction: s });
-      n.status = "approved";
-      await n.save({ transaction: s });
-      await s.commit();
+        const newArticleData = {
+          ...proposedData,
+          status: "published",
+          views: 0,
+        };
+        article = await Article.create(newArticleData, { transaction });
+        articleId = article.id;
+        console.log(
+          `[${t}] New article ${articleId} created from suggestion ${e}.`
+        );
+        suggestion.articleId = articleId;
+      }
+      suggestion.status = "approved";
+      await suggestion.save({ transaction: transaction });
+      await transaction.commit();
       console.log(
-        `[${t}] Suggestion ${e} approved by Admin ${req.user.userId}. Article ${n.articleId} updated.`
+        `[${t}] Suggestion ${e} approved by Admin ${req.user.userId}. Article ${articleId} created/updated.`
       );
       res.json({
-        message: "Suggestion approved and article updated successfully.",
+        message: `Suggestion approved. Article ${articleId} ${
+          suggestion.articleId ? "updated" : "created"
+        } successfully.`,
       });
-    } catch (e) {
-      s &&
-        "commit" !== s.finished &&
-        "rollback" !== s.finished &&
-        (await s.rollback());
+    } catch (error) {
+      if (
+        transaction &&
+        transaction.finished !== "commit" &&
+        transaction.finished !== "rollback"
+      ) {
+        await transaction.rollback();
+        console.log(
+          `[${t}] Transaction rolled back for suggestion ${e} approval.`
+        );
+      }
       console.error(
-        `[${t}] POST /suggestions/${suggestionId}/approve - Error:`,
-        e
+        `[${t}] POST /suggestions/${e}/approve - Error during transaction:`,
+        error
       );
-      next(e);
+      next(error);
     }
   }
 );
-
 router.post(
   "/suggestions/:suggestionId/reject",
   authenticateToken,
@@ -813,7 +928,6 @@ router.post(
     }
   }
 );
-
 router.get(
   "/suggestions/:suggestionId",
   authenticateToken,
