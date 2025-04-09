@@ -178,6 +178,13 @@ const validateForcePasswordChange = [
   }),
 ];
 
+const validateUserIdParam = [
+  param("userId")
+    .isInt({ min: 1 })
+    .withMessage("User ID must be a positive integer")
+    .toInt(),
+];
+
 // --- Middleware for checking Role ---
 const isAdmin = async (req, res, next) => {
   // Assumes authenticateToken middleware has run and set req.user
@@ -775,6 +782,73 @@ router.delete(
     } catch (err) {
       console.error(`Delete Article Error (ID: ${req.params.id}):`, err);
       next(err);
+    }
+  }
+);
+
+router.delete(
+  "/users/:userId",
+  authenticateToken,
+  isAdmin,
+  validateUserIdParam, // Validate the user ID from the URL
+  async (req, res, next) => {
+    const timestamp = new Date().toISOString();
+    const userIdToDelete = req.params.userId; // From validated param
+    const adminUserId = req.user.userId; // ID of the admin performing the action
+
+    console.log(
+      `[${timestamp}] DELETE /api/admin/users/${userIdToDelete} - Attempt by Admin ID: ${adminUserId}`
+    );
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return next(new ErrorHandler("Invalid User ID", 400, errors.array()));
+    }
+
+    // Prevent admin from deleting themselves
+    if (userIdToDelete === adminUserId) {
+      console.warn(
+        `[${timestamp}] Admin ID: ${adminUserId} attempted to delete themselves.`
+      );
+      return next(
+        new ErrorHandler("Administrators cannot delete their own account.", 403)
+      ); // Forbidden
+    }
+
+    try {
+      const userToDelete = await User.findByPk(userIdToDelete);
+
+      if (!userToDelete) {
+        console.warn(
+          `[${timestamp}] User ID: ${userIdToDelete} not found for deletion.`
+        );
+        return next(new ErrorHandler("User not found", 404));
+      }
+
+      // Optional: Double-check if trying to delete another admin (should ideally only delete moderators)
+      if (userToDelete.role === "admin") {
+        console.warn(
+          `[${timestamp}] Admin ID: ${adminUserId} attempted to delete another admin (ID: ${userIdToDelete}). This action might be restricted.`
+        );
+        // Decide whether to allow deleting other admins or restrict to only moderators
+        return next(
+          new ErrorHandler("Cannot delete another administrator account.", 403)
+        ); // Forbidden for now
+      }
+
+      // Proceed with deletion
+      await userToDelete.destroy();
+      console.log(
+        `[${timestamp}] User ID: ${userIdToDelete} (Role: ${userToDelete.role}) deleted successfully by Admin ID: ${adminUserId}.`
+      );
+
+      res.status(204).send(); // No Content response on successful deletion
+    } catch (error) {
+      console.error(
+        `[${timestamp}] Error deleting user ID: ${userIdToDelete}:`,
+        error
+      );
+      next(error); // Pass error to global handler
     }
   }
 );

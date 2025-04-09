@@ -13,7 +13,7 @@ SuggestedEdit.init(
     },
     moderatorId: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
     },
     proposedData: {
       type: DataTypes.JSONB, // Match migration type
