@@ -2,13 +2,30 @@
 // --- Load Environment Variables (FIRST!) ---
 const path = require("path");
 
-const dotenvResult = require("dotenv").config({
-  path: path.join(__dirname, ".env"), // Correct path relative to app.js
-});
+// Load dotenv ONLY if NODE_ENV is NOT 'production'
+if (process.env.NODE_ENV !== "production") {
+  console.log(
+    `NODE_ENV is '${
+      process.env.NODE_ENV || "undefined"
+    }', attempting to load .env file...`
+  );
+  const dotenvResult = require("dotenv").config({
+    path: path.join(__dirname, ".env"), // Load .env from the server directory
+  });
 
-if (dotenvResult.error) {
-  console.error("FATAL: Error loading .env file:", dotenvResult.error);
-  process.exit(1); // Stop if .env can't be read
+  if (dotenvResult.error) {
+    // Log a warning in dev/test if .env is missing, but don't crash
+    console.warn(
+      "Warning: Could not load .env file. Ensure environment variables are set.",
+      dotenvResult.error.message
+    );
+  } else {
+    console.log(".env file processed.");
+  }
+} else {
+  console.log(
+    "NODE_ENV is 'production', skipping .env file load. Using system environment variables."
+  );
 }
 
 const express = require("express");
@@ -227,7 +244,9 @@ const startServer = async () => {
     const server = http.createServer(app);
     server.listen(config.port, () => {
       logger.info(
-        `HTTP Server is running on port ${config.port} in ${config.nodeEnv} mode`
+        `HTTP Server is running on port ${config.port} in ${
+          config.nodeEnv || "development"
+        } mode`
       );
     });
   } catch (err) {
