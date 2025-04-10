@@ -2,13 +2,7 @@
 
 // --- Load Environment Variables (FIRST!) ---
 const path = require("path");
-const dotenvResult = require("dotenv").config({
-  path: path.join(__dirname, ".env"),
-});
-if (dotenvResult.error) {
-  console.error("Error loading .env file:", dotenvResult.error);
-  process.exit(1);
-}
+require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
