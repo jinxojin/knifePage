@@ -142,27 +142,54 @@ const validateModeratorCreation = [
   body("username")
     .trim()
     .isLength({ min: 3, max: 50 })
-    .withMessage("Username must be between 3 and 50 characters")
+    .withMessage("Username must be 3-50 chars")
     .matches(/^[a-zA-Z0-9_]+$/)
-    .withMessage("Username can only contain letters, numbers, and underscores")
-    .custom(async (value) => {
-      const user = await User.findOne({ where: { username: value } });
-      if (user) {
-        return Promise.reject("Username already in use");
+    .withMessage("Username can only contain letters, numbers, underscores")
+    .custom(async (value, { req }) => {
+      // Keep async check for username
+      const testId = req.body?.username || req.path;
+      try {
+        // console.log(`[Validator][${testId}] Checking username: ${value}`);
+        const user = await User.findOne({ where: { username: value } });
+        if (user) {
+          // console.error(`---> [Validator][${testId}] Username ${value} FOUND, throwing.`);
+          throw new Error("Username already in use"); // Use throw
+        }
+        // console.log(`[Validator][${testId}] Username ${value} unique.`);
+      } catch (error) {
+        // console.error(`---> [Validator][${testId}] DB Error during username check:`, error.message);
+        if (error.message === "Username already in use") throw error; // Re-throw specific validation error
+        throw new Error("Database error during username check"); // Throw generic for others
       }
     }),
   body("email")
     .trim()
     .isEmail()
     .withMessage("Must be a valid email address")
-    .normalizeEmail()
-    .custom(async (value) => {
-      const user = await User.findOne({ where: { email: value } });
-      if (user) {
-        return Promise.reject("Email already in use");
+    //.normalizeEmail() // Be cautious with normalizeEmail if it causes issues
+    .custom(async (value, { req }) => {
+      const testId = req.body?.username || req.path;
+      try {
+        console.log(`[Validator][${testId}] Checking email: ${value}`);
+        const user = await User.findOne({ where: { email: value } });
+        if (user) {
+          console.error(
+            `---> [Validator][${testId}] Email ${value} FOUND (ID: ${user.id}), THROWING error.`
+          );
+          throw new Error("Email already in use"); // Use throw
+        }
+        console.log(`[Validator][${testId}] Email ${value} is unique.`);
+      } catch (error) {
+        console.error(
+          `---> [Validator][${testId}] DB Error during email check for ${value}:`,
+          error.message
+        );
+        if (error.message === "Email already in use") throw error; // Re-throw specific validation error
+        throw new Error("Database error during email check"); // Throw generic for others
       }
     }),
 ];
+
 const validateForcePasswordChange = [
   body("changePasswordToken")
     .notEmpty()
@@ -231,7 +258,6 @@ const sanitizeOptions = {
     "br",
     "span", // Allow span for potential styling/classes from editor
     "div", // Allow div for structure
-    // Color/Background related inline styles might be needed if Quill outputs them
   ]),
   allowedAttributes: {
     a: ["href", "name", "target", "rel"],
@@ -239,13 +265,10 @@ const sanitizeOptions = {
     span: ["style", "class"], // Allow style/class on span
     p: ["style", "class"], // Allow style/class on p
     div: ["style", "class"], // Allow style/class on div
-    // Allow class globally
-    "*": ["class"],
+    "*": ["class"], // Allow class globally
   },
-  // Allow inline styles (use cautiously, ensure Quill config is restricted)
   allowedStyles: {
     "*": {
-      // Allow basic text formatting styles
       "text-align": [/^left$/, /^center$/, /^right$/, /^justify$/],
       color: [
         /^#(?:[0-9a-fA-F]{3}){1,2}$/,
@@ -255,7 +278,6 @@ const sanitizeOptions = {
         /^#(?:[0-9a-fA-F]{3}){1,2}$/,
         /^rgb\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*\)$/,
       ],
-      // Potentially allow float/margin for images if needed, but be specific
       float: [/^left$/, /^right$/],
       margin: [/^\d+px$/],
       "margin-left": [/^\d+px$/],
@@ -263,17 +285,10 @@ const sanitizeOptions = {
       "margin-top": [/^\d+px$/],
       "margin-bottom": [/^\d+px$/],
     },
-    // Add specific styles for other tags if necessary
   },
   allowedSchemes: ["http", "https", "mailto"],
-  allowedSchemesByTag: { img: ["data", "http", "https"] }, // Allow data URIs for images if needed
-  // Allow classes matching Tailwind patterns (example, adjust as needed)
-  // allowedClasses: {
-  //   '*': [ /^ql-*/, /^text-*/, /^bg-*/, /^p-*/, /^m-*/, /^float-*/ ]
-  // },
-  // Self-closing tags
+  allowedSchemesByTag: { img: ["data", "http", "https"] },
   selfClosing: ["img", "br", "hr"],
-  // Disallow comments
   allowComments: false,
 };
 
@@ -294,7 +309,6 @@ router.post("/login", validateLoginBody, async (req, res, next) => {
 
     if (!user) {
       console.log(`[Login Server] User not found: ${username}`);
-      // Do not reveal if username exists or password failed
       return next(new ErrorHandler("Invalid credentials", 401));
     }
 
@@ -316,17 +330,16 @@ router.post("/login", validateLoginBody, async (req, res, next) => {
     // Check if password change is required *after* successful login
     if (user.needsPasswordChange) {
       console.log(`[Login Server] User ${username} requires password change.`);
-      // Generate a short-lived token specifically for the password change process
       const changePasswordToken = jwt.sign(
         { userId: user.id, purpose: "force-change-password" },
-        process.env.JWT_SECRET, // Use the same JWT secret
-        { expiresIn: "10m" } // Short expiry
+        process.env.JWT_SECRET,
+        { expiresIn: "10m" }
       );
-      // Send specific response indicating the need for change + the token
+      // IMPORTANT: Use status 400 for this specific condition as per client expectation
       return res.status(400).json({
         message: "Password change required. Please set a new password.",
         needsPasswordChange: true,
-        changePasswordToken: changePasswordToken, // Send token needed for the change API
+        changePasswordToken: changePasswordToken,
       });
     }
 
@@ -334,9 +347,8 @@ router.post("/login", validateLoginBody, async (req, res, next) => {
     const accessToken = generateAccessToken(user);
     const refreshToken = crypto.randomBytes(64).toString("hex");
 
-    // Store refresh token (hashed ideally, but simple storage for now)
     user.refreshToken = refreshToken;
-    user.needsPasswordChange = false; // Ensure flag is false
+    user.needsPasswordChange = false;
     await user.save();
 
     console.log(
@@ -363,10 +375,9 @@ router.post("/refresh", validateRefreshTokenBody, async (req, res, next) => {
     const user = await User.findOne({ where: { refreshToken } });
 
     if (!user) {
-      return next(new ErrorHandler("Invalid refresh token", 403)); // Forbidden or Unauthorized? 403 is safer
+      return next(new ErrorHandler("Invalid refresh token", 403));
     }
 
-    // Optional: Check if the user associated with the refresh token still needs password change
     if (user.needsPasswordChange) {
       console.warn(
         `Refresh attempt by user ${user.username} who needs password change.`
@@ -379,9 +390,11 @@ router.post("/refresh", validateRefreshTokenBody, async (req, res, next) => {
       );
     }
 
-    // Generate a new access token
-    const accessToken = generateAccessToken(user);
-    res.json({ accessToken });
+    console.log(
+      `Generating new access token for user ${user.username} during refresh.`
+    );
+    const newAccessToken = generateAccessToken(user);
+    res.json({ accessToken: newAccessToken });
   } catch (err) {
     console.error("Refresh Token Error:", err);
     next(err);
@@ -390,22 +403,18 @@ router.post("/refresh", validateRefreshTokenBody, async (req, res, next) => {
 
 // GET /api/admin/me
 router.get("/me", authenticateToken, async (req, res, next) => {
-  // authenticateToken middleware sets req.user if token is valid
   try {
     if (!req.user || !req.user.userId) {
-      // Should not happen if authenticateToken works, but good safety check
       return next(new ErrorHandler("User information not found in token", 401));
     }
     console.log(
       `[ADMIN ME] Sending user info for ${req.user.userId} from token:`,
       req.user
     );
-    // Return the data embedded in the token (already verified)
     res.json({
       id: req.user.userId,
       username: req.user.username,
       role: req.user.role,
-      // DO NOT send sensitive data like password hash or refresh token here
     });
   } catch (err) {
     console.error("[ADMIN ME] Error fetching user info:", err);
@@ -418,7 +427,7 @@ router.get(
   "/users",
   authenticateToken,
   isAdmin,
-  query("role").optional().isIn(["admin", "moderator"]), // Validate optional role query
+  query("role").optional().isIn(["admin", "moderator"]),
   async (req, res, next) => {
     const timestamp = new Date().toISOString();
     console.log(`[${timestamp}] GET /api/admin/users - Query:`, req.query);
@@ -434,13 +443,12 @@ router.get(
       const users = await User.findAll({
         where: filter,
         attributes: [
-          // Select only necessary, non-sensitive fields
           "id",
           "username",
           "email",
           "role",
           "createdAt",
-          "needsPasswordChange", // Include this flag
+          "needsPasswordChange",
         ],
         order: [["username", "ASC"]],
       });
@@ -460,58 +468,66 @@ router.post(
   "/users",
   authenticateToken,
   isAdmin,
-  validateModeratorCreation, // Apply validation middleware
+  validateModeratorCreation,
   async (req, res, next) => {
     const timestamp = new Date().toISOString();
-    console.log(`[${timestamp}] POST /api/admin/users - Body:`, req.body);
+    const requestIdentifier = req.body?.username || "UNKNOWN_USER";
+    console.log(
+      `[${timestamp}] Handler POST /api/admin/users [${requestIdentifier}] - Start.`
+    );
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      console.warn(
-        `[${timestamp}] Create User Validation Errors:`,
-        errors.array()
+      console.error(
+        `---> [${timestamp}][${requestIdentifier}] Validation Errors Found. STOPPING request. Errors:`,
+        JSON.stringify(errors.array())
       );
       return next(new ErrorHandler("Validation Error", 400, errors.array()));
     }
 
+    console.log(
+      `[${timestamp}][${requestIdentifier}] ALL Validation PASSED. Proceeding to create user...`
+    );
+
     try {
       const { username, email } = req.body;
-      const temporaryPassword = generateTemporaryPassword(); // Generate temp password
+      const temporaryPassword = generateTemporaryPassword();
+      console.log(`Temp password for ${username}: ${temporaryPassword}`);
 
-      // Log temp password only in development for debugging
-      if (process.env.NODE_ENV !== "production") {
-        console.log(`Temp password for ${username}: ${temporaryPassword}`);
-      } else {
-        console.log(`Generated temp password for ${username}`);
-      }
-
-      // Create user with hashed password and flag set
       const newUser = await User.create({
         username,
         email,
-        password: temporaryPassword, // Sequelize hook will hash this
-        role: "moderator", // Explicitly set role
-        needsPasswordChange: true, // Set flag to true
+        password: temporaryPassword,
+        role: "moderator",
+        needsPasswordChange: true, // Default for new moderators
       });
 
-      console.log(`[${timestamp}] POST /api/admin/users - Moderator created:`, {
+      console.log(`[${timestamp}][${requestIdentifier}] Moderator created:`, {
         id: newUser.id,
         username: newUser.username,
       });
 
-      // Respond with success and the temporary password
+      // === FIX: Add message to response ===
       res.status(201).json({
-        message:
-          "Moderator created successfully. They must change password on first login.",
+        message: "Moderator created successfully.", // Added message
         userId: newUser.id,
         username: newUser.username,
         email: newUser.email,
-        temporaryPassword: temporaryPassword, // Send temp password back to admin
+        temporaryPassword: temporaryPassword,
       });
+      // === END FIX ===
     } catch (error) {
-      console.error(`[${timestamp}] POST /api/admin/users - Error:`, error);
-      // Handle specific Sequelize unique constraint errors
+      console.error(
+        `[${timestamp}][${requestIdentifier}] Error during User.create:`,
+        error
+      );
       if (error.name === "SequelizeUniqueConstraintError") {
-        return next(new ErrorHandler("Username or email already exists.", 409)); // 409 Conflict
+        return next(
+          new ErrorHandler(
+            `Username or email already exists (DB Constraint).`,
+            409
+          )
+        );
       }
       next(error);
     }
@@ -521,8 +537,7 @@ router.post(
 // POST /api/admin/force-change-password
 router.post(
   "/force-change-password",
-  // No authenticateToken middleware needed here, relies on the special changePasswordToken
-  validateForcePasswordChange, // Apply validation
+  validateForcePasswordChange,
   async (req, res, next) => {
     const timestamp = new Date().toISOString();
     console.log(
@@ -540,11 +555,9 @@ router.post(
     try {
       const { changePasswordToken, newPassword } = req.body;
 
-      // Verify the JWT token
       let decodedToken;
       try {
         decodedToken = jwt.verify(changePasswordToken, process.env.JWT_SECRET);
-        // Check if the token's purpose is correct
         if (decodedToken.purpose !== "force-change-password") {
           throw new Error("Invalid token purpose");
         }
@@ -568,18 +581,15 @@ router.post(
         return next(new ErrorHandler("User not found.", 404));
       }
 
-      // Check if the flag is still true (maybe they changed it via another way?)
       if (!user.needsPasswordChange) {
         console.warn(
           `[${timestamp}] Force Change PW - User ${userId} no longer needs change.`
         );
-        // Don't treat as error, maybe just inform user? Or return success?
         return res
           .status(400)
           .json({ message: "Password has already been changed." });
       }
 
-      // Update password (hook will hash) and reset the flag
       user.password = newPassword;
       user.needsPasswordChange = false;
       await user.save(); // This triggers the beforeUpdate hook
@@ -613,7 +623,6 @@ router.post(
     }
 
     try {
-      // Destructure validated data
       let {
         title_en,
         content_en,
@@ -629,23 +638,16 @@ router.post(
         imageUrl,
       } = req.body;
 
-      // Sanitize HTML content AFTER validation
       content_en = sanitizeHtml(content_en || "", sanitizeOptions);
       content_rus = sanitizeHtml(content_rus || "", sanitizeOptions);
       content_mng = sanitizeHtml(content_mng || "", sanitizeOptions);
 
-      // Ensure required fields are not just whitespace after potential sanitization
-      if (!title_en?.trim()) {
-        // Check main title
+      if (!title_en?.trim())
         return next(new ErrorHandler("English title is required.", 400));
-      }
-      if (!content_en?.trim()) {
-        // Check main content
+      if (!content_en?.trim())
         return next(new ErrorHandler("English content is required.", 400));
-      }
-      if (!category?.trim() || !author?.trim()) {
+      if (!category?.trim() || !author?.trim())
         return next(new ErrorHandler("Category and Author are required.", 400));
-      }
 
       const newArticle = await Article.create({
         title_en,
@@ -659,8 +661,8 @@ router.post(
         excerpt_mng,
         category,
         author,
-        imageUrl: imageUrl || null, // Handle optional URL
-        status: "published", // Default status for admin creation
+        imageUrl: imageUrl || null,
+        status: "published",
         views: 0,
       });
       console.log("Article created by admin:", newArticle.id);
@@ -677,8 +679,8 @@ router.put(
   "/articles/:id",
   authenticateToken,
   isAdmin,
-  validateArticleIdParam, // Validate ID in URL
-  validateArticleBody, // Validate body content
+  validateArticleIdParam,
+  validateArticleBody,
   async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -686,14 +688,13 @@ router.put(
     }
 
     try {
-      const articleId = req.params.id; // Get ID from validated param
+      const articleId = req.params.id;
       const article = await Article.findByPk(articleId);
 
       if (!article) {
         return next(new ErrorHandler("Article not found", 404));
       }
 
-      // Destructure validated data
       let {
         title_en,
         content_en,
@@ -709,12 +710,10 @@ router.put(
         imageUrl,
       } = req.body;
 
-      // Sanitize HTML content AFTER validation
       content_en = sanitizeHtml(content_en || "", sanitizeOptions);
       content_rus = sanitizeHtml(content_rus || "", sanitizeOptions);
       content_mng = sanitizeHtml(content_mng || "", sanitizeOptions);
 
-      // Ensure required fields are not just whitespace after potential sanitization
       if (
         !title_en?.trim() ||
         !content_en?.trim() ||
@@ -729,7 +728,6 @@ router.put(
         );
       }
 
-      // Update the article instance
       await article.update({
         title_en,
         content_en,
@@ -743,11 +741,10 @@ router.put(
         category,
         author,
         imageUrl: imageUrl || null,
-        // status: 'published', // Keep status as is unless explicitly changed
       });
 
       console.log("Article updated by admin:", articleId);
-      res.json(article); // Return the updated article
+      res.json(article);
     } catch (err) {
       console.error(`Update Article Error (ID: ${req.params.id}):`, err);
       next(err);
@@ -760,11 +757,10 @@ router.delete(
   "/articles/:id",
   authenticateToken,
   isAdmin,
-  validateArticleIdParam, // Validate ID
+  validateArticleIdParam,
   async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      // This validation targets the URL param, not the body
       return next(new ErrorHandler("Invalid Article ID", 400, errors.array()));
     }
 
@@ -776,9 +772,9 @@ router.delete(
         return next(new ErrorHandler("Article not found", 404));
       }
 
-      await article.destroy(); // Perform the deletion
+      await article.destroy();
       console.log("Article deleted by admin:", articleId);
-      res.status(204).send(); // Send No Content on successful deletion
+      res.status(204).send();
     } catch (err) {
       console.error(`Delete Article Error (ID: ${req.params.id}):`, err);
       next(err);
@@ -786,15 +782,16 @@ router.delete(
   }
 );
 
+// DELETE /api/admin/users/:userId
 router.delete(
   "/users/:userId",
   authenticateToken,
   isAdmin,
-  validateUserIdParam, // Validate the user ID from the URL
+  validateUserIdParam,
   async (req, res, next) => {
     const timestamp = new Date().toISOString();
-    const userIdToDelete = req.params.userId; // From validated param
-    const adminUserId = req.user.userId; // ID of the admin performing the action
+    const userIdToDelete = req.params.userId;
+    const adminUserId = req.user.userId;
 
     console.log(
       `[${timestamp}] DELETE /api/admin/users/${userIdToDelete} - Attempt by Admin ID: ${adminUserId}`
@@ -805,14 +802,13 @@ router.delete(
       return next(new ErrorHandler("Invalid User ID", 400, errors.array()));
     }
 
-    // Prevent admin from deleting themselves
     if (userIdToDelete === adminUserId) {
       console.warn(
         `[${timestamp}] Admin ID: ${adminUserId} attempted to delete themselves.`
       );
       return next(
         new ErrorHandler("Administrators cannot delete their own account.", 403)
-      ); // Forbidden
+      );
     }
 
     try {
@@ -825,30 +821,27 @@ router.delete(
         return next(new ErrorHandler("User not found", 404));
       }
 
-      // Optional: Double-check if trying to delete another admin (should ideally only delete moderators)
       if (userToDelete.role === "admin") {
         console.warn(
           `[${timestamp}] Admin ID: ${adminUserId} attempted to delete another admin (ID: ${userIdToDelete}). This action might be restricted.`
         );
-        // Decide whether to allow deleting other admins or restrict to only moderators
         return next(
           new ErrorHandler("Cannot delete another administrator account.", 403)
-        ); // Forbidden for now
+        );
       }
 
-      // Proceed with deletion
       await userToDelete.destroy();
       console.log(
         `[${timestamp}] User ID: ${userIdToDelete} (Role: ${userToDelete.role}) deleted successfully by Admin ID: ${adminUserId}.`
       );
 
-      res.status(204).send(); // No Content response on successful deletion
+      res.status(204).send();
     } catch (error) {
       console.error(
         `[${timestamp}] Error deleting user ID: ${userIdToDelete}:`,
         error
       );
-      next(error); // Pass error to global handler
+      next(error);
     }
   }
 );
@@ -860,12 +853,12 @@ router.post(
   "/articles/:id/suggest",
   authenticateToken,
   isModeratorOrAdmin,
-  validateArticleIdParam, // Validate ID in URL
-  validateArticleBody, // Validate body content
+  validateArticleIdParam,
+  validateArticleBody,
   async (req, res, next) => {
     const timestamp = new Date().toISOString();
-    const articleIdToEdit = req.params.id; // From validated param
-    const moderatorId = req.user.userId; // From authenticated token
+    const articleIdToEdit = req.params.id;
+    const moderatorId = req.user.userId;
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -880,7 +873,6 @@ router.post(
     );
 
     try {
-      // Check if the target article exists
       const targetArticle = await Article.findByPk(articleIdToEdit, {
         attributes: ["id", "status"],
       });
@@ -891,7 +883,6 @@ router.post(
         return next(new ErrorHandler("Article to edit not found", 404));
       }
 
-      // Destructure validated body data
       let {
         title_en,
         content_en,
@@ -907,12 +898,10 @@ router.post(
         imageUrl,
       } = req.body;
 
-      // Sanitize HTML content AFTER validation
       content_en = sanitizeHtml(content_en || "", sanitizeOptions);
       content_rus = sanitizeHtml(content_rus || "", sanitizeOptions);
       content_mng = sanitizeHtml(content_mng || "", sanitizeOptions);
 
-      // Ensure required base fields are present in the suggestion
       if (
         !title_en?.trim() ||
         !content_en?.trim() ||
@@ -927,7 +916,6 @@ router.post(
         );
       }
 
-      // Prepare the data payload for the suggestion
       const proposedDataPayload = {
         title_en,
         content_en,
@@ -943,12 +931,11 @@ router.post(
         imageUrl: imageUrl || null,
       };
 
-      // Create the suggestion record
       const newSuggestion = await SuggestedEdit.create({
-        articleId: articleIdToEdit, // Link to the existing article
+        articleId: articleIdToEdit,
         moderatorId: moderatorId,
-        proposedData: proposedDataPayload, // Store the validated & sanitized data
-        status: "pending", // Initial status
+        proposedData: proposedDataPayload,
+        status: "pending",
       });
 
       console.log(
@@ -974,10 +961,10 @@ router.post(
   "/articles/suggest-new",
   authenticateToken,
   isModeratorOrAdmin,
-  validateArticleBody, // Validate body content
+  validateArticleBody,
   async (req, res, next) => {
     const timestamp = new Date().toISOString();
-    const moderatorId = req.user.userId; // From authenticated token
+    const moderatorId = req.user.userId;
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -992,7 +979,6 @@ router.post(
     );
 
     try {
-      // Destructure validated body data
       let {
         title_en,
         content_en,
@@ -1008,12 +994,10 @@ router.post(
         imageUrl,
       } = req.body;
 
-      // Sanitize HTML content AFTER validation
       content_en = sanitizeHtml(content_en || "", sanitizeOptions);
       content_rus = sanitizeHtml(content_rus || "", sanitizeOptions);
       content_mng = sanitizeHtml(content_mng || "", sanitizeOptions);
 
-      // Ensure required base fields are present
       if (
         !title_en?.trim() ||
         !content_en?.trim() ||
@@ -1028,7 +1012,6 @@ router.post(
         );
       }
 
-      // Prepare the data payload for the suggestion
       const proposedDataPayload = {
         title_en,
         content_en,
@@ -1044,9 +1027,8 @@ router.post(
         imageUrl: imageUrl || null,
       };
 
-      // Create the suggestion record with articleId as NULL
       const newSuggestion = await SuggestedEdit.create({
-        articleId: null, // Indicate this is a suggestion for a NEW article
+        articleId: null,
         moderatorId: moderatorId,
         proposedData: proposedDataPayload,
         status: "pending",
@@ -1077,7 +1059,7 @@ router.get(
   "/suggestions",
   authenticateToken,
   isAdmin,
-  query("status") // Validate optional status query
+  query("status")
     .optional()
     .isIn(["pending", "approved", "rejected"])
     .withMessage("Invalid status filter."),
@@ -1101,9 +1083,7 @@ router.get(
 
     try {
       const filter = {};
-      // Default to 'pending' if no status is provided
       filter.status = req.query.status || "pending";
-
       console.log(
         `[${timestamp}] GET /suggestions (Admin All) - Fetching suggestions filter:`,
         filter
@@ -1114,17 +1094,12 @@ router.get(
         include: [
           {
             model: Article,
-            as: "article", // Alias defined in models/index.js
-            attributes: ["id", "title_en"], // Get original article ID and EN title if it exists
-            required: false, // Use LEFT JOIN for new suggestions or deleted articles
+            as: "article",
+            attributes: ["id", "title_en"],
+            required: false,
           },
-          {
-            model: User,
-            as: "moderator", // Alias defined in models/index.js
-            attributes: ["id", "username"], // Get moderator's ID and username
-          },
+          { model: User, as: "moderator", attributes: ["id", "username"] },
         ],
-        // Select fields needed for the admin list view
         attributes: [
           "id",
           "status",
@@ -1132,29 +1107,24 @@ router.get(
           "updatedAt",
           "articleId",
           "moderatorId",
-          // Include proposedData only to extract title for new items below
           "proposedData",
         ],
-        order: [["createdAt", "ASC"]], // Show oldest pending first
+        order: [["createdAt", "ASC"]],
       });
 
       console.log(
         `[${timestamp}] GET /suggestions (Admin All) - Found ${suggestions.length} suggestions.`
       );
-
-      // Add proposed title for new articles to the response, remove full proposed data
       const results = suggestions.map((s) => {
         const plainS = s.get({ plain: true });
-        // Copy necessary fields
         let result = { ...plainS };
         if (!result.articleId && result.proposedData?.title_en) {
-          result.proposedTitle = result.proposedData.title_en; // Add hint for UI
+          result.proposedTitle = result.proposedData.title_en;
         }
-        delete result.proposedData; // Remove full data from list response
+        delete result.proposedData;
         return result;
       });
-
-      res.json(results); // Send the processed list
+      res.json(results);
     } catch (error) {
       console.error(
         `[${timestamp}] GET /suggestions (Admin All) - Error listing suggestions:`,
@@ -1165,78 +1135,67 @@ router.get(
   }
 );
 
-// ++++++++++ GET /api/admin/suggestions/my (Moderator's own suggestions) ++++++++++
-router.get(
-  "/suggestions/my",
-  authenticateToken, // Just need authentication
-  async (req, res, next) => {
-    const timestamp = new Date().toISOString();
-    const userId = req.user.userId; // Get user ID from verified token
-    console.log(
-      `[${timestamp}] GET /api/admin/suggestions/my - User ${userId} fetching own suggestions.`
-    );
+// GET /api/admin/suggestions/my (Moderator's own suggestions)
+router.get("/suggestions/my", authenticateToken, async (req, res, next) => {
+  const timestamp = new Date().toISOString();
+  const userId = req.user.userId;
+  console.log(
+    `[${timestamp}] GET /api/admin/suggestions/my - User ${userId} fetching own suggestions.`
+  );
 
-    try {
-      const suggestions = await SuggestedEdit.findAll({
-        where: {
-          moderatorId: userId, // Filter by the logged-in user's ID
+  try {
+    const suggestions = await SuggestedEdit.findAll({
+      where: { moderatorId: userId },
+      include: [
+        {
+          model: Article,
+          as: "article",
+          attributes: ["id", "title_en"],
+          required: false,
         },
-        include: [
-          {
-            model: Article,
-            as: "article",
-            attributes: ["id", "title_en"], // Include original article title if it exists
-            required: false, // Keep false for suggestions of new articles
-          },
-        ],
-        // Include all necessary fields for the moderator's view
-        attributes: [
-          "id",
-          "status",
-          "createdAt",
-          "updatedAt",
-          "articleId",
-          "proposedData", // Send full proposedData so mod can see what they proposed
-          "adminComments", // Include admin comments for rejected items
-        ],
-        order: [["updatedAt", "DESC"]], // Order by most recently updated
-      });
+      ],
+      attributes: [
+        "id",
+        "status",
+        "createdAt",
+        "updatedAt",
+        "articleId",
+        "proposedData",
+        "adminComments",
+      ],
+      order: [["updatedAt", "DESC"]],
+    });
 
-      console.log(
-        `[${timestamp}] GET /suggestions/my - Found ${suggestions.length} suggestions for user ${userId}.`
-      );
-
-      // Process results to add proposed title hint for easier frontend display
-      const results = suggestions.map((s) => {
-        const plainS = s.get({ plain: true });
-        if (!plainS.articleId && plainS.proposedData?.title_en) {
-          plainS.proposedTitle = plainS.proposedData.title_en;
-        }
-        return plainS;
-      });
-
-      res.json(results);
-    } catch (error) {
-      console.error(
-        `[${timestamp}] GET /suggestions/my - Error fetching suggestions for user ${userId}:`,
-        error
-      );
-      next(error);
-    }
+    console.log(
+      `[${timestamp}] GET /suggestions/my - Found ${suggestions.length} suggestions for user ${userId}.`
+    );
+    const results = suggestions.map((s) => {
+      const plainS = s.get({ plain: true });
+      if (!plainS.articleId && plainS.proposedData?.title_en) {
+        plainS.proposedTitle = plainS.proposedData.title_en;
+      }
+      return plainS;
+    });
+    res.json(results);
+  } catch (error) {
+    console.error(
+      `[${timestamp}] GET /suggestions/my - Error fetching suggestions for user ${userId}:`,
+      error
+    );
+    next(error);
   }
-);
-// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+});
 
 // POST /api/admin/suggestions/:suggestionId/approve (Admin action)
 router.post(
   "/suggestions/:suggestionId/approve",
   authenticateToken,
   isAdmin,
-  param("suggestionId").isInt({ min: 1 }).toInt(), // Validate param
+  param("suggestionId").isInt({ min: 1 }).toInt(),
   async (req, res, next) => {
     const timestamp = new Date().toISOString();
-    const suggestionId = req.params.suggestionId; // From validated param
-    const adminUserId = req.user.userId; // Admin performing the action
+    const suggestionId = req.params.suggestionId;
+    const adminUserId = req.user.userId;
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -1253,50 +1212,40 @@ router.post(
     );
 
     let suggestion;
-    // Find the suggestion first, outside transaction
     try {
       suggestion = await SuggestedEdit.findByPk(suggestionId);
-      if (!suggestion) {
+      if (!suggestion)
         return next(new ErrorHandler("Suggestion not found", 404));
-      }
-      if (suggestion.status !== "pending") {
+      if (suggestion.status !== "pending")
         return next(
           new ErrorHandler(`Suggestion is already ${suggestion.status}`, 400)
         );
-      }
     } catch (findError) {
       console.error(
         `[${timestamp}] Approve Error - Failed to find suggestion ${suggestionId}:`,
         findError
       );
-      return next(findError); // Pass error to global handler
+      return next(findError);
     }
 
-    // Start transaction
     let transaction;
     try {
       transaction = await sequelize.transaction();
-
-      // Parse proposedData safely (it's stored as JSONB)
-      const proposedData = suggestion.proposedData; // Already an object from Sequelize
-
+      const proposedData = suggestion.proposedData;
       let articleId = suggestion.articleId;
       let article;
-      let action = "updated"; // Default action text
+      let action = "updated";
 
       if (articleId) {
-        // --- Approving an EDIT to an existing article ---
         console.log(
           `[${timestamp}] Approving EDIT suggestion for Article ${articleId}`
         );
         article = await Article.findByPk(articleId, {
           transaction,
           lock: true,
-        }); // Lock row during transaction
-
+        });
         if (!article) {
-          // If original article deleted after suggestion was made
-          await transaction.rollback(); // Rollback before sending error
+          await transaction.rollback();
           console.warn(
             `[${timestamp}] Approve Error - Original article ${articleId} missing for suggestion ${suggestionId}.`
           );
@@ -1305,42 +1254,29 @@ router.post(
               "Cannot approve edit: Original article seems to be missing.",
               404
             )
-          ); // Use 404 or 409?
+          );
         }
-
-        // Update the existing article with proposed data
         await article.update(proposedData, { transaction });
       } else {
-        // --- Approving a suggestion for a NEW article ---
         action = "created";
         console.log(
           `[${timestamp}] Approving NEW article suggestion from suggestion ${suggestionId}`
         );
-
-        // Create a new article using the proposed data
         const newArticleData = {
           ...proposedData,
-          status: "published", // New articles are published on approval
+          status: "published",
           views: 0,
         };
         article = await Article.create(newArticleData, { transaction });
-        articleId = article.id; // Get the ID of the newly created article
-
+        articleId = article.id;
         console.log(
           `[${timestamp}] New article ${articleId} created from suggestion ${suggestionId}.`
         );
-
-        // Update the suggestion record to link it to the new article
         suggestion.articleId = articleId;
       }
 
-      // Update the suggestion status to 'approved'
       suggestion.status = "approved";
-      // Optional: Clear admin comments on approval?
-      // suggestion.adminComments = null;
       await suggestion.save({ transaction });
-
-      // Commit the transaction
       await transaction.commit();
 
       console.log(
@@ -1352,7 +1288,6 @@ router.post(
         suggestionId: suggestionId,
       });
     } catch (error) {
-      // Rollback transaction if it exists and hasn't finished
       if (transaction && !transaction.finished) {
         try {
           await transaction.rollback();
@@ -1370,7 +1305,7 @@ router.post(
         `[${timestamp}] POST /suggestions/${suggestionId}/approve - Error during transaction:`,
         error
       );
-      next(error); // Pass error to global handler
+      next(error);
     }
   }
 );
@@ -1380,11 +1315,11 @@ router.post(
   "/suggestions/:suggestionId/reject",
   authenticateToken,
   isAdmin,
-  param("suggestionId").isInt({ min: 1 }).toInt(), // Validate param
-  body("adminComments").optional().trim().isLength({ max: 500 }).escape(), // Validate optional comment
+  param("suggestionId").isInt({ min: 1 }).toInt(),
+  body("adminComments").optional().trim().isLength({ max: 500 }).escape(),
   async (req, res, next) => {
     const timestamp = new Date().toISOString();
-    const suggestionId = req.params.suggestionId; // From validated param
+    const suggestionId = req.params.suggestionId;
     const adminUserId = req.user.userId;
 
     const errors = validationResult(req);
@@ -1407,26 +1342,15 @@ router.post(
 
     try {
       const suggestion = await SuggestedEdit.findByPk(suggestionId);
-
-      if (!suggestion) {
+      if (!suggestion)
         return next(new ErrorHandler("Suggestion not found", 404));
-      }
-
-      if (suggestion.status !== "pending") {
-        // Allow re-rejecting? Or prevent action if already handled? Let's prevent.
+      if (suggestion.status !== "pending")
         return next(
           new ErrorHandler(`Suggestion is already ${suggestion.status}`, 400)
         );
-      }
 
-      // Update status and add comment if provided
       suggestion.status = "rejected";
-      if (req.body.adminComments) {
-        suggestion.adminComments = req.body.adminComments; // Store the sanitized comment
-      } else {
-        suggestion.adminComments = null; // Clear comments if none provided
-      }
-
+      suggestion.adminComments = req.body.adminComments || null;
       await suggestion.save();
 
       console.log(
@@ -1448,10 +1372,10 @@ router.get(
   "/suggestions/:suggestionId",
   authenticateToken,
   isAdmin,
-  param("suggestionId").isInt({ min: 1 }).toInt(), // Validate param
+  param("suggestionId").isInt({ min: 1 }).toInt(),
   async (req, res, next) => {
     const timestamp = new Date().toISOString();
-    const suggestionId = req.params.suggestionId; // From validated param
+    const suggestionId = req.params.suggestionId;
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -1470,31 +1394,28 @@ router.get(
     try {
       const suggestion = await SuggestedEdit.findByPk(suggestionId, {
         include: [
-          // Include related data needed for display
           {
             model: Article,
-            as: "article", // Original article (if it's an edit suggestion)
-            attributes: ["id", "title_en"], // Basic info is enough
+            as: "article",
+            attributes: ["id", "title_en"],
             required: false,
           },
           {
             model: User,
-            as: "moderator", // User who submitted
+            as: "moderator",
             attributes: ["id", "username"],
-            required: false, // Keep suggestions even if moderator is deleted? Maybe.
+            required: false,
           },
         ],
-        // No need to select specific attributes here, usually want all details
       });
 
-      if (!suggestion) {
+      if (!suggestion)
         return next(new ErrorHandler("Suggestion not found", 404));
-      }
 
       console.log(
         `[${timestamp}] GET /suggestions/${suggestionId} - Suggestion found. Sending details.`
       );
-      res.json(suggestion); // Send the full suggestion object with included data
+      res.json(suggestion);
     } catch (error) {
       console.error(
         `[${timestamp}] GET /suggestions/${suggestionId} - Error fetching details:`,

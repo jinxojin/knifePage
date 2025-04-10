@@ -69,30 +69,58 @@ User.init(
       // Use hooks for password hashing
       beforeCreate: async (user) => {
         if (user.password) {
-          console.log("beforeCreate hook: Hashing password..."); // Added log
+          console.log("beforeCreate hook: Hashing password...");
           const salt = await bcrypt.genSalt(10);
           user.password = await bcrypt.hash(user.password, salt);
+          console.log("beforeCreate hook: Hashing DONE."); // Added confirmation log
         }
       },
-      // +++ beforeUpdate hook is now UNCOMMENTED +++
       beforeUpdate: async (user) => {
-        // Hash password if it has changed AND is not null/undefined
+        // === START DEBUG LOGGING ===
+        const changedFields = user.changed(); // Get list of changed fields
+        console.log("beforeUpdate hook: User ID:", user.id);
+        console.log("beforeUpdate hook: Changed fields:", changedFields);
+        console.log(
+          "beforeUpdate hook: Password field changed?",
+          user.changed("password")
+        );
+        if (user.changed("password")) {
+          // Log the value BEFORE it potentially gets hashed
+          console.log(
+            "beforeUpdate hook: user.password value BEFORE hashing/assignment:",
+            user.password
+          );
+        }
+        // === END DEBUG LOGGING ===
+
+        // Check if 'password' is among the changed fields AND if the new value is not null/undefined
         if (user.changed("password") && user.password) {
-          console.log("beforeUpdate hook: Hashing password change..."); // Keep log
+          console.log("beforeUpdate hook: Hashing password change...");
           const salt = await bcrypt.genSalt(10);
-          user.password = await bcrypt.hash(user.password, salt);
+          // Store the hash result temporarily
+          const hashedPassword = await bcrypt.hash(user.password, salt);
+          console.log(
+            "beforeUpdate hook: Generated hash:",
+            hashedPassword.substring(0, 15) + "..."
+          ); // Log part of hash
+          // Assign the hashed password back to the user instance's data value for password
+          // This ensures the correct value is saved to the DB
+          user.set("password", hashedPassword); // Use set() to ensure it's marked for update
+          console.log(
+            "beforeUpdate hook: Hashing assignment DONE via user.set()."
+          ); // Add confirmation log
         } else if (user.changed("password")) {
+          // This case handles if password was explicitly set to null or empty string
           console.log(
             "beforeUpdate hook: Password changed but is null/empty, skipping hash."
           );
         } else {
+          // This case handles updates to other fields (like refreshToken, passwordResetToken)
           console.log(
             "beforeUpdate hook: Password not changed, skipping hash."
-          ); // Keep log
+          );
         }
-        // Note: We are NOT hashing passwordResetToken here. That's handled in the route.
       },
-      // ++++++++++++++++++++++++++++++++++++++++++++++
     },
   }
 );

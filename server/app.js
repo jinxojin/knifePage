@@ -13,12 +13,12 @@ if (dotenvResult.error) {
 const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
-const rateLimit = require("express-rate-limit");
+const rateLimit = require("express-rate-limit"); // Ensure this is imported
 const winston = require("winston");
 const https = require("https");
 const fs = require("fs");
 const cookieParser = require("cookie-parser");
-const helmet = require("helmet"); // Import Helmet
+const helmet = require("helmet");
 const {
   doubleCsrfProtection,
   generateToken,
@@ -26,10 +26,9 @@ const {
 } = require("./middleware/csrfMiddleware");
 const articleRoutes = require("./routes/articles");
 const adminRoutes = require("./routes/admin");
-const authRoutes = require("./routes/auth");
+const authRoutes = require("./routes/auth"); // Requires routes/auth.js
 
 // --- Configure Winston Logger ---
-// Note: Logs might not show in console if only file transports are configured without console
 const logger = winston.createLogger({
   level: process.env.NODE_ENV === "production" ? "info" : "debug",
   format: winston.format.combine(
@@ -37,23 +36,15 @@ const logger = winston.createLogger({
     winston.format.json()
   ),
   transports: [
-    // Ensure Console transport is added for console logging
     new winston.transports.Console({
       format: winston.format.combine(
         winston.format.colorize(),
-        winston.format.simple() // Or use json() if preferred for console too
+        winston.format.simple()
       ),
     }),
     new winston.transports.File({ filename: "error.log", level: "error" }),
     new winston.transports.File({ filename: "combined.log" }),
   ],
-  // Optional: Prevent Winston from crashing on errors during logging
-  // exceptionHandlers: [
-  //   new winston.transports.File({ filename: 'exceptions.log' })
-  // ],
-  // rejectionHandlers: [
-  //   new winston.transports.File({ filename: 'rejections.log' })
-  // ]
 });
 
 // --- Centralized Configuration ---
@@ -64,7 +55,6 @@ if (!config.jwtSecret) {
   process.exit(1);
 }
 if (!process.env.CSRF_SECRET) {
-  // Re-check CSRF secret as it's critical
   logger.error("CSRF_SECRET environment variable must be set");
   process.exit(1);
 }
@@ -72,7 +62,7 @@ if (!process.env.CSRF_SECRET) {
 // --- Database Initialization ---
 const initializeDatabase = require("./config/initDb");
 
-// --- Sequelize Instance (for logging if needed) ---
+// --- Sequelize Instance ---
 const { sequelize } = require("./config/database");
 
 // --- Initialize Express App ---
@@ -99,7 +89,17 @@ const apiLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
-app.use("/api/", apiLimiter); // Apply to all API routes
+
+// --- FIX: Conditionally apply general API limiter ---
+if (process.env.NODE_ENV !== "test") {
+  app.use("/api/", apiLimiter); // Apply to all API routes ONLY if NOT testing
+  console.log("Applied general API rate limiter.");
+  logger.info("Applied general API rate limiter."); // Use logger
+} else {
+  console.log("Skipping general API rate limiter in test environment.");
+  logger.info("Skipping general API rate limiter in test environment."); // Use logger
+}
+// --- End FIX ---
 
 // Body Parsers
 app.use(express.json({ limit: "50mb" }));
@@ -124,21 +124,21 @@ app.get("/api/csrf-token", (req, res) => {
 app.use(doubleCsrfProtection);
 
 // --- Routes ---
-// +++ Add logging before routers +++
 app.use("/api", (req, res, next) => {
-  console.log(
-    `[${new Date().toISOString()}] Request received for path: ${
-      req.originalUrl
-    }`
-  );
-  logger.debug(`Request received for path: ${req.originalUrl}`); // Also log with Winston
+  if (process.env.NODE_ENV !== "test") {
+    console.log(
+      `[${new Date().toISOString()}] Request received for path: ${
+        req.originalUrl
+      }`
+    );
+  }
+  logger.debug(`Request received for path: ${req.originalUrl}`);
   next();
 });
-// +++ End log +++
 
-app.use("/api/articles", articleRoutes); // Public article routes
-app.use("/api/auth", authRoutes);
-app.use("/api/admin", adminRoutes); // Admin routes
+app.use("/api/articles", articleRoutes);
+app.use("/api/auth", authRoutes); // Includes specific limiters applied conditionally inside
+app.use("/api/admin", adminRoutes);
 
 // --- Simple Hello Endpoint ---
 app.get("/api/hello", (req, res) => {
@@ -148,9 +148,7 @@ app.get("/api/hello", (req, res) => {
 // --- Error Handling Middleware (MUST be last) ---
 app.use((err, req, res, next) => {
   const timestamp = new Date().toISOString();
-  // Log the full error stack regardless of environment
   logger.error({
-    // Using Winston logger
     timestamp: timestamp,
     message: err.message,
     stack: err.stack,
@@ -160,59 +158,58 @@ app.use((err, req, res, next) => {
     method: req.method,
     ip: req.ip,
   });
-  // Also log to console for immediate visibility during development
   if (process.env.NODE_ENV !== "production") {
     console.error(`[${timestamp}] Global Error Handler Caught:`, err);
   }
 
-  // Ensure Content-Type is set to JSON for ALL error responses
   res.setHeader("Content-Type", "application/json");
 
-  // Handle CSRF specific error
   if (err === invalidCsrfTokenError) {
     return res.status(403).json({ message: "Invalid CSRF token" });
   }
 
-  // Handle Sequelize validation errors specifically
   if (err.name === "SequelizeValidationError") {
     const validationErrors = err.errors.map((e) => ({
       field: e.path,
       message: e.message,
     }));
     return res
-      .status(400) // Bad Request
+      .status(400)
       .json({ message: "Validation Error", errors: validationErrors });
   }
 
-  // General error handling
   const statusCode =
     typeof err.statusCode === "number" &&
     err.statusCode >= 400 &&
     err.statusCode < 600
       ? err.statusCode
-      : 500; // Default to 500 if invalid or not set
+      : 500;
 
   const message = err.message || "Internal Server Error";
 
-  // Only send stack trace in non-production environments
   const errorDetails =
     process.env.NODE_ENV === "production" ? {} : { stack: err.stack };
 
-  // Send generic message for 500 errors in production
   const responseMessage =
     statusCode === 500 && process.env.NODE_ENV === "production"
       ? "Internal Server Error"
       : message;
 
-  res.status(statusCode).json({
-    message: responseMessage,
-    // Include structured validation errors if available and not a 500 in prod
-    errors:
-      statusCode !== 500 || process.env.NODE_ENV !== "production"
-        ? err.errors // These are likely from express-validator
-        : undefined,
-    ...errorDetails, // Include stack trace only if not in production
-  });
+  if (!res.headersSent) {
+    res.status(statusCode).json({
+      message: responseMessage,
+      errors:
+        statusCode !== 500 || process.env.NODE_ENV !== "production"
+          ? err.errors
+          : undefined,
+      ...errorDetails,
+    });
+  } else {
+    logger.warn(
+      `Headers already sent for error on ${req.originalUrl}, cannot send JSON response.`
+    );
+    next(err);
+  }
 });
 
 // --- HTTPS Setup ---
@@ -221,20 +218,42 @@ const httpsOptions = {
   cert: fs.readFileSync(path.resolve(__dirname, "../localhost+2.pem")),
 };
 
-// --- Start the Server (HTTPS) ---
+// --- Server Start Function ---
 const startServer = async () => {
   try {
     await initializeDatabase();
-    https.createServer(httpsOptions, app).listen(config.port, () => {
+    const server = https.createServer(httpsOptions, app);
+    server.listen(config.port, () => {
       logger.info(
         `HTTPS Server is running on port ${config.port} in ${config.nodeEnv} mode`
       );
     });
   } catch (err) {
     logger.error("Failed to start server:", err);
-    console.error("Failed to start server:", err); // Also log to console on critical startup failure
+    console.error("Failed to start server:", err);
     process.exit(1);
   }
 };
 
-startServer();
+// --- Export the App (Before the conditional start) ---
+module.exports = app;
+
+// --- Conditionally Start Server ---
+if (require.main === module) {
+  console.log("Running app.js directly, starting server...");
+  startServer();
+} else {
+  console.log(
+    `app.js was required by ${
+      process.env.NODE_ENV === "test" ? "test environment" : "another module"
+    }, not starting server automatically.`
+  );
+  // Initialize DB connection when required for tests if not already handled by startServer call sequence
+  // This ensures the DB connection is ready when tests `require(app)`
+  if (process.env.NODE_ENV === "test") {
+    initializeDatabase().catch((err) => {
+      logger.error("Failed to initialize database when required by test:", err);
+      process.exit(1); // Fail fast if DB init fails in test setup
+    });
+  }
+}
