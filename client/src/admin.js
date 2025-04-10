@@ -3,7 +3,7 @@ import "./style.css";
 
 // --- API Service ---
 const ApiService = {
-  baseUrl: "https://localhost:3000/api", // Should match Vite proxy target base
+  baseUrl: "/api",
   csrfToken: null,
 
   async fetchCsrfToken() {
@@ -33,7 +33,6 @@ const ApiService = {
   },
 
   async makeRequest(url, method = "GET", data = null, isRetry = false) {
-    // url = Full backend URL like https://localhost:3000/api/admin/login
     // We need the path part that the Vite proxy understands, starting with /api
 
     let fetchPath;

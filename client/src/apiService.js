@@ -1,7 +1,7 @@
 // client/src/apiService.js
 // Service for public-facing API calls
 
-const BASE_URL = "https://localhost:3000/api"; // Ensure this matches your server setup
+const BASE_URL = "/api"; // Ensure this matches your server setup
 
 /**
  * Makes a generic public API request (primarily GET).

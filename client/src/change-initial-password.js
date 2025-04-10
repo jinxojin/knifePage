@@ -1,7 +1,7 @@
 // client/src/change-initial-password.js
 import "./style.css";
 
-const API_BASE_URL = "https://localhost:3000/api"; // Match backend
+const API_BASE_URL = "/api"; // Match backend
 
 // --- DOM Elements ---
 const changePasswordForm = document.getElementById("change-password-form");
