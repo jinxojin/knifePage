@@ -1,4 +1,6 @@
 // client/src/main.js
+console.log("--- main.js executing ---");
+
 import "./style.css";
 import { formatDistanceToNow, format, differenceInHours } from "date-fns";
 import { enUS, ru, mn } from "date-fns/locale";
@@ -143,6 +145,7 @@ async function initializePageContent() {
 
 // --- Global Event Listeners ---
 document.addEventListener("DOMContentLoaded", () => {
+  console.log("--- DOMContentLoaded event fired ---");
   initializeUI(); // Setup header, footer, listeners, translate initial static elements
   initializePageContent(); // Load dynamic content specific to this page
 });
