@@ -1,7 +1,15 @@
 // server/app.js
-
 // --- Load Environment Variables (FIRST!) ---
 const path = require("path");
+
+const dotenvResult = require("dotenv").config({
+  path: path.join(__dirname, ".env"), // Correct path relative to app.js
+});
+
+if (dotenvResult.error) {
+  console.error("FATAL: Error loading .env file:", dotenvResult.error);
+  process.exit(1); // Stop if .env can't be read
+}
 
 const express = require("express");
 const cors = require("cors");
@@ -215,7 +223,7 @@ app.use((err, req, res, next) => {
 const startServer = async () => {
   try {
     await initializeDatabase();
-    const http = require('http');
+    const http = require("http");
     const server = http.createServer(app);
     server.listen(config.port, () => {
       logger.info(

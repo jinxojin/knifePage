@@ -1,7 +1,7 @@
 // client/src/apiService.js
 // Service for public-facing API calls
 
-const BASE_URL = "/api"; // Ensure this matches your server setup
+const BASE_URL = "/api"; // Keep this relative path for proxies
 
 /**
  * Makes a generic public API request (primarily GET).
@@ -12,25 +12,36 @@ const BASE_URL = "/api"; // Ensure this matches your server setup
  * @throws {Error} If the request fails or returns a non-OK status.
  */
 async function makePublicRequest(path, queryParams = {}) {
-  const url = new URL(`${BASE_URL}${path}`);
-  // Add query parameters to the URL, removing undefined/null values
+  // === FIX: Construct the URL string directly ===
+  let fetchUrl = `${BASE_URL}${path}`;
+  const searchParams = new URLSearchParams(); // Use URLSearchParams separately
+
+  // Add query parameters, removing undefined/null values
   Object.keys(queryParams).forEach((key) => {
     if (queryParams[key] !== undefined && queryParams[key] !== null) {
-      url.searchParams.append(key, queryParams[key]);
+      searchParams.append(key, queryParams[key]);
     }
   });
 
-  console.log(`[Public API] Fetching: ${url.toString()}`); // Log the request
-  console.log("ApiService: makeRequest called:", method, fetchPath);
+  const queryString = searchParams.toString();
+  if (queryString) {
+    fetchUrl += `?${queryString}`;
+  }
+  // Now fetchUrl is like "/api/articles/category/competition?limit=1&lang=en"
+  // ============================================
+
+  console.log(`[Public API] Fetching: ${fetchUrl}`); // Log the relative request path
 
   try {
-    const response = await fetch(url.toString(), {
+    // === FIX: Pass the constructed string directly to fetch ===
+    const response = await fetch(fetchUrl, {
       method: "GET",
       // No 'credentials: include' needed for public requests unless specifically required by API
       headers: {
         Accept: "application/json", // Indicate we want JSON back
       },
     });
+    // ======================================================
 
     console.log(
       `[Public API] Status for ${path} with params ${JSON.stringify(queryParams)}: ${response.status}`,
@@ -80,7 +91,7 @@ async function makePublicRequest(path, queryParams = {}) {
 
     // Parse the valid JSON response
     const data = await response.json();
-    console.log(`[Public API] Received data for ${path}:`, data); // Optional: Log success data
+    // console.log(`[Public API] Received data for ${path}:`, data); // Optional: Log success data
     return data;
   } catch (error) {
     // Catches network errors and errors thrown above
@@ -131,6 +142,7 @@ export async function getArticlesByCategorySlug(
   if (!categorySlug)
     throw new Error("Category slug is required for getArticlesByCategorySlug.");
   const queryParams = { limit, lang };
+  // Correctly use template literal for path construction
   return makePublicRequest(`/articles/category/${categorySlug}`, queryParams);
 }
 
@@ -145,5 +157,9 @@ export async function getArticlesByCategorySlug(
 export async function getPublicArticleById(id, { lang } = {}) {
   if (!id) throw new Error("Article ID is required for getPublicArticleById.");
   const queryParams = { lang };
+  // Correctly use template literal for path construction
   return makePublicRequest(`/articles/${id}`, queryParams);
 }
+
+// Make sure the individual functions below also use makePublicRequest correctly
+// (They seem to be doing so already)

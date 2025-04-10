@@ -1,59 +1,63 @@
 // server/middleware/csrfMiddleware.js
 const { doubleCsrf } = require("csrf-csrf");
 
-// Ensure the CSRF_SECRET environment variable is set.
 if (!process.env.CSRF_SECRET) {
   throw new Error("CSRF_SECRET environment variable must be set");
 }
 
-// --- Determine Cookie Options based on Environment ---
-const isTestEnv = process.env.NODE_ENV === "test";
-
-// Production settings (keep these secure)
+// Define the options structures
 const productionCookieOptions = {
   httpOnly: true,
-  secure: true, // MUST be true for HTTPS production
-  sameSite: "strict", // Recommended for security
+  secure: true,
+  sameSite: "strict",
   path: "/",
-  // Consider adding MaxAge or Expires for production cookies
 };
 
-// Testing settings (relaxed for Supertest agent)
+const developmentCookieOptions = {
+  // Add separate dev options
+  httpOnly: true,
+  secure: false, // Allow HTTP for local dev without HTTPS always
+  sameSite: "lax", // Lax is usually fine for dev
+  path: "/",
+};
+
 const testCookieOptions = {
-  httpOnly: true, // Keep HttpOnly if possible
-  secure: false, // IMPORTANT: Allow over Supertest's simulated HTTP/S
-  sameSite: "lax", // Relax SameSite for testing agent
+  httpOnly: true,
+  secure: false, // Allow over Supertest's simulated HTTP/S
+  sameSite: "lax",
   path: "/",
 };
-
-// Choose options based on environment
-const cookieOpts = isTestEnv ? testCookieOptions : productionCookieOptions;
-// --- End Cookie Options ---
 
 const { invalidCsrfTokenError, generateToken, doubleCsrfProtection } =
   doubleCsrf({
-    getSecret: (req) => process.env.CSRF_SECRET, // Get secret from .env
-    // Use a simpler cookie name for testing if __Host- prefix causes issues,
-    // but let's try keeping it first. It might be okay with secure:false.
-    cookieName: "__Host-x-csrf-token",
-    // cookieName: isTestEnv ? "csrf-token-test" : "__Host-x-csrf-token", // Alternative if needed
-    cookieOptions: cookieOpts, // Use environment-specific options
-    size: 64, // Token size
-    ignoredMethods: ["GET", "HEAD", "OPTIONS"], // Methods that don't need CSRF protection
-    getTokenFromRequest: (req) => req.headers["x-csrf-token"], // Get token from header
+    getSecret: (req) => process.env.CSRF_SECRET,
+    cookieName: "__Host-x-csrf-token", // Keep __Host- prefix if using HTTPS eventually
+    // === FIX: Determine cookie options dynamically inside config ===
+    cookieOptions: (req) => {
+      // Use a function to determine options per request/environment
+      const nodeEnv = process.env.NODE_ENV || "development"; // Default to dev if unset
+      console.log(
+        `[CSRF Config] Determining cookie options for NODE_ENV='${nodeEnv}'`
+      );
+      if (nodeEnv === "production") {
+        return productionCookieOptions;
+      } else if (nodeEnv === "test") {
+        return testCookieOptions;
+      } else {
+        // Default to development options
+        return developmentCookieOptions;
+      }
+    },
+    // ============================================================
+    size: 64,
+    ignoredMethods: ["GET", "HEAD", "OPTIONS"],
+    getTokenFromRequest: (req) => req.headers["x-csrf-token"],
   });
 
-// Log which options are being used (helps debugging)
-console.log(
-  `CSRF Middleware using cookie options for ENV=${
-    process.env.NODE_ENV || "undefined"
-  }:`,
-  cookieOpts
-);
+// Remove the static console.log here as options are now dynamic
 
-// Export the middleware and the token generation function
 module.exports = {
   doubleCsrfProtection,
   generateToken,
-  invalidCsrfTokenError, // Optional, for custom error handling
+  invalidCsrfTokenError,
 };

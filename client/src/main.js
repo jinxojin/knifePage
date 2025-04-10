@@ -141,11 +141,15 @@ async function initializePageContent() {
     // This catch is less likely to be hit now, but kept as a fallback
     console.error("Error during main page initialization:", error);
   }
+  console.log(`--- initializePageContent END`);
 }
 
 // --- Global Event Listeners ---
 document.addEventListener("DOMContentLoaded", () => {
   console.log("--- DOMContentLoaded event fired ---");
+  console.log("--- Calling initializeUI() from main.js ---");
   initializeUI(); // Setup header, footer, listeners, translate initial static elements
+  console.log("--- Calling initializePageContent() from main.js ---");
   initializePageContent(); // Load dynamic content specific to this page
+  console.log("--- Event listener setup complete (main.js) ---");
 });

@@ -18,7 +18,7 @@ let sequelize;
 // Set logging based on environment (using false for development now)
 const sequelizeOptions = {
   ...envConfig,
-  logging: false, // Disabled console logging for development (was console.log)
+  logging: console.log, // Disabled console logging for development (was console.log)
   // Keep false for test/production as set in config.json
 };
 // --------------------------------

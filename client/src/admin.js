@@ -1,6 +1,8 @@
 // client/src/admin.js
 import "./style.css";
 
+console.log("--- admin.js executing ---");
+
 // --- API Service ---
 const ApiService = {
   baseUrl: "/api",
