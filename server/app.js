@@ -8,8 +8,8 @@ const cors = require("cors");
 const morgan = require("morgan");
 const rateLimit = require("express-rate-limit"); // Ensure this is imported
 const winston = require("winston");
-const https = require("https");
-const fs = require("fs");
+//const https = require("https");
+//const fs = require("fs");
 const cookieParser = require("cookie-parser");
 const helmet = require("helmet");
 const {
@@ -206,19 +206,20 @@ app.use((err, req, res, next) => {
 });
 
 // --- HTTPS Setup ---
-const httpsOptions = {
-  key: fs.readFileSync(path.resolve(__dirname, "../localhost+2-key.pem")),
-  cert: fs.readFileSync(path.resolve(__dirname, "../localhost+2.pem")),
-};
+//const httpsOptions = {
+//  key: fs.readFileSync(path.resolve(__dirname, "../localhost+2-key.pem")),
+//  cert: fs.readFileSync(path.resolve(__dirname, "../localhost+2.pem")),
+//};
 
 // --- Server Start Function ---
 const startServer = async () => {
   try {
     await initializeDatabase();
-    const server = https.createServer(httpsOptions, app);
+    const http = require('http');
+    const server = http.createServer(app);
     server.listen(config.port, () => {
       logger.info(
-        `HTTPS Server is running on port ${config.port} in ${config.nodeEnv} mode`
+        `HTTP Server is running on port ${config.port} in ${config.nodeEnv} mode`
       );
     });
   } catch (err) {
