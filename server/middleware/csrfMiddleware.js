@@ -14,10 +14,9 @@ const productionCookieOptions = {
 };
 
 const developmentCookieOptions = {
-  // Add separate dev options
   httpOnly: true,
-  secure: false, // Allow HTTP for local dev without HTTPS always
-  sameSite: "lax", // Lax is usually fine for dev
+  secure: false, // Allow HTTP for local dev
+  sameSite: "lax",
   path: "/",
 };
 
@@ -28,33 +27,33 @@ const testCookieOptions = {
   path: "/",
 };
 
+// === FIX: Determine options object BEFORE doubleCsrf call ===
+const nodeEnv = process.env.NODE_ENV || "development";
+let cookieOpts;
+if (nodeEnv === "production") {
+  cookieOpts = productionCookieOptions;
+} else if (nodeEnv === "test") {
+  cookieOpts = testCookieOptions;
+} else {
+  cookieOpts = developmentCookieOptions;
+}
+console.log(
+  `[CSRF Middleware] Using static cookie options for ENV=${nodeEnv}:`,
+  cookieOpts
+); // Log the chosen options
+// ==========================================================
+
 const { invalidCsrfTokenError, generateToken, doubleCsrfProtection } =
   doubleCsrf({
     getSecret: (req) => process.env.CSRF_SECRET,
-    cookieName: "__Host-x-csrf-token", // Keep __Host- prefix if using HTTPS eventually
-    // === FIX: Determine cookie options dynamically inside config ===
-    cookieOptions: (req) => {
-      // Use a function to determine options per request/environment
-      const nodeEnv = process.env.NODE_ENV || "development"; // Default to dev if unset
-      console.log(
-        `[CSRF Config] Determining cookie options for NODE_ENV='${nodeEnv}'`
-      );
-      if (nodeEnv === "production") {
-        return productionCookieOptions;
-      } else if (nodeEnv === "test") {
-        return testCookieOptions;
-      } else {
-        // Default to development options
-        return developmentCookieOptions;
-      }
-    },
-    // ============================================================
+    cookieName: "__Host-x-csrf-token",
+    // === FIX: Pass the determined options object ===
+    cookieOptions: cookieOpts,
+    // =============================================
     size: 64,
     ignoredMethods: ["GET", "HEAD", "OPTIONS"],
     getTokenFromRequest: (req) => req.headers["x-csrf-token"],
   });
-
-// Remove the static console.log here as options are now dynamic
 
 module.exports = {
   doubleCsrfProtection,
