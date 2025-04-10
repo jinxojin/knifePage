@@ -10,6 +10,8 @@ pnpm-debug.log*
 lerna-debug.log*
 combined.log
 error.log
+server/sshKey
+server/sshKey.pub
 
 # Editor-Specific
 .vscode/
