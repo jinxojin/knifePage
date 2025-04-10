@@ -439,6 +439,7 @@ const AdminUI = {
   quillInstances: { en: null, rus: null, mng: null },
 
   initialize() {
+    console.log("AdminUI initialize START");
     if (typeof Quill === "undefined") {
       console.error("Quill.js not loaded.");
       this.displayMessage(
@@ -450,6 +451,7 @@ const AdminUI = {
       this.initQuillEditor();
     }
     this.setupEventListeners();
+    console.log("Fetching CSRF token in initialize...");
     this.updateUI();
   },
 
@@ -568,12 +570,14 @@ const AdminUI = {
   },
 
   async updateUI() {
+    console.log("Checking login status...");
     const loggedIn = AuthService.isLoggedIn();
     this.currentUserRole = null;
     this.elements.loginPanel?.classList.toggle("hidden", loggedIn);
     this.elements.adminPanel?.classList.toggle("hidden", !loggedIn);
 
     if (loggedIn) {
+      console.log("Attempting ApiService.getMe()...");
       try {
         const userInfo = await ApiService.getMe();
         this.currentUserRole = userInfo?.role;
@@ -659,6 +663,7 @@ const AdminUI = {
   },
 
   async loadArticles() {
+    console.log("Attempting ApiService.getArticles()...");
     const container = this.elements.articlesContainer;
     if (!container) return;
     container.innerHTML =

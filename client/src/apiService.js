@@ -21,6 +21,7 @@ async function makePublicRequest(path, queryParams = {}) {
   });
 
   console.log(`[Public API] Fetching: ${url.toString()}`); // Log the request
+  console.log("ApiService: makeRequest called:", method, fetchPath);
 
   try {
     const response = await fetch(url.toString(), {
@@ -79,7 +80,7 @@ async function makePublicRequest(path, queryParams = {}) {
 
     // Parse the valid JSON response
     const data = await response.json();
-    // console.log(`[Public API] Received data for ${path}:`, data); // Optional: Log success data
+    console.log(`[Public API] Received data for ${path}:`, data); // Optional: Log success data
     return data;
   } catch (error) {
     // Catches network errors and errors thrown above
