@@ -2,51 +2,76 @@
 import { defineConfig } from "vite";
 import tailwindcss from "@tailwindcss/vite";
 import { readFileSync } from "fs";
-import path from "path";
+import path, { resolve } from "path"; // Import resolve from path
 
 export default defineConfig(({ command }) => {
-  // Determine if we are running the build command
+  // Determine if we are running the build command for conditional logic
   const isProduction = command === "build";
 
   return {
-    plugins: [tailwindcss()],
+    plugins: [
+      // Apply TailwindCSS processing
+      tailwindcss(),
+    ],
     server: {
-      // Frontend server runs on HTTPS (optional, but often convenient)
+      // Configure the development server
       https: {
+        // Use self-signed certs for local HTTPS development
         key: readFileSync(path.resolve(__dirname, "../localhost+2-key.pem")),
         cert: readFileSync(path.resolve(__dirname, "../localhost+2.pem")),
       },
-      port: 5173,
-      strictPort: true,
-      // Proxy API requests during development
+      port: 5173, // Port for the dev server
+      strictPort: true, // Fail if port is already in use
+      // Proxy API requests to the backend server during development
       proxy: {
         "/api": {
-          // Target the backend server running on HTTP for local dev
-          target: "http://localhost:3000", // <-- Corrected target
+          target: "http://localhost:3000", // Target backend (HTTP for local backend)
           changeOrigin: true, // Recommended for virtual hosts
-          // 'secure: false' is mainly for HTTPS targets with self-signed certs,
-          // less critical for HTTP but doesn't hurt.
-          secure: false,
+          secure: false, // Not needed for HTTP target, but doesn't hurt
         },
       },
     },
     preview: {
-      // Configuration for the 'vite preview' command (optional)
-      port: 5173,
+      // Configuration for the 'vite preview' command (serves build output locally)
+      port: 5173, // Port for the preview server
       https: {
+        // Use same certs for local HTTPS preview if needed
         key: readFileSync(path.resolve(__dirname, "../localhost+2-key.pem")),
         cert: readFileSync(path.resolve(__dirname, "../localhost+2.pem")),
       },
     },
     build: {
-      // Enable source maps for production builds to aid debugging
-      sourcemap: true, // <--- ADDED THIS LINE
+      // Enable source maps for easier debugging in production builds
+      sourcemap: true,
 
-      // Keep existing minification options
+      // Configure Rollup options for building
+      rollupOptions: {
+        // Define multiple entry points for a Multi-Page Application (MPA)
+        input: {
+          // Each key (e.g., 'main', 'admin') becomes the chunk name
+          // The value is the path to the HTML file entry point
+          main: resolve(__dirname, "index.html"),
+          admin: resolve(__dirname, "admin.html"),
+          article: resolve(__dirname, "article.html"),
+          articles: resolve(__dirname, "articles.html"),
+          competitions: resolve(__dirname, "competitions.html"),
+          mission: resolve(__dirname, "mission.html"),
+          forgotPassword: resolve(__dirname, "forgot-password.html"),
+          resetPassword: resolve(__dirname, "reset-password.html"),
+          changeInitialPassword: resolve(
+            __dirname,
+            "change-initial-password.html",
+          ),
+          // Add any other top-level HTML files here if created later
+          // e.g., contact: resolve(__dirname, 'contact.html'),
+        },
+      },
+
+      // Configure minification using Terser
       minify: "terser",
       terserOptions: {
         compress: {
-          // Drop console logs and debugger statements only in production builds
+          // Remove console.log and debugger statements only in production builds
           drop_console: isProduction,
           drop_debugger: isProduction,
         },
