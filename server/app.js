@@ -95,7 +95,17 @@ app.use(morgan(config.nodeEnv === "production" ? "combined" : "dev"));
 app.use(cors(config.corsOptions));
 
 // Security Headers (Helmet)
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(), // Start with Helmet's defaults
+        "img-src": ["'self'", "data:", "i.imgur.com", "picsum.photos"], // Allow self, data URIs, imgur, picsum
+        // Add other domains if needed, e.g., "your-cdn.com"
+      },
+    },
+  })
+);
 
 // Rate Limiting
 const apiLimiter = rateLimit({
@@ -120,8 +130,8 @@ if (process.env.NODE_ENV !== "test") {
 // --- End FIX ---
 
 // Body Parsers
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
+app.use(express.json({ limit: "100mb" }));
+app.use(express.urlencoded({ limit: "100mb", extended: true }));
 
 // Cookie Parser
 app.use(cookieParser());
