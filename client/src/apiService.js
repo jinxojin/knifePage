@@ -1,5 +1,6 @@
 // client/src/apiService.js
 // Service for public-facing API calls
+import { t, currentLang } from "./i18n.js"; // Import i18n if using t() in errors
 
 const BASE_URL = "/api"; // Keep this relative path for proxies
 
@@ -12,11 +13,9 @@ const BASE_URL = "/api"; // Keep this relative path for proxies
  * @throws {Error} If the request fails or returns a non-OK status.
  */
 async function makePublicRequest(path, queryParams = {}) {
-  // === FIX: Construct the URL string directly ===
   let fetchUrl = `${BASE_URL}${path}`;
-  const searchParams = new URLSearchParams(); // Use URLSearchParams separately
+  const searchParams = new URLSearchParams();
 
-  // Add query parameters, removing undefined/null values
   Object.keys(queryParams).forEach((key) => {
     if (queryParams[key] !== undefined && queryParams[key] !== null) {
       searchParams.append(key, queryParams[key]);
@@ -27,24 +26,24 @@ async function makePublicRequest(path, queryParams = {}) {
   if (queryString) {
     fetchUrl += `?${queryString}`;
   }
-  // Now fetchUrl is like "/api/articles/category/competition?limit=1&lang=en"
-  // ============================================
 
-  console.log(`[Public API] Fetching: ${fetchUrl}`); // Log the relative request path
+  // <<< Log 15 >>>
+  console.log(`[apiService.js] makePublicRequest - Fetching URL: ${fetchUrl}`);
 
   try {
-    // === FIX: Pass the constructed string directly to fetch ===
+    // <<< Log 16 >>>
+    console.log(
+      `[apiService.js] makePublicRequest - About to execute fetch for: ${fetchUrl}`,
+    );
     const response = await fetch(fetchUrl, {
       method: "GET",
-      // No 'credentials: include' needed for public requests unless specifically required by API
       headers: {
-        Accept: "application/json", // Indicate we want JSON back
+        Accept: "application/json",
       },
     });
-    // ======================================================
-
+    // <<< Log 17 (After fetch attempt) >>>
     console.log(
-      `[Public API] Status for ${path} with params ${JSON.stringify(queryParams)}: ${response.status}`,
+      `[apiService.js] makePublicRequest - Fetch executed for: ${fetchUrl}, Status: ${response.status}`,
     );
 
     if (!response.ok) {
@@ -53,35 +52,31 @@ async function makePublicRequest(path, queryParams = {}) {
       try {
         responseText = await response.text();
         console.error(
-          `[Public API] Non-OK response text for ${path}:`,
+          `[apiService.js] Non-OK response text for ${fetchUrl}:`,
           responseText,
         );
         const contentType = response.headers.get("content-type");
-        // Try parsing only if server indicates JSON error response
         if (contentType && contentType.includes("application/json")) {
           const errorData = JSON.parse(responseText);
-          errorMsg = errorData.message || errorMsg; // Use server's message if available
+          errorMsg = errorData.message || errorMsg;
         } else {
-          // Append snippet of non-JSON response otherwise
           errorMsg += ` - Response: ${responseText.substring(0, 150)}${responseText.length > 150 ? "..." : ""}`;
         }
       } catch (e) {
         console.warn(
-          `[Public API] Could not fully process error response for ${path}:`,
+          `[apiService.js] Could not fully process error response for ${fetchUrl}:`,
           e,
         );
-        // Fallback error message if reading/parsing text fails
         errorMsg += ` - Could not read server response body.`;
       }
       throw new Error(errorMsg);
     }
 
-    // Check content type for success response
     const contentType = response.headers.get("content-type");
     if (!contentType || !contentType.includes("application/json")) {
       const responseText = await response.text();
       console.error(
-        `[Public API] Expected JSON, but received Content-Type: ${contentType} for ${path}. Response text:`,
+        `[apiService.js] Expected JSON, but received Content-Type: ${contentType} for ${fetchUrl}. Response text:`,
         responseText,
       );
       throw new Error(
@@ -89,17 +84,14 @@ async function makePublicRequest(path, queryParams = {}) {
       );
     }
 
-    // Parse the valid JSON response
     const data = await response.json();
-    // console.log(`[Public API] Received data for ${path}:`, data); // Optional: Log success data
     return data;
   } catch (error) {
-    // Catches network errors and errors thrown above
+    // <<< Log 18 (Error Path) >>>
     console.error(
-      `[Public API] Network or processing error for ${path}:`,
+      `[apiService.js] makePublicRequest - Network/processing error for ${fetchUrl}:`,
       error,
     );
-    // Re-throw the error so the calling function (in page scripts) can handle UI updates
     throw error;
   }
 }
@@ -140,9 +132,10 @@ export async function getArticlesByCategorySlug(
   { limit = 1, lang } = {},
 ) {
   if (!categorySlug)
-    throw new Error("Category slug is required for getArticlesByCategorySlug.");
+    throw new Error(
+      t("Category slug is required for getArticlesByCategorySlug."),
+    ); // Use t() if available
   const queryParams = { limit, lang };
-  // Correctly use template literal for path construction
   return makePublicRequest(`/articles/category/${categorySlug}`, queryParams);
 }
 
@@ -155,11 +148,12 @@ export async function getArticlesByCategorySlug(
  * @returns {Promise<object>} The article object.
  */
 export async function getPublicArticleById(id, { lang } = {}) {
-  if (!id) throw new Error("Article ID is required for getPublicArticleById.");
+  if (!id)
+    throw new Error(t("Article ID is required for getPublicArticleById.")); // Use t() if available
   const queryParams = { lang };
-  // Correctly use template literal for path construction
+  // <<< Log 19 >>>
+  console.log(
+    `[apiService.js] getPublicArticleById - Calling makePublicRequest for ID: ${id}`,
+  );
   return makePublicRequest(`/articles/${id}`, queryParams);
 }
-
-// Make sure the individual functions below also use makePublicRequest correctly
-// (They seem to be doing so already)

@@ -1,13 +1,12 @@
-// client/src/article.js
+// client/src/articles.js
 import { formatDistanceToNow, format, differenceInHours } from "date-fns";
 import { enUS, ru, mn } from "date-fns/locale";
 import { t, currentLang } from "./i18n.js";
 import { initializeUI, translateStaticElements } from "./uiUtils.js";
 import { getPublicArticleById } from "./apiService.js"; // Import from new apiService
 
-// --- Keep Constants, Date Locales, Cache ---
+// --- Keep Constants, Date Locales ---
 const dateLocales = { en: enUS, rus: ru, mng: mn };
-const articleCache = new Map(); // Cache could be removed if not deemed necessary
 
 // --- Keep Helper Functions (Export if needed elsewhere) ---
 export function getConditionalTimestampStrings(dateObj) {
@@ -63,8 +62,7 @@ export function renderArticleList(articles, container) {
         );
         return "";
       }
-      /* console.log(`[renderArticleList] Rendering article index ${index}:`, article); */ const dateObj =
-        new Date(article.createdAt);
+      const dateObj = new Date(article.createdAt);
       const { displayString, hoverString } =
         getConditionalTimestampStrings(dateObj);
       const excerptToDisplay = article.excerpt || "";
@@ -78,35 +76,49 @@ export function renderArticleList(articles, container) {
 
 // --- UI Initialization (specific to article page) ---
 async function initArticlePage() {
-  console.log(`Initializing article page content in ${currentLang}...`);
+  // <<< Log 1 >>>
+  console.log("[articles.js] initArticlePage started.");
   const container = document.getElementById("article-container");
   const loadingIndicator = document.getElementById("article-loading");
   const urlParams = new URLSearchParams(window.location.search);
   const articleId = urlParams.get("id");
 
+  // <<< Log 2 >>>
+  console.log("[articles.js] Extracted Article ID:", articleId);
+
   if (!container) {
-    console.error("Article container not found");
+    console.error(
+      "[articles.js] Article container not found in initArticlePage.",
+    );
     return;
   }
   if (loadingIndicator) loadingIndicator.style.display = "block";
 
   try {
     if (!articleId) {
-      throw new Error(t("noArticleIdUrl"));
+      // <<< Log 3 (Error Path) >>>
+      console.error("[articles.js] No article ID found in URL!");
+      throw new Error(t("noArticleIdUrl")); // Make sure t() is available
     }
 
+    // <<< Log 4 >>>
+    console.log(
+      `[articles.js] Calling getPublicArticleById for ID: ${articleId} with lang: ${currentLang}`,
+    );
     // Use new apiService function
     const article = await getPublicArticleById(articleId, {
       lang: currentLang,
     });
+    // <<< Log 5 (After successful fetch) >>>
+    console.log("[articles.js] getPublicArticleById returned:", article);
 
-    document.title = `${article.title || t("untitledArticle")} - MSKTF`;
+    document.title = `${article.title || t("untitledArticle")} - MSKTF`; // Ensure t() is available
     renderArticle(article, container); // Use the existing render function
   } catch (error) {
-    // Catch errors from apiService call
-    console.error("Error in initArticlePage:", error);
+    // <<< Log 6 (Error Path) >>>
+    console.error("[articles.js] Error caught in initArticlePage:", error);
     const errorTitleKey = "errorLoadingArticleTitle";
-    const generalError = t("errorLoadingArticleContent");
+    const generalError = t("errorLoadingArticleContent"); // Ensure t() is available
     let displayMessage = error.message;
     if (
       error.message.includes("404") ||
@@ -122,14 +134,36 @@ async function initArticlePage() {
     document.title = `${t(errorTitleKey)} - MSKTF`;
   } finally {
     if (loadingIndicator) loadingIndicator.style.display = "none";
+    // <<< Log 7 >>>
+    console.log("[articles.js] initArticlePage finished.");
   }
 }
 
 // --- Event Listener for Article Page ---
 document.addEventListener("DOMContentLoaded", () => {
-  initializeUI(); // Setup header, footer, listeners, translate initial static elements
-  // Only run article loading if container exists
-  if (document.getElementById("article-container")) {
-    initArticlePage();
+  // <<< Log 8 >>>
+  console.log("[articles.js] DOMContentLoaded fired.");
+  try {
+    initializeUI(); // Setup header, footer, listeners, translate initial static elements
+    // <<< Log 9 >>>
+    console.log("[articles.js] initializeUI completed.");
+  } catch (uiError) {
+    // <<< Log 10 (Error Path) >>>
+    console.error("[articles.js] Error during initializeUI:", uiError);
   }
+
+  // <<< Log 11 >>>
+  console.log("[articles.js] Checking for #article-container...");
+  if (document.getElementById("article-container")) {
+    // <<< Log 12 >>>
+    console.log(
+      "[articles.js] #article-container found, calling initArticlePage().",
+    );
+    initArticlePage(); // Call the function to load data
+  } else {
+    // <<< Log 13 (Error Path) >>>
+    console.warn("[articles.js] #article-container NOT found.");
+  }
+  // <<< Log 14 >>>
+  console.log("[articles.js] DOMContentLoaded listener finished.");
 });
