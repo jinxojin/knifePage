@@ -2,7 +2,7 @@
 
 @import "tailwindcss";
 /* Removed direct CSS import again */
-@import url("https://fonts.googleapis.com/css2?family=Tinos:ital,wght@0,400;0,700;1,400;1,700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Merriweather:ital,opsz,wght@0,18..144,300..900;1,18..144,300..900&display=swap");
 
 /* --- Global Variables --- */
 @theme {
@@ -43,7 +43,7 @@
   }
 
   body {
-    @apply dark:bg-primary-800 m-0 bg-white font-[tinos];
+    @apply dark:bg-primary-800 m-0 bg-white font-[merriweather];
   }
 
   main {
@@ -141,21 +141,21 @@
 
 /* --- Prose / Rendered Content Overrides --- */
 @layer components {
-
   /* --- Manual Prose Styles (Alternative to Typography Plugin) --- */
-  .prose h1 { /* Targeting h1 within .prose */
-    @apply mb-4 mt-8 border-b border-gray-200 pb-2 text-3xl font-bold dark:border-gray-700; 
+  .prose h1 {
+    /* Targeting h1 within .prose */
+    @apply mt-8 mb-4 border-b border-gray-200 pb-2 text-3xl font-bold dark:border-gray-700;
     /* Example: Adjust size, weight, margin, border */
   }
   .prose h2 {
-    @apply mb-3 mt-6 border-b border-gray-200 pb-1 text-2xl font-semibold dark:border-gray-700; 
+    @apply mt-6 mb-3 border-b border-gray-200 pb-1 text-2xl font-semibold dark:border-gray-700;
     /* Example */
   }
   .prose h3 {
-    @apply mb-2 mt-4 text-xl font-semibold; /* Example */
+    @apply mt-4 mb-2 text-xl font-semibold; /* Example */
   }
   .prose h4 {
-    @apply mb-2 mt-4 text-lg font-semibold; /* Example */
+    @apply mt-4 mb-2 text-lg font-semibold; /* Example */
   }
   .prose p {
     @apply mb-4 leading-relaxed; /* Example */
@@ -173,23 +173,26 @@
     @apply mb-2; /* Example */
   }
   .prose blockquote {
-    @apply mb-4 border-l-4 border-gray-300 pl-4 italic text-gray-700 dark:border-gray-600 dark:text-gray-300; /* Example */
+    @apply mb-4 border-l-4 border-gray-300 pl-4 text-gray-700 italic dark:border-gray-600 dark:text-gray-300; /* Example */
   }
-  .prose code { /* Inline code */
-    @apply rounded bg-gray-100 px-1 py-0.5 text-sm font-mono dark:bg-gray-700; /* Example */
+  .prose code {
+    /* Inline code */
+    @apply rounded bg-gray-100 px-1 py-0.5 font-mono text-sm dark:bg-gray-700; /* Example */
   }
-  .prose pre { /* Code blocks */
-    @apply mb-4 overflow-x-auto rounded bg-gray-100 p-4 text-sm font-mono dark:bg-gray-900; /* Example */
+  .prose pre {
+    /* Code blocks */
+    @apply mb-4 overflow-x-auto rounded bg-gray-100 p-4 font-mono text-sm dark:bg-gray-900; /* Example */
   }
-  .prose pre code { /* Code inside pre */
-     @apply bg-transparent p-0; /* Reset inline code styles */
+  .prose pre code {
+    /* Code inside pre */
+    @apply bg-transparent p-0; /* Reset inline code styles */
   }
-   .prose strong {
-      @apply font-bold;
-   }
-   .prose em {
-      @apply italic;
-   }
+  .prose strong {
+    @apply font-bold;
+  }
+  .prose em {
+    @apply italic;
+  }
   /* --- End Manual Prose Styles --- */
 
   .prose img.float-left {
