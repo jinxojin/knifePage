@@ -1,6 +1,7 @@
 // client/src/apiService.js
 // Service for public-facing API calls
 import { t, currentLang } from "./i18n.js"; // Import i18n if using t() in errors
+console.log("--- apiService.js STARTING TO EXECUTE ---");
 
 const BASE_URL = "/api"; // Keep this relative path for proxies
 

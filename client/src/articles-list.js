@@ -1,7 +1,7 @@
 // client/src/articles-list.js
 import "./style.css";
 import { t, currentLang } from "./i18n.js";
-import { renderArticleList } from "./articles.js"; // Import ONLY needed function
+// import { renderArticleList } from "./articles.js"; // <<< COMMENTED OUT IMPORT
 import { initializeUI, translateStaticElements } from "./uiUtils.js"; // Import UI utils
 import { getPublicArticles } from "./apiService.js"; // Import from new apiService
 
@@ -36,7 +36,11 @@ async function fetchAndRenderArticles(page = 1) {
     // Render articles and pagination
     if (data && data.articles) {
       if (data.articles.length > 0) {
-        renderArticleList(data.articles, articlesContainer);
+        // === COMMENTED OUT THE CALL ===
+        // renderArticleList(data.articles, articlesContainer);
+        // === Put a placeholder instead ===
+        articlesContainer.innerHTML = `<p>Articles list rendering temporarily disabled for debugging article.js</p><pre>${JSON.stringify(data.articles, null, 2)}</pre>`;
+        // ====================================
         renderPagination(data.currentPage, data.totalPages);
       } else {
         articlesContainer.innerHTML = `<p class="text-center py-10">${t("noArticlesFound")}</p>`;

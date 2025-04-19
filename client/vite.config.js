@@ -72,7 +72,7 @@ export default defineConfig(({ command }) => {
       terserOptions: {
         compress: {
           // Remove console.log and debugger statements only in production builds
-          drop_console: isProduction,
+          drop_console: false,
           drop_debugger: isProduction,
         },
       },

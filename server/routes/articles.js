@@ -54,31 +54,55 @@ const validateArticleIdParam = [
     .toInt(),
 ];
 
-// Helper to get language attributes with aliases
-const getLangAttributes = (lang = "en") => {
+// --- Helper Functions & Constants ---
+
+// Helper to get language attributes with aliases FOR PUBLIC LISTS (title, excerpt)
+const getLangListAttributes = (lang = "en") => {
   const validLang = supportedLangs.includes(lang) ? lang : "en";
   return [
     [`title_${validLang}`, "title"],
-    [`content_${validLang}`, "content"],
+    // [`content_${validLang}`, "content"], // Content not usually needed for lists
     [`excerpt_${validLang}`, "excerpt"],
   ];
 };
 
-// Common attributes needed
-const commonAttributes = [
+// Helper to get language attributes with aliases FOR PUBLIC SINGLE VIEW (title, content)
+const getLangSingleAttributes = (lang = "en") => {
+  const validLang = supportedLangs.includes(lang) ? lang : "en";
+  return [
+    [`title_${validLang}`, "title"],
+    [`content_${validLang}`, "content"], // Need full content here
+    // [`excerpt_${validLang}`, "excerpt"], // Excerpt not needed for full view
+  ];
+};
+
+// Common attributes needed for public LIST views (excluding content)
+const commonListAttributes = [
   "id",
   "category",
   "author",
   "imageUrl",
   "createdAt",
-  "updatedAt",
+  // "updatedAt", // Usually not needed for public lists
   "views",
-  "status",
+  // "status", // Public routes only show published
+];
+
+// Common attributes needed for public SINGLE article views (excluding raw language fields)
+const commonSingleAttributes = [
+  "id",
+  "category",
+  "author",
+  "imageUrl",
+  "createdAt",
+  // "updatedAt", // Usually not needed for public view
+  "views",
+  // "status", // Already filtered
 ];
 
 // --- Routes ---
 
-// GET articles by category with limit (Keep Original Handler)
+// GET articles by category with limit (for highlights)
 router.get(
   "/category/:category",
   validateCategoryParam,
@@ -104,24 +128,18 @@ router.get(
       const { category } = req.params;
       const limit = req.query.limit || 1;
       const lang = req.query.lang || "en";
-      const langAttributes = getLangAttributes(lang);
+      const langAttributes = getLangListAttributes(lang); // Use list attributes (title, excerpt)
+
       console.log(
-        `[${timestamp}] GET /api/articles/category/${category} - Executing DB query with options:`,
-        {
-          where: { category, status: "published" },
-          limit,
-          order: [["createdAt", "DESC"]],
-        }
+        `[${timestamp}] GET /api/articles/category/${category} - Executing DB query...`
       );
       const articles = await Article.findAll({
         where: { category: category, status: "published" },
         order: [["createdAt", "DESC"]],
         limit: limit,
         attributes: [
-          ...commonAttributes.filter(
-            (attr) => !["content", "status", "updatedAt"].includes(attr)
-          ),
-          ...langAttributes.filter((attr) => attr[1] !== "content"),
+          ...commonListAttributes, // Include common list fields
+          ...langAttributes, // Include aliased title & excerpt
         ],
       });
       console.log(
@@ -133,7 +151,7 @@ router.get(
       res.json(articles);
     } catch (error) {
       console.error(
-        `[${timestamp}] GET /api/articles/category/${req.params.category} - ERROR caught in route handler:`,
+        `[${timestamp}] GET /api/articles/category/${req.params.category} - ERROR caught:`,
         error
       );
       next(
@@ -146,36 +164,43 @@ router.get(
   }
 );
 
-// GET /api/articles/all - Simple list (Keep Original Handler)
+// GET /api/articles/all - Simple list (Admin Only - fetches all fields)
+// NOTE: This is likely used ONLY by the admin panel now.
+// If public pages need a simple "all" list, create a separate endpoint or use the main GET /
 router.get(
   "/all",
-  query("lang").optional().isIn(supportedLangs),
+  // Consider adding authenticateToken, isAdmin middleware if this is truly admin-only
+  query("lang").optional().isIn(supportedLangs), // Lang might not be needed if fetching all raw fields
   async (req, res, next) => {
     const timestamp = new Date().toISOString();
     console.log(
-      `[${timestamp}] Entering GET /api/articles/all handler chain for query:`,
-      req.query
+      `[${timestamp}] Entering GET /api/articles/all (Admin List) handler chain...`
     );
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      console.warn(
-        `[${timestamp}] GET /api/articles/all - Validation Errors:`,
-        errors.array()
-      );
-      return next(
-        new ErrorHandler("Invalid query parameters", 400, errors.array())
-      );
-    }
+    // Removed language handling as admin likely needs all raw fields
     try {
-      const lang = req.query.lang || "en";
-      const langAttributes = getLangAttributes(lang);
       console.log(
         `[${timestamp}] GET /api/articles/all - Executing DB query...`
       );
       const articles = await Article.findAll({
+        // Fetch ALL fields for admin panel display/editing
         attributes: [
-          ...commonAttributes.filter((attr) => attr !== "content"),
-          ...langAttributes.filter((attr) => attr[1] !== "content"),
+          "id",
+          "category",
+          "author",
+          "imageUrl",
+          "createdAt",
+          "updatedAt",
+          "views",
+          "status", // Include status for admin view
+          "title_en",
+          "content_en",
+          "excerpt_en",
+          "title_rus",
+          "content_rus",
+          "excerpt_rus",
+          "title_mng",
+          "content_mng",
+          "excerpt_mng",
         ],
         order: [["createdAt", "DESC"]],
       });
@@ -188,7 +213,7 @@ router.get(
       res.json(articles);
     } catch (error) {
       console.error(
-        `[${timestamp}] GET /api/articles/all - ERROR caught in route handler:`,
+        `[${timestamp}] GET /api/articles/all - ERROR caught:`,
         error
       );
       next(
@@ -201,47 +226,40 @@ router.get(
   }
 );
 
-// ========== RESTORED ORIGINAL HANDLER FOR GET /api/articles ==========
+// GET /api/articles - Paginated list (Public facing)
 router.get(
   "/",
-  // Logging middleware first
   (req, res, next) => {
-    console.log(
-      `[${new Date().toISOString()}] Entering GET /api/articles handler chain for query:`,
-      req.query
-    );
-    next();
+    /* ... logging middleware ... */ next();
   },
-  // *** Re-enable the validation middleware ***
-  validateGetArticlesQuery,
+  validateGetArticlesQuery, // Use the validation middleware
   async (req, res, next) => {
     const timestamp = new Date().toISOString();
-    console.log(`[${timestamp}] GET /api/articles - Async Handler entered.`);
+    console.log(
+      `[${timestamp}] GET /api/articles (Paginated Public) - Async Handler entered.`
+    );
 
-    // Check validation results *after* the middleware runs
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       console.warn(
         `[${timestamp}] GET /api/articles - Validation Errors:`,
         errors.array()
       );
-      // Pass error to global handler which will send JSON
       return next(
         new ErrorHandler("Invalid query parameters", 400, errors.array())
       );
     }
 
     try {
-      // Proceed with original logic now that validation passed (or was bypassed if commented)
       const { category, limit: queryLimit, page: queryPage, lang } = req.query;
-      const limit = queryLimit || 6; // Use validated or default limit
-      const page = queryPage || 1; // Use validated or default page
+      const limit = queryLimit || 6;
+      const page = queryPage || 1;
       const offset = (page - 1) * limit;
-      const currentLang = lang || "en"; // Use validated or default lang
-      const langAttributes = getLangAttributes(currentLang);
+      const currentLang = lang || "en";
+      const langAttributes = getLangListAttributes(currentLang); // Use LIST attributes (title, excerpt)
 
       const whereClause = {
-        status: "published",
+        status: "published", // Only show published articles
       };
 
       if (category) {
@@ -249,7 +267,6 @@ router.get(
           .split(",")
           .map((cat) => cat.trim())
           .filter(Boolean);
-        // Validation ensures categories are valid if provided
         if (categories.length > 0) {
           whereClause.category = { [Op.in]: categories };
         }
@@ -266,12 +283,10 @@ router.get(
         limit: limit,
         offset: offset,
         attributes: [
-          ...commonAttributes.filter(
-            (attr) => !["content", "status", "updatedAt"].includes(attr)
-          ),
-          ...langAttributes.filter((attr) => attr[1] !== "content"),
+          ...commonListAttributes, // Use common list fields
+          ...langAttributes, // Use aliased title/excerpt
         ],
-        distinct: true,
+        distinct: true, // Important for correct count with includes/joins if added later
       });
 
       console.log(
@@ -282,19 +297,16 @@ router.get(
         totalArticles: count,
         totalPages: Math.ceil(count / limit),
         currentPage: page,
-        articles: rows,
+        articles: rows, // rows already contain aliased fields
       };
 
       console.log(
         `[${timestamp}] GET /api/articles - Sending success response.`
       );
-      res.setHeader("Content-Type", "application/json"); // Ensure JSON header
+      res.setHeader("Content-Type", "application/json");
       res.json(responseData);
     } catch (error) {
-      console.error(
-        `[${timestamp}] GET /api/articles - ERROR caught in route handler:`,
-        error
-      );
+      console.error(`[${timestamp}] GET /api/articles - ERROR caught:`, error);
       next(
         new ErrorHandler(
           error.message || "Server error while fetching articles.",
@@ -304,27 +316,19 @@ router.get(
     }
   }
 );
-// =================================================================
 
-// GET /api/articles/:id (Fetch single article detail - Keep Original Handler)
+// GET /api/articles/:id (Fetch single article detail - Public facing)
 router.get(
   "/:id",
   (req, res, next) => {
-    console.log(
-      `[${new Date().toISOString()}] Entering GET /api/articles/:id handler chain for ID: ${
-        req.params.id
-      }, query:`,
-      req.query
-    );
-    next();
+    /* ... logging middleware ... */ next();
   },
-  validateArticleIdParam, // Keep ID validation
-  // Lang validation is irrelevant now for attribute selection, but keep it if used elsewhere
-  query("lang").optional().isIn(supportedLangs),
+  validateArticleIdParam, // Validate ID
+  query("lang").optional().isIn(supportedLangs), // Validate optional lang
   async (req, res, next) => {
     const timestamp = new Date().toISOString();
     console.log(
-      `[${timestamp}] GET /api/articles/${req.params.id} - Async Handler entered.`
+      `[${timestamp}] GET /api/articles/${req.params.id} (Single Public) - Async Handler entered.`
     );
 
     const errors = validationResult(req);
@@ -339,62 +343,41 @@ router.get(
     }
 
     try {
-      const articleId = req.params.id; // Validated
+      const articleId = req.params.id;
+      const lang = req.query.lang || "en"; // Get requested language
 
-      // *** CHANGE: Define attributes to fetch ALL fields for editing ***
+      // === FIX: Select ONLY necessary aliased attributes for public view ===
+      const langAttributes = getLangSingleAttributes(lang); // Use SINGLE attributes (title, content)
       const attributesToFetch = [
-        // Include common fields needed by admin form/display
-        "id",
-        "category",
-        "author",
-        "imageUrl",
-        "createdAt",
-        "updatedAt",
-        "views",
-        "status",
-        // Include ALL raw language fields
-        "title_en",
-        "content_en",
-        "excerpt_en",
-        "title_rus",
-        "content_rus",
-        "excerpt_rus",
-        "title_mng",
-        "content_mng",
-        "excerpt_mng",
+        ...commonSingleAttributes, // Include common fields for single view
+        ...langAttributes, // Include aliased title and content
       ];
-      // *** END CHANGE ***
+      // ================================================================
 
       console.log(
-        `[${timestamp}] GET /api/articles/${articleId} - Executing DB query (fetching all fields)...`
+        `[${timestamp}] GET /api/articles/${articleId} - Executing DB query with aliased attributes for lang='${lang}'...`
       );
 
       const article = await Article.findOne({
         where: {
           id: articleId,
-          // NOTE: Admin might need to edit non-published articles too.
-          // Consider removing this status check OR adding logic
-          // to bypass it if req.user exists (indicating admin).
-          // For now, we'll keep it simple and only allow editing published ones via this route.
-          // status: "published",
+          status: "published", // Ensure only published articles are publicly viewable
         },
-        attributes: attributesToFetch, // Use the new list of attributes
+        attributes: attributesToFetch, // Use the specific attribute list
       });
 
       if (!article) {
         console.warn(
-          `[${timestamp}] GET /api/articles/${articleId} - Article not found.`
+          `[${timestamp}] GET /api/articles/${articleId} - Article not found or not published.`
         );
-        // Even if status check removed, still return 404 if ID doesn't exist
         return next(new ErrorHandler("Article Not Found", 404));
       }
 
       console.log(
-        `[${timestamp}] GET /api/articles/${articleId} - Article found. Sending all fields.`
+        `[${timestamp}] GET /api/articles/${articleId} - Article found. Incrementing views and sending response.`
       );
 
-      // NOTE: We still increment views even if admin is potentially viewing,
-      // might want to conditionally skip this based on req.user later.
+      // Increment views (fire and forget - don't wait for it)
       Article.increment("views", { where: { id: articleId } }).catch((err) => {
         console.error(
           `[${timestamp}] GET /api/articles/${articleId} - Failed to increment view count:`,
@@ -403,13 +386,14 @@ router.get(
       });
 
       res.setHeader("Content-Type", "application/json");
-      res.json(article); // Send the full article object
+      // The 'article' object now contains aliased 'title' and 'content'
+      res.json(article);
     } catch (error) {
       console.error(
-        `[${timestamp}] GET /api/articles/${req.params.id} - ERROR caught in route handler:`,
+        `[${timestamp}] GET /api/articles/${req.params.id} - ERROR caught:`,
         error
       );
-      next(error);
+      next(error); // Pass to global handler
     }
   }
 );
