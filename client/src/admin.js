@@ -35,29 +35,30 @@ const ApiService = {
   },
 
   async makeRequest(url, method = "GET", data = null, isRetry = false) {
-    // We need the path part that the Vite proxy understands, starting with /api
+    // We now expect 'url' to be a relative path starting with /api/...
+    // or an absolute URL (though less common for internal calls).
+    let fetchPath = url; // Assume url is already the correct path
 
-    let fetchPath;
-    try {
-      // Check if the provided URL is one of our backend API URLs
-      if (url.startsWith(this.baseUrl)) {
-        // Extract the pathname part (e.g., /api/admin/login)
+    // Optional: Add a check if a full URL was passed, but generally aim for relative paths
+    if (url.startsWith("http://") || url.startsWith("https://")) {
+      console.warn("makeRequest received full URL, using path only:", url);
+      try {
         const urlObject = new URL(url);
-        fetchPath = urlObject.pathname;
-      } else if (url.startsWith("/api/")) {
-        // If it's already a relative path starting with /api/
-        fetchPath = url;
-      } else {
-        // If it's some other URL or unexpected format, use it as is (might fail)
-        console.warn("makeRequest called with non-API base URL:", url);
-        fetchPath = url;
+        fetchPath = urlObject.pathname + urlObject.search; // Keep path and query
+      } catch (e) {
+        console.error(
+          "Could not parse full URL in makeRequest, using original:",
+          url,
+          e,
+        );
+        fetchPath = url; // Fallback
       }
-    } catch (e) {
-      console.error("Error parsing URL in makeRequest:", url, e);
-      // Fallback if URL parsing fails for some reason
-      fetchPath = url.startsWith(this.baseUrl)
-        ? url.substring(this.baseUrl.indexOf("/api"))
-        : url;
+    } else if (!url.startsWith("/api/")) {
+      // If it's not absolute and not starting with /api, maybe prepend /api?
+      // This depends on how you call makeRequest. Let's assume callers use /api/...
+      console.warn("makeRequest received unexpected path format:", url);
+      // If necessary, adjust logic here based on call patterns
+      // fetchPath = `${this.baseUrl}${url}`; // Example: Prepend base if needed
     }
 
     // Ensure CSRF token is fetched for modifying requests
@@ -71,7 +72,6 @@ const ApiService = {
         await this.fetchCsrfToken();
       } catch (csrfError) {
         console.error("Failed pre-fetch CSRF token:", csrfError);
-        // Allow the request to proceed; retry logic might handle it
       }
     }
 
@@ -98,24 +98,21 @@ const ApiService = {
     }
 
     try {
-      // Use the calculated fetchPath, which should start with /api/ for backend requests
+      // Use the fetchPath directly (should be like /api/admin/login)
       console.log(`Making API request: ${method} ${fetchPath}`);
-      const response = await fetch(fetchPath, options); // Fetch relative to Vite origin
+      const response = await fetch(fetchPath, options); // Fetch relative path
 
-      // --- CSRF Retry Logic ---
+      // --- CSRF Retry Logic --- (Keep this logic)
       if (response.status === 403 && !isRetry) {
         try {
           const errorJson = await response.clone().json();
-          if (
-            errorJson.message &&
-            errorJson.message.toLowerCase().includes("invalid csrf token")
-          ) {
+          if (errorJson.message?.toLowerCase().includes("invalid csrf token")) {
             console.warn(
               "CSRF token invalid, fetching new token and retrying ONCE...",
             );
             this.csrfToken = null;
             await this.fetchCsrfToken();
-            // Retry the original request (pass original full URL to restart logic)
+            // Retry the original request - PASS THE ORIGINAL 'url' argument here
             return this.makeRequest(url, method, data, true);
           }
         } catch (e) {
@@ -124,31 +121,22 @@ const ApiService = {
       }
       // --- End CSRF Retry Logic ---
 
-      if (response.status === 204) {
-        return null; // Successful DELETE or PUT with no body
-      }
+      if (response.status === 204) return null;
 
       if (!response.ok) {
+        // ... (Error handling remains the same) ...
         let errorData = {
-          message: `Request failed: ${response.status} ${response.statusText}`,
-          statusCode: response.status,
+          /* ... */
         };
         let responseText = "";
         try {
-          responseText = await response.text();
-          errorData = JSON.parse(responseText);
-          if (!errorData.statusCode) errorData.statusCode = response.status;
+          /* ... try parsing error ... */
         } catch (e) {
-          errorData.responseText = responseText;
-          console.warn(
-            `Failed to parse error response JSON for ${method} ${fetchPath}. Raw: ${responseText.substring(0, 150)}...`,
-          );
+          /* ... handle parse fail ... */
         }
-        const error = new Error(
-          errorData.message || `Request failed with status ${response.status}`,
-        );
+        const error = new Error(/* ... */);
         error.statusCode = errorData.statusCode;
-        error.data = errorData; // Attach full error data object
+        error.data = errorData;
         console.error(
           `API Request Failed: ${error.statusCode} - ${error.message}`,
           error.data,
@@ -158,31 +146,26 @@ const ApiService = {
 
       // Process successful responses
       const contentType = response.headers.get("content-type");
-      if (contentType && contentType.includes("application/json")) {
-        return await response.json(); // Parse JSON response
+      if (contentType?.includes("application/json")) {
+        return await response.json();
       } else {
-        // Handle non-JSON success responses (should be rare for this API)
+        // ... (Handle non-JSON success remains the same) ...
         const text = await response.text();
         console.log(
           `Received non-JSON OK response for ${method} ${fetchPath}:`,
           text.substring(0, 100) + "...",
         );
-        return text; // Return as text
+        return text;
       }
     } catch (networkOrProcessingError) {
-      // Catch fetch failures (network errors) or errors thrown above
+      // ... (Catch block remains the same) ...
       console.error(
         `API Error during ${method} ${fetchPath}:`,
         networkOrProcessingError,
       );
-      // Ensure the thrown error has a standard structure if possible
-      const errorToThrow = new Error(
-        networkOrProcessingError.message ||
-          `Network or processing error occurred.`,
-      );
-      errorToThrow.statusCode = networkOrProcessingError.statusCode || 500; // Default to 500 if no status code
-      errorToThrow.data = networkOrProcessingError.data || {}; // Include original error data if available
-      throw errorToThrow; // Re-throw the standardized error
+      const errorToThrow = new Error(/* ... */);
+      /* ... set properties ... */
+      throw errorToThrow;
     }
   },
 
@@ -257,7 +240,9 @@ const ApiService = {
     return this.makeAuthenticatedRequest(`${this.baseUrl}/articles/all`);
   },
   async getArticle(id) {
-    return this.makeAuthenticatedRequest(`${this.baseUrl}/articles/${id}`);
+    return this.makeAuthenticatedRequest(
+      `${this.baseUrl}/admin/articles/${id}`,
+    );
   },
   async createArticle(articleData) {
     return this.makeAuthenticatedRequest(

@@ -1186,6 +1186,65 @@ router.get("/suggestions/my", authenticateToken, async (req, res, next) => {
   }
 });
 
+// GET /api/admin/articles/:id (Fetch FULL article details for Admin Edit)
+router.get(
+  "/articles/:id", // Route path within admin router
+  authenticateToken,
+  isModeratorOrAdmin, // Allow mods too if they use this for suggest-edit prepopulation
+  validateArticleIdParam, // Validate the ID
+  async (req, res, next) => {
+    const timestamp = new Date().toISOString();
+    const articleId = req.params.id; // Get validated ID
+    console.log(
+      `[${timestamp}] GET /api/admin/articles/${articleId} (Admin Fetch) requested by User ${req.user.userId}`
+    );
+
+    try {
+      const article = await Article.findByPk(articleId, {
+        // No 'where' clause needed for status, fetch regardless
+        // Fetch all fields needed for the edit form
+        attributes: [
+          "id",
+          "category",
+          "author",
+          "imageUrl",
+          "createdAt",
+          "updatedAt",
+          "views",
+          "status", // Include status
+          "title_en",
+          "content_en",
+          "excerpt_en",
+          "title_rus",
+          "content_rus",
+          "excerpt_rus",
+          "title_mng",
+          "content_mng",
+          "excerpt_mng",
+        ],
+      });
+
+      if (!article) {
+        console.warn(
+          `[${timestamp}] GET /api/admin/articles/${articleId} - Article not found.`
+        );
+        return next(new ErrorHandler("Article not found", 404));
+      }
+
+      console.log(
+        `[${timestamp}] GET /api/admin/articles/${articleId} - Article found, sending full details.`
+      );
+      res.json(article); // Send the full article object with all raw fields
+    } catch (error) {
+      console.error(
+        `[${timestamp}] GET /api/admin/articles/${articleId} - Error fetching details:`,
+        error
+      );
+      next(error);
+    }
+  }
+);
+
 // POST /api/admin/suggestions/:suggestionId/approve (Admin action)
 router.post(
   "/suggestions/:suggestionId/approve",
