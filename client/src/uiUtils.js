@@ -96,30 +96,47 @@ function createMobileMenu() {
   if (!dropdown) {
     dropdown = document.createElement("div");
     dropdown.id = "mobile-menu";
-    dropdown.className = `md:hidden fixed top-14 left-0 right-0 w-full bg-white/95 dark:bg-primary-800/95 backdrop-blur-sm shadow-md overflow-hidden transition-max-height duration-300 ease-in-out z-40`;
+    // --- Updated Classes for the dropdown container ---
+    dropdown.className = `
+      md:hidden fixed top-10 left-0 right-0 w-full   /* << CHANGED top-11 to top-10 */
+      bg-white dark:bg-gray-800
+      overflow-hidden transition-max-height duration-300 ease-in-out z-40`; // No border, no shadow
+    // --- End Updated Classes ---
     dropdown.style.maxHeight = "0";
+
     const nav = navUl.cloneNode(true);
-    nav.className = "flex flex-col items-center py-4 space-y-2";
+    // Use the same classes for UL and A as in the previous step
+    nav.className = "flex flex-col py-4 space-y-1";
     nav
       .querySelectorAll("a")
       .forEach((a) =>
         a.classList.add(
           "block",
-          "py-2",
+          "py-3",
           "px-4",
-          "rounded",
+          "rounded-md",
+          "text-gray-700",
+          "dark:text-gray-200",
           "hover:bg-gray-100",
-          "dark:hover:bg-primary-700",
-          "w-full",
-          "text-center",
+          "dark:hover:bg-gray-700",
+          "focus:outline-none",
+          "focus:ring-2",
+          "focus:ring-blue-500",
+          "dark:focus:ring-blue-400",
+          "focus:bg-gray-100",
+          "dark:focus:bg-gray-700",
+          "text-left",
         ),
       );
+    // --- End A classes ---
+
     dropdown.appendChild(nav);
     navContainer?.insertAdjacentElement("afterend", dropdown);
   } else {
     dropdown.style.maxHeight = "0";
   }
 
+  // Toggle logic remains the same
   if (!burgerBtn.dataset.mobileMenuListener) {
     burgerBtn.dataset.mobileMenuListener = "true";
     burgerBtn.addEventListener("click", (e) => {
