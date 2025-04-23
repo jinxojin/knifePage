@@ -31,10 +31,8 @@ if (process.env.NODE_ENV !== "production") {
 const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
-const rateLimit = require("express-rate-limit"); // Ensure this is imported
+const rateLimit = require("express-rate-limit");
 const winston = require("winston");
-//const https = require("https");
-//const fs = require("fs");
 const cookieParser = require("cookie-parser");
 const helmet = require("helmet");
 const {
@@ -44,7 +42,7 @@ const {
 } = require("./middleware/csrfMiddleware");
 const articleRoutes = require("./routes/articles");
 const adminRoutes = require("./routes/admin");
-const authRoutes = require("./routes/auth"); // Requires routes/auth.js
+const authRoutes = require("./routes/auth");
 
 // --- Configure Winston Logger ---
 const logger = winston.createLogger({
@@ -60,6 +58,7 @@ const logger = winston.createLogger({
         winston.format.simple()
       ),
     }),
+    // In production, you might configure file paths differently based on deployment summary
     new winston.transports.File({ filename: "error.log", level: "error" }),
     new winston.transports.File({ filename: "combined.log" }),
   ],
@@ -68,30 +67,44 @@ const logger = winston.createLogger({
 // --- Centralized Configuration ---
 const config = require("./config");
 
+// --- Validate Essential Config ---
 if (!config.jwtSecret) {
-  logger.error("JWT_SECRET is not defined in environment variables");
+  logger.error(
+    "FATAL ERROR: JWT_SECRET is not defined in environment variables"
+  );
   process.exit(1);
 }
 if (!process.env.CSRF_SECRET) {
-  logger.error("CSRF_SECRET environment variable must be set");
+  logger.error("FATAL ERROR: CSRF_SECRET environment variable must be set");
   process.exit(1);
 }
 
 // --- Database Initialization ---
 const initializeDatabase = require("./config/initDb");
 
-// --- Sequelize Instance ---
+// --- Sequelize Instance (used for DB connection check, not directly here usually) ---
 const { sequelize } = require("./config/database");
 
 // --- Initialize Express App ---
 const app = express();
 
+// --- Trust Proxy ---
+// Set this because Nginx is acting as a reverse proxy.
+// '1' means trust the first hop (Nginx). Important for express-rate-limit.
+app.set("trust proxy", 1);
+logger.info("Express 'trust proxy' setting enabled."); // Use logger
+
 // --- Middleware ---
 
-// Request Logging (Morgan)
-app.use(morgan(config.nodeEnv === "production" ? "combined" : "dev"));
+// Request Logging (Morgan) - Use logger stream
+app.use(
+  morgan(config.nodeEnv === "production" ? "combined" : "dev", {
+    stream: { write: (message) => logger.info(message.trim()) },
+  })
+);
 
 // CORS (Cross-Origin Resource Sharing)
+logger.info(`CORS configured for origin: ${config.corsOptions.origin}`);
 app.use(cors(config.corsOptions));
 
 // Security Headers (Helmet)
@@ -99,39 +112,37 @@ app.use(
   helmet({
     contentSecurityPolicy: {
       directives: {
-        ...helmet.contentSecurityPolicy.getDefaultDirectives(), // Start with Helmet's defaults
-        "img-src": ["'self'", "data:", "i.imgur.com", "picsum.photos"], // Allow self, data URIs, imgur, picsum
-        // Add other domains if needed, e.g., "your-cdn.com"
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        "img-src": ["'self'", "data:", "i.imgur.com", "picsum.photos"], // Ensure allowed image sources are listed
+        // Add other directives as needed (e.g., script-src, style-src)
       },
     },
   })
 );
 
-// Rate Limiting
+// Rate Limiting - General API Limiter
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: 100, // Limit each IP to 100 requests per windowMs (adjust as needed)
   message: {
     message: "Too many requests from this IP, please try again later.",
-  }, // Send JSON
+  },
   standardHeaders: true,
   legacyHeaders: false,
+  // keyGenerator is handled correctly now due to 'trust proxy'
 });
 
-// --- FIX: Conditionally apply general API limiter ---
+// Conditionally apply general API limiter (skip in test)
 if (process.env.NODE_ENV !== "test") {
-  app.use("/api/", apiLimiter); // Apply to all API routes ONLY if NOT testing
-  console.log("Applied general API rate limiter.");
-  logger.info("Applied general API rate limiter."); // Use logger
+  app.use("/api/", apiLimiter);
+  logger.info("Applied general API rate limiter to /api/ routes.");
 } else {
-  console.log("Skipping general API rate limiter in test environment.");
-  logger.info("Skipping general API rate limiter in test environment."); // Use logger
+  logger.info("Skipping general API rate limiter in test environment.");
 }
-// --- End FIX ---
 
 // Body Parsers
-app.use(express.json({ limit: "100mb" }));
-app.use(express.urlencoded({ limit: "100mb", extended: true }));
+app.use(express.json({ limit: "10mb" })); // Adjusted limit, check if 100mb is really needed
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
 // Cookie Parser
 app.use(cookieParser());
@@ -141,6 +152,7 @@ app.use(cookieParser());
 app.get("/api/csrf-token", (req, res) => {
   try {
     const csrfToken = generateToken(req, res);
+    logger.debug("CSRF token generated successfully.");
     res.json({ csrfToken });
   } catch (err) {
     logger.error("Error generating CSRF token:", err);
@@ -148,108 +160,101 @@ app.get("/api/csrf-token", (req, res) => {
   }
 });
 
-// 2. Apply the CSRF middleware protection
+// 2. Apply the CSRF middleware protection to subsequent routes
 app.use(doubleCsrfProtection);
+logger.info("Double CSRF Protection middleware applied.");
 
 // --- Routes ---
 app.use("/api", (req, res, next) => {
-  if (process.env.NODE_ENV !== "test") {
-    console.log(
-      `[${new Date().toISOString()}] Request received for path: ${
-        req.originalUrl
-      }`
-    );
-  }
   logger.debug(`Request received for path: ${req.originalUrl}`);
   next();
 });
 
 app.use("/api/articles", articleRoutes);
-app.use("/api/auth", authRoutes); // Includes specific limiters applied conditionally inside
-app.use("/api/admin", adminRoutes);
+app.use("/api/auth", authRoutes); // Password reset routes
+app.use("/api/admin", adminRoutes); // Login, CRUD, User Mgmt routes
 
 // --- Simple Hello Endpoint ---
 app.get("/api/hello", (req, res) => {
+  logger.debug("GET /api/hello endpoint hit.");
   res.json({ message: "Hello from the server!" });
 });
 
 // --- Error Handling Middleware (MUST be last) ---
 app.use((err, req, res, next) => {
   const timestamp = new Date().toISOString();
+  const statusCode = err.statusCode || 500;
+
+  // Log detailed error including CSRF validation errors
   logger.error({
     timestamp: timestamp,
     message: err.message,
-    stack: err.stack,
-    statusCode: err.statusCode,
-    errors: err.errors,
+    stack: process.env.NODE_ENV !== "production" ? err.stack : undefined, // Only show stack in dev
+    statusCode: statusCode,
+    errors: err.errors, // Include validation errors if present
     url: req.originalUrl,
     method: req.method,
-    ip: req.ip,
+    ip: req.ip, // Will show proxy IP if trust proxy isn't set, but should be correct now
+    isCsrfError: err === invalidCsrfTokenError, // Check if it's the specific CSRF error
   });
-  if (process.env.NODE_ENV !== "production") {
-    console.error(`[${timestamp}] Global Error Handler Caught:`, err);
-  }
 
-  res.setHeader("Content-Type", "application/json");
-
+  // Specific handling for CSRF errors
   if (err === invalidCsrfTokenError) {
-    return res.status(403).json({ message: "Invalid CSRF token" });
+    if (!res.headersSent) {
+      return res.status(403).json({ message: "Invalid CSRF token." });
+    } else {
+      logger.warn("Headers already sent for CSRF error.");
+      return next(err); // Pass to default handler if headers sent
+    }
   }
 
+  // Handle Sequelize validation errors
   if (err.name === "SequelizeValidationError") {
     const validationErrors = err.errors.map((e) => ({
       field: e.path,
       message: e.message,
     }));
-    return res
-      .status(400)
-      .json({ message: "Validation Error", errors: validationErrors });
+    if (!res.headersSent) {
+      return res
+        .status(400)
+        .json({ message: "Validation Error", errors: validationErrors });
+    } else {
+      logger.warn("Headers already sent for SequelizeValidationError.");
+      return next(err);
+    }
   }
 
-  const statusCode =
-    typeof err.statusCode === "number" &&
-    err.statusCode >= 400 &&
-    err.statusCode < 600
-      ? err.statusCode
-      : 500;
-
-  const message = err.message || "Internal Server Error";
-
-  const errorDetails =
-    process.env.NODE_ENV === "production" ? {} : { stack: err.stack };
-
+  // General error response
   const responseMessage =
     statusCode === 500 && process.env.NODE_ENV === "production"
-      ? "Internal Server Error"
-      : message;
+      ? "Internal Server Error" // Generic message in production for 500s
+      : err.message || "An unexpected error occurred"; // Use error message otherwise
 
   if (!res.headersSent) {
     res.status(statusCode).json({
       message: responseMessage,
+      // Only include validation errors for non-500s or in development
       errors:
         statusCode !== 500 || process.env.NODE_ENV !== "production"
           ? err.errors
           : undefined,
-      ...errorDetails,
     });
   } else {
     logger.warn(
       `Headers already sent for error on ${req.originalUrl}, cannot send JSON response.`
     );
+    // If headers are sent, Express's default error handler will close the connection.
+    // We can't send a JSON response anymore.
     next(err);
   }
 });
 
-// --- HTTPS Setup ---
-//const httpsOptions = {
-//  key: fs.readFileSync(path.resolve(__dirname, "../localhost+2-key.pem")),
-//  cert: fs.readFileSync(path.resolve(__dirname, "../localhost+2.pem")),
-/;
-
 // --- Server Start Function ---
 const startServer = async () => {
   try {
+    // Initialize DB connection first
     await initializeDatabase();
+    // Only require http if needed (e.g., no separate https server)
     const http = require("http");
     const server = http.createServer(app);
     server.listen(config.port, () => {
@@ -261,7 +266,6 @@ const startServer = async () => {
     });
   } catch (err) {
     logger.error("Failed to start server:", err);
-    console.error("Failed to start server:", err);
     process.exit(1);
   }
 };
@@ -270,17 +274,17 @@ const startServer = async () => {
 module.exports = app;
 
 // --- Conditionally Start Server ---
+// Check if the script is being run directly
 if (require.main === module) {
-  console.log("Running app.js directly, starting server...");
+  logger.info("Running app.js directly, starting server...");
   startServer();
 } else {
-  console.log(
+  logger.info(
     `app.js was required by ${
       process.env.NODE_ENV === "test" ? "test environment" : "another module"
     }, not starting server automatically.`
   );
-  // Initialize DB connection when required for tests if not already handled by startServer call sequence
-  // This ensures the DB connection is ready when tests `require(app)`
+  // Initialize DB connection when required for tests if not already handled
   if (process.env.NODE_ENV === "test") {
     initializeDatabase().catch((err) => {
       logger.error("Failed to initialize database when required by test:", err);
