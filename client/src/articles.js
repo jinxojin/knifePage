@@ -5,31 +5,51 @@ console.log("--- articles.js script STARTING TO EXECUTE ---");
 
 // Restore necessary imports
 import { formatDistanceToNow, format, differenceInHours } from "date-fns";
-import { enUS, ru, mn } from "date-fns/locale";
+import { enUS, ru, mn } from "date-fns/locale"; // Import locales needed
 import { t, currentLang } from "./i18n.js";
 import { initializeUI, translateStaticElements } from "./uiUtils.js"; // Ensure this is imported
 import { getPublicArticleById } from "./apiService.js"; // Ensure this is imported
 
 // Define constants needed
-const dateLocales = { en: enUS, rus: ru, mng: mn };
+const dateLocales = { en: enUS, rus: ru, mng: mn }; // Map language codes to locales
 
-// Keep the export, body should be fine now
+// --- HELPER: Category Badge Classes ---
+function getCategoryBadgeClasses(category) {
+  const baseClasses =
+    "inline-block px-2.5 py-0.5 rounded text-xs font-medium capitalize";
+  switch (category?.toLowerCase()) {
+    case "news":
+      return `${baseClasses} bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300`;
+    case "competition":
+      return `${baseClasses} bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300`;
+    case "blog":
+      return `${baseClasses} bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300`;
+    default:
+      return `${baseClasses} bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-300`; // Fallback
+  }
+}
+// --- END HELPER ---
+
+// --- Date Formatting Helper ---
+// Exported function to get display and hover strings for dates
 export function getConditionalTimestampStrings(dateObj) {
-  console.log("--- getConditionalTimestampStrings called ---"); // Add log
+  console.log("--- getConditionalTimestampStrings called ---");
   let displayString = "Unknown date";
   let hoverString = "";
   const now = new Date();
-  const locale = dateLocales[currentLang] || enUS;
+  const locale = dateLocales[currentLang] || enUS; // Use current language locale or fallback
   try {
     if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) {
       throw new Error("Invalid date object received");
     }
     const hoursDifference = differenceInHours(now, dateObj);
-    const fullDateFormat = format(dateObj, "PPP", { locale });
+    const fullDateFormat = format(dateObj, "PPP", { locale }); // e.g., Apr 10th, 2025
     const relativeTimeFormat = formatDistanceToNow(dateObj, {
       addSuffix: true,
       locale: locale,
-    });
+    }); // e.g., 2 days ago
+
+    // Show relative time if recent, otherwise show full date
     if (hoursDifference < 24) {
       displayString = relativeTimeFormat;
       hoverString = fullDateFormat;
@@ -39,17 +59,19 @@ export function getConditionalTimestampStrings(dateObj) {
     }
   } catch (e) {
     console.error("Error processing date:", dateObj, e);
+    // Provide fallbacks in case of error
     hoverString = "Invalid date";
     displayString = "Invalid date";
   }
   return { displayString, hoverString };
 }
 
-// Keep the export, body should be fine now
+// --- Single Article Rendering ---
+// Exported function to render a single article's details
 export function renderArticle(article, container) {
-  console.log("--- renderArticle START, article:", JSON.stringify(article));
+  console.log("--- renderArticle START, article ID:", article?.id);
   if (!article) {
-    container.innerHTML = `<p class="text-red-500">${t("errorLoadingData")}</p>`;
+    container.innerHTML = `<p class="text-red-500 p-6">${t("errorLoadingData")}</p>`;
     console.log("--- renderArticle END (no article data) ---");
     return;
   }
@@ -77,22 +99,22 @@ export function renderArticle(article, container) {
   const content = article.content || `<p>${t("noContentAvailable")}</p>`;
 
   const articleHTML = `
-    <article class="bg-white dark:bg-gray-700 rounded-lg shadow-md overflow-hidden">
+    <article class="bg-white dark:bg-gray-700 rounded-lg shadow-md overflow-hidden border border-gray-200 dark:border-gray-600">
       ${article.imageUrl ? `<img src="${article.imageUrl}" alt="${title}" class="w-full h-auto max-h-96 object-cover">` : ""}
-      <div class="p-6">
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">${title}</h1>
-        <div class="flex flex-wrap items-center text-gray-500 dark:text-gray-400 text-sm mb-4 space-x-2">
-          <span title="${hoverString}" class="whitespace-nowrap">${displayString}</span>
-          <span class="hidden sm:inline">•</span>
-          <span class="capitalize whitespace-nowrap">${article.category || "Unknown"}</span>
-          <span class="hidden sm:inline">•</span>
-          <span class="flex items-center whitespace-nowrap">
-            <svg class="w-4 h-4 mr-1.5 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 14"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 10.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7a9.99 9.99 0 0 1-1.774 5.318A9.956 9.956 0 0 1 10 13.5a9.956 9.956 0 0 1-8.226-1.182A9.99 9.99 0 0 1 0 7a9.99 9.99 0 0 1 1.774-5.318A9.956 9.956 0 0 1 10 0.5a9.956 9.956 0 0 1 8.226 1.182A9.99 9.99 0 0 1 20 7Z"/></svg>
-            ${article.views ?? 0} views
-          </span>
+      <div class="p-4 md:p-6">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-3 leading-tight">${title}</h1>
+        <div class="flex flex-wrap items-center text-gray-500 dark:text-gray-400 text-sm mb-6 space-x-3">
+            <span title="${hoverString}" class="whitespace-nowrap">${displayString}</span>
+            <span class="hidden sm:inline">•</span>
+            <span class="capitalize whitespace-nowrap">${article.category || "Unknown"}</span>
+            <span class="hidden sm:inline">•</span>
+            <span class="flex items-center whitespace-nowrap">
+              <svg class="w-4 h-4 mr-1.5 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 14"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.2" d="M10 10.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.2" d="M20 7a9.99 9.99 0 0 1-1.774 5.318A9.956 9.956 0 0 1 10 13.5a9.956 9.956 0 0 1-8.226-1.182A9.99 9.99 0 0 1 0 7a9.99 9.99 0 0 1 1.774-5.318A9.956 9.956 0 0 1 10 0.5a9.956 9.956 0 0 1 8.226 1.182A9.99 9.99 0 0 1 20 7Z"/></svg>
+              ${article.views ?? 0} views
+            </span>
         </div>
         <div class="prose dark:prose-invert max-w-none mt-6">
-          ${content}
+            ${content}
         </div>
       </div>
     </article>
@@ -101,14 +123,15 @@ export function renderArticle(article, container) {
   console.log("--- renderArticle END ---");
 }
 
-// Keep the export for articles-list.js
+// --- Article List Rendering ---
+// Exported function to render a list of articles (used by articles-list.js)
 export function renderArticleList(articles, container) {
-  console.log("--- renderArticleList called ---"); // Add log if needed
+  console.log("--- renderArticleList called ---");
   if (!articles || articles.length === 0) {
     container.innerHTML = `<p class="text-center py-10">${t("noArticlesFound")}</p>`;
     return;
   }
-  // ... (rest of original renderArticleList implementation) ...
+
   const articlesHTML = articles
     .map((article, index) => {
       if (!article) {
@@ -117,7 +140,7 @@ export function renderArticleList(articles, container) {
         );
         return "";
       }
-      // Attempt to parse date, provide fallback if invalid
+
       let dateObj;
       try {
         dateObj = new Date(article.createdAt);
@@ -132,6 +155,7 @@ export function renderArticleList(articles, container) {
         );
         dateObj = null;
       }
+
       const { displayString, hoverString } = dateObj
         ? getConditionalTimestampStrings(dateObj)
         : { displayString: "Invalid Date", hoverString: "" };
@@ -139,31 +163,37 @@ export function renderArticleList(articles, container) {
       const excerptToDisplay = article.excerpt || "";
       const title = article.title || t("untitledArticle");
       const imageUrl = article.imageUrl;
+
+      // Card structure with refined typography and spacing classes
       return `
-        <article class="bg-white dark:bg-gray-700 rounded-lg shadow-md overflow-hidden mb-6 flex flex-col sm:flex-row">
-          ${imageUrl ? `<a href="/article.html?id=${article.id}" class="block sm:w-1/3 flex-shrink-0"> <img src="${imageUrl}" alt="${title}" class="w-full h-48 sm:h-full object-cover"> </a>` : '<div class="w-full sm:w-1/3 h-48 sm:h-auto bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-400 dark:text-gray-300 flex-shrink-0">No Image</div>'}
+        <article class="article-card mb-6 flex flex-col sm:flex-row">
+          ${imageUrl ? `<a href="/article.html?id=${article.id}" class="block sm:w-1/3 flex-shrink-0 group"> <img src="${imageUrl}" alt="${title}" class="w-full h-48 sm:h-full object-cover group-hover:opacity-85 transition-opacity"> </a>` : '<div class="w-full sm:w-1/3 h-48 sm:h-auto bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-400 dark:text-gray-300 flex-shrink-0">No Image</div>'}
           <div class="p-6 flex flex-col flex-grow">
-            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            <h2 class="text-xl font-semibold leading-snug text-gray-900 dark:text-white mb-2">
               <a href="/article.html?id=${article.id}" class="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                 ${title}
               </a>
             </h2>
-            <div class="flex items-center text-gray-500 dark:text-gray-400 text-sm mb-3 space-x-2">
+            <div class="flex flex-wrap items-center text-gray-500 dark:text-gray-400 text-sm mb-4 space-x-3">
               <span title="${hoverString}" class="whitespace-nowrap">${displayString}</span>
               <span>•</span>
-              <span class="capitalize whitespace-nowrap">${article.category || "Unknown"}</span>
+              <span class="${getCategoryBadgeClasses(article.category)}">${article.category || "Unknown"}</span>
               <span>•</span>
-              <span class="flex items-center whitespace-nowrap" title="${article.views ?? 0} views">
-                <svg class="w-3 h-3 mr-1 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 14"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 10.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7a9.99 9.99 0 0 1-1.774 5.318A9.956 9.956 0 0 1 10 13.5a9.956 9.956 0 0 1-8.226-1.182A9.99 9.99 0 0 1 0 7a9.99 9.99 0 0 1 1.774-5.318A9.956 9.956 0 0 1 10 0.5a9.956 9.956 0 0 1 8.226 1.182A9.99 9.99 0 0 1 20 7Z"/></svg>
-                ${article.views ?? 0}
+              <span class="flex items-center" title="${article.views ?? 0} views">
+                  <i class="fi fi-rr-eye w-4 h-4 mr-1 text-gray-500 dark:text-gray-400 inline-block align-middle"></i>
+                  ${article.views ?? 0}
               </span>
             </div>
-            <p class="text-gray-600 dark:text-gray-300 line-clamp-3 flex-grow">
+            <p class="text-gray-600 dark:text-gray-300 leading-relaxed line-clamp-3 flex-grow mb-3">
               ${excerptToDisplay}
             </p>
-            <a href="/article.html?id=${article.id}" class="inline-block mt-4 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors self-start">
-              ${t("readMore")} →
-            </a>
+            <div class="mt-auto pt-2 self-start">
+                <a href="/article.html?id=${article.id}"
+                   class="btn btn-blue py-2 px-3 text-sm">
+                   ${t("readMore")}
+                   <svg class="ms-2 h-3.5 w-3.5 rtl:rotate-180" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 10"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 5h12m0 0L9 1m4 4L9 9"/></svg>
+                </a>
+            </div>
           </div>
         </article>
       `;
@@ -172,129 +202,113 @@ export function renderArticleList(articles, container) {
   container.innerHTML = articlesHTML;
 }
 
-// *** UNCOMMENT THE BODY of initArticlePage ***
+// --- Single Article Page Initialization ---
 async function initArticlePage() {
-  // --- Keep Logs ---
   console.log("--- initArticlePage START ---");
   const container = document.getElementById("article-container");
   const loadingIndicator = document.getElementById("article-loading");
   console.log("Container:", container ? "Found" : "MISSING");
   console.log("Loading Indicator:", loadingIndicator ? "Found" : "MISSING");
 
-  const urlParams = new URLSearchParams(window.location.search);
-  const articleId = urlParams.get("id");
-  console.log("Raw articleId from URL:", articleId);
-  // --- End Keep Logs ---
-
   if (!container) {
     console.error("Article container not found, cannot proceed.");
     return;
   }
+
   if (loadingIndicator) {
     console.log("Displaying loading indicator.");
     loadingIndicator.style.display = "block";
-    container.innerHTML = ""; // Clear container while loading
+    container.innerHTML = "";
   } else {
     console.warn("Loading indicator element not found.");
+    container.innerHTML = `<p class="p-6 text-center">${t("loadingArticles")}</p>`;
   }
 
   try {
-    // --- Keep Logs ---
-    console.log("Inside TRY block");
+    const urlParams = new URLSearchParams(window.location.search);
+    const articleId = urlParams.get("id");
+    console.log("Raw articleId from URL:", articleId);
+
     if (
       !articleId ||
       isNaN(parseInt(articleId, 10)) ||
       parseInt(articleId, 10) <= 0
     ) {
-      // Keep robust check
       console.error(
         "articleId is missing or invalid AFTER parsing:",
         articleId,
       );
       const errorMsg =
-        typeof t === "function"
-          ? t("noArticleIdUrl")
-          : "No valid article ID specified in the URL.";
+        t("noArticleIdUrl") || "No valid article ID specified in the URL.";
       throw new Error(errorMsg);
     }
     const validArticleId = parseInt(articleId, 10);
+
     console.log(
       `Attempting to fetch article with ID: ${validArticleId}, Lang: ${currentLang}`,
     );
-    // --- End Keep Logs ---
 
     const article = await getPublicArticleById(validArticleId, {
-      // Call the actual API function
       lang: currentLang,
     });
 
-    // --- Keep Logs ---
     console.log(
       "API call completed. Fetched article data:",
-      JSON.stringify(article),
+      article ? `ID: ${article.id}` : "null/empty",
     );
+
     if (
       !article ||
       typeof article !== "object" ||
       Object.keys(article).length === 0
     ) {
-      // Keep robust check
       console.error("API returned null, undefined, or empty article object.");
-      throw new Error("Article data not found or invalid response from API.");
+      throw new Error(
+        t("articleNotFound") ||
+          "Article data not found or invalid response from API.",
+      );
     }
-    // --- End Keep Logs ---
 
-    document.title = `${article.title || (typeof t === "function" ? t("untitledArticle") : "Untitled Article")} - MSKTF`;
+    document.title = `${article.title || t("untitledArticle")} - MSKTF`;
     console.log("Calling renderArticle...");
-    renderArticle(article, container); // Render the fetched article
+    renderArticle(article, container);
   } catch (error) {
-    // --- Keep Logs ---
     console.error("--- CATCH block in initArticlePage:", error);
-    // --- End Keep Logs ---
+
     const errorTitleKey = "errorLoadingArticleTitle";
     const generalError =
-      typeof t === "function"
-        ? t("errorLoadingArticleContent")
-        : "Failed to load article content.";
+      t("errorLoadingArticleContent") || "Failed to load article content.";
     let displayMessage = error.message || generalError;
 
     if (error.message && error.message.includes("404")) {
-      displayMessage =
-        typeof t === "function" ? t("articleNotFound") : "Article not found.";
+      displayMessage = t("articleNotFound") || "Article not found.";
     } else if (
       error.message &&
       (error.message.includes("No valid article ID") ||
         error.message.includes("No article ID specified"))
     ) {
       displayMessage =
-        typeof t === "function"
-          ? t("noArticleIdUrl")
-          : "No valid article ID specified in the URL.";
+        t("noArticleIdUrl") || "No valid article ID specified in the URL.";
     }
 
-    container.innerHTML = `<div class="bg-red-100 dark:bg-red-900 border-l-4 border-red-500 text-red-700 dark:text-red-200 p-4 my-6" role="alert"><p class="font-bold">${typeof t === "function" ? t(errorTitleKey) : "Error Loading Article"}</p><p>${displayMessage}</p></div>`;
-    document.title = `${typeof t === "function" ? t(errorTitleKey) : "Error Loading Article"} - MSKTF`;
+    container.innerHTML = `<div class="bg-red-100 dark:bg-red-900 border-l-4 border-red-500 text-red-700 dark:text-red-200 p-4 my-6" role="alert"><p class="font-bold">${t(errorTitleKey) || "Error Loading Article"}</p><p>${displayMessage}</p></div>`;
+    document.title = `${t(errorTitleKey) || "Error Loading Article"} - MSKTF`;
   } finally {
-    // --- Keep Logs ---
     console.log("--- FINALLY block in initArticlePage ---");
-    // --- End Keep Logs ---
     if (loadingIndicator) {
       console.log("Hiding loading indicator.");
       loadingIndicator.style.display = "none";
     }
   }
-  // --- Keep Logs ---
   console.log("--- initArticlePage END ---");
-  // --- End Keep Logs ---
 }
-// *** End of UNCOMMENTED initArticlePage body ***
 
-// --- Event Listener for Article Page ---
+// --- Event Listener for DOM Ready ---
 document.addEventListener("DOMContentLoaded", () => {
   console.log("--- DOMContentLoaded event fired (articles.js) ---");
   console.log("--- Calling initializeUI() from articles.js listener ---");
   try {
-    initializeUI(); // Call this first
+    initializeUI();
     console.log("--- initializeUI() completed ---");
   } catch (e) {
     console.error("--- ERROR during initializeUI() call ---", e);
@@ -303,9 +317,11 @@ document.addEventListener("DOMContentLoaded", () => {
   console.log("--- Checking for article-container ---");
   if (document.getElementById("article-container")) {
     console.log("--- Calling initArticlePage() from articles.js ---");
-    initArticlePage(); // Now call the full function
+    initArticlePage();
   } else {
-    console.error("--- CRITICAL: article-container not found ---");
+    console.log(
+      "--- article-container not found (likely not single article page) ---",
+    );
   }
   console.log("--- Event listener setup complete (articles.js) ---");
 });

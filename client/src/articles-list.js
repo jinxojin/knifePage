@@ -1,9 +1,9 @@
 // client/src/articles-list.js
 import "./style.css";
 import { t, currentLang } from "./i18n.js";
-// === UNCOMMENT THIS IMPORT ===
+// === Import the function responsible for rendering the list ===
 import { renderArticleList } from "./articles.js";
-// ============================
+// ==============================================================
 import { initializeUI, translateStaticElements } from "./uiUtils.js"; // Import UI utils
 import { getPublicArticles } from "./apiService.js"; // Import from new apiService
 
@@ -38,11 +38,10 @@ async function fetchAndRenderArticles(page = 1) {
     // Render articles and pagination
     if (data && data.articles) {
       if (data.articles.length > 0) {
-        // === UNCOMMENT THIS CALL ===
+        // === Call the imported function to render the list ===
+        // Apply utility class changes inside the renderArticleList function in articles.js
         renderArticleList(data.articles, articlesContainer);
-        // === REMOVE THE PLACEHOLDER BELOW ===
-        // articlesContainer.innerHTML = `<p>Articles list rendering temporarily disabled for debugging article.js</p><pre>${JSON.stringify(data.articles, null, 2)}</pre>`;
-        // =================================
+        // =====================================================
         renderPagination(data.currentPage, data.totalPages);
       } else {
         articlesContainer.innerHTML = `<p class="text-center py-10">${t("noArticlesFound")}</p>`;
@@ -69,11 +68,14 @@ function renderPagination(currentPage, totalPages) {
     if (paginationControls) paginationControls.innerHTML = "";
     return;
   }
+  // --- Apply .btn styling to pagination buttons for consistency ---
   let paginationHTML =
     '<div class="flex items-center justify-center space-x-1">';
   const prevDisabled = currentPage === 1;
   const prevText = t("paginationPrevious");
-  paginationHTML += ` <button class="rounded border bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 ${prevDisabled ? "cursor-not-allowed opacity-50" : ""}" ${prevDisabled ? "disabled" : ""} onclick="changePage(${currentPage - 1})" aria-label="${prevText}" data-i18n="paginationPrevious"> ${prevText} </button>`;
+  // Added btn btn-gray classes, removed explicit border/bg/text/hover utilities
+  paginationHTML += ` <button class="btn btn-gray px-3 py-1.5 text-sm ${prevDisabled ? "cursor-not-allowed opacity-50" : ""}" ${prevDisabled ? "disabled" : ""} onclick="changePage(${currentPage - 1})" aria-label="${prevText}" data-i18n="paginationPrevious"> ${prevText} </button>`;
+
   const maxPagesToShow = 5;
   const pageNeighbours = Math.floor((maxPagesToShow - 3) / 2);
   let startPage = Math.max(1, currentPage - pageNeighbours);
@@ -84,26 +86,36 @@ function renderPagination(currentPage, totalPages) {
   if (currentPage + pageNeighbours >= totalPages) {
     startPage = Math.max(1, totalPages - maxPagesToShow + 2);
   }
+
   if (startPage > 1) {
-    paginationHTML += ` <button class="rounded border bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600" onclick="changePage(1)" aria-label="Page 1">1</button>`;
+    // Use btn btn-gray for page numbers
+    paginationHTML += ` <button class="btn btn-gray px-3 py-1.5 text-sm" onclick="changePage(1)" aria-label="Page 1">1</button>`;
     if (startPage > 2) {
       paginationHTML += `<span class="px-1.5 py-1.5 text-sm text-gray-500 dark:text-gray-400">...</span>`;
     }
   }
+
   for (let i = startPage; i <= endPage; i++) {
     const isCurrent = i === currentPage;
-    paginationHTML += ` <button class="rounded border px-3 py-1.5 text-sm font-medium ${isCurrent ? "border-blue-500 bg-blue-500 text-white dark:border-blue-400 dark:bg-blue-600 z-10" : "bg-white text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"}" onclick="changePage(${i})" ${isCurrent ? 'aria-current="page"' : ""} aria-label="Page ${i}"> ${i} </button>`;
+    // Use btn-blue for current page, btn-gray for others
+    const buttonClass = isCurrent ? "btn btn-blue" : "btn btn-gray";
+    paginationHTML += ` <button class="${buttonClass} px-3 py-1.5 text-sm ${isCurrent ? "z-10" : ""}" onclick="changePage(${i})" ${isCurrent ? 'aria-current="page"' : ""} aria-label="Page ${i}"> ${i} </button>`;
   }
+
   if (endPage < totalPages) {
     if (endPage < totalPages - 1) {
       paginationHTML += `<span class="px-1.5 py-1.5 text-sm text-gray-500 dark:text-gray-400">...</span>`;
     }
-    paginationHTML += ` <button class="rounded border bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600" onclick="changePage(${totalPages})" aria-label="Page ${totalPages}">${totalPages}</button>`;
+    // Use btn btn-gray for last page number
+    paginationHTML += ` <button class="btn btn-gray px-3 py-1.5 text-sm" onclick="changePage(${totalPages})" aria-label="Page ${totalPages}">${totalPages}</button>`;
   }
+
   const nextDisabled = currentPage === totalPages;
   const nextText = t("paginationNext");
-  paginationHTML += ` <button class="rounded border bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 ${nextDisabled ? "cursor-not-allowed opacity-50" : ""}" ${nextDisabled ? "disabled" : ""} onclick="changePage(${currentPage + 1})" aria-label="${nextText}" data-i18n="paginationNext"> ${nextText} </button>`;
+  // Added btn btn-gray classes
+  paginationHTML += ` <button class="btn btn-gray px-3 py-1.5 text-sm ${nextDisabled ? "cursor-not-allowed opacity-50" : ""}" ${nextDisabled ? "disabled" : ""} onclick="changePage(${currentPage + 1})" aria-label="${nextText}" data-i18n="paginationNext"> ${nextText} </button>`;
   paginationHTML += "</div>";
+  // --- End button class changes ---
   paginationControls.innerHTML = paginationHTML;
 }
 
@@ -113,7 +125,7 @@ window.changePage = (page) => {
   currentPage = page;
   fetchAndRenderArticles(page);
   const listTop = articlesContainer?.offsetTop || 0;
-  window.scrollTo({ top: listTop - 80, behavior: "smooth" });
+  window.scrollTo({ top: listTop - 80, behavior: "smooth" }); // Adjust scroll offset if needed
 };
 
 // --- Initialization ---

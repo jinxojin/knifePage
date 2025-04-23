@@ -244,7 +244,7 @@ app.use((err, req, res, next) => {
 //const httpsOptions = {
 //  key: fs.readFileSync(path.resolve(__dirname, "../localhost+2-key.pem")),
 //  cert: fs.readFileSync(path.resolve(__dirname, "../localhost+2.pem")),
-//};
+/;
 
 // --- Server Start Function ---
 const startServer = async () => {
