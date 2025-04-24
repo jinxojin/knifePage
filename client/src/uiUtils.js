@@ -64,16 +64,27 @@ const footerHTML = `
         <h4 class="mb-4 text-lg font-semibold uppercase tracking-wider text-white dark:text-gray-200" data-i18n="footerContact">Contact Us</h4>
         <div class="space-y-2 text-sm">
           <p>
-            <span class="font-medium">Email:</span>
+            <span class="font-medium text-white dark:text-gray-200"><i class="fi fi-rr-envelope"></i></span>
             <a href="mailto:monknifethrowing@gmail.com" class="hover:text-white dark:hover:text-gray-100 ml-1">
               monknifethrowing@gmail.com
             </a>
           </p>
           <p>
-            <span class="font-medium">Phone:</span>
+            <span class="font-medium text-white dark:text-gray-200"><i class="fi fi-rr-phone-call"></i></span>
             <a href="tel:+97699371250" class="hover:text-white dark:hover:text-gray-100 ml-1">
               +976 9937 1250
             </a>
+            <a href="tel:+97699101102" class="hover:text-white dark:hover:text-gray-100 ml-1">
+              +976 9910 1102
+            </a>
+          </p>
+          <p>
+            <span class="font-medium text-white dark:text-gray-200"><i class="fi fi-rr-marker"></i></span>
+            <span class="ml-1">
+              <a data-i18n="footerAddressText" href="https://www.google.com/maps/place/%D0%A2%D2%AF%D1%88%D0%B8%D0%B3+%D1%82%D3%A9%D0%B2/@47.9137041,106.9023233,17z/data=!3m1!4b1!4m6!3m5!1s0x5d969251a5016c17:0xa0c9111c2b427dab!8m2!3d47.9137005!4d106.9048982!16s%2Fg%2F11c5h2zn95?entry=ttu&g_ep=EgoyMDI1MDQyMS4wIKXMDSoJLDEwMjExNjQwSAFQAw%3D%3D" class="hover:text-white dark:hover:text-gray-100">
+              #501, 5th floor, Tushig center, Seoul street-23, Sukhbaatar district, Ulaanbaatar, Mongolia
+              </a>
+            </span>
           </p>
         </div>
       </div>
@@ -81,10 +92,10 @@ const footerHTML = `
       <div>
          <h4 class="mb-4 text-lg font-semibold uppercase tracking-wider text-white dark:text-gray-200">Follow Us</h4>
          <div class="flex justify-center space-x-4">
-           <a href="https://www.facebook.com/profile.php?id=61567718350379" target="_blank" rel="noopener noreferrer" aria-label="Facebook" class="text-primary-100 hover:text-white dark:text-gray-400 dark:hover:text-gray-100">
+           <a href="#" target="_blank" rel="noopener noreferrer" aria-label="Facebook" class="text-primary-100 hover:text-white dark:text-gray-400 dark:hover:text-gray-100">
              <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" clip-rule="evenodd" /></svg>
            </a>
-           <a href="https://www.youtube.com/@ErdenebilegGanbold-u7m" target="_blank" rel="noopener noreferrer" aria-label="YouTube" class="text-primary-100 hover:text-white dark:text-gray-400 dark:hover:text-gray-100">
+           <a href="#" target="_blank" rel="noopener noreferrer" aria-label="YouTube" class="text-primary-100 hover:text-white dark:text-gray-400 dark:hover:text-gray-100">
              <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M19.812 5.418c.861.23 1.538.907 1.768 1.768C21.998 8.78 22 12 22 12s0 3.22-.418 4.814a2.504 2.504 0 0 1-1.768 1.768c-1.594.418-7.814.418-7.814.418s-6.22 0-7.814-.418a2.505 2.505 0 0 1-1.768-1.768C2 15.22 2 12 2 12s0-3.22.418-4.814a2.505 2.505 0 0 1 1.768-1.768C5.78 5 12 5 12 5s6.22 0 7.812.418zM9.999 15.199l4.94-3.2L9.999 8.798v6.4z" clip-rule="evenodd" /></svg>
            </a>
          </div>
