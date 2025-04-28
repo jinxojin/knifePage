@@ -92,10 +92,10 @@ const footerHTML = `
       <div>
          <h4 class="mb-4 text-lg font-semibold uppercase tracking-wider text-white dark:text-gray-200">Follow Us</h4>
          <div class="flex justify-center space-x-4">
-           <a href="#" target="_blank" rel="noopener noreferrer" aria-label="Facebook" class="text-primary-100 hover:text-white dark:text-gray-400 dark:hover:text-gray-100">
+           <a href="https://www.facebook.com/profile.php?id=61567718350379" target="_blank" rel="noopener noreferrer" aria-label="Facebook" class="text-primary-100 hover:text-white dark:text-gray-400 dark:hover:text-gray-100">
              <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" clip-rule="evenodd" /></svg>
            </a>
-           <a href="#" target="_blank" rel="noopener noreferrer" aria-label="YouTube" class="text-primary-100 hover:text-white dark:text-gray-400 dark:hover:text-gray-100">
+           <a href="https://www.youtube.com/@ErdenebilegGanbold-u7m" target="_blank" rel="noopener noreferrer" aria-label="YouTube" class="text-primary-100 hover:text-white dark:text-gray-400 dark:hover:text-gray-100">
              <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M19.812 5.418c.861.23 1.538.907 1.768 1.768C21.998 8.78 22 12 22 12s0 3.22-.418 4.814a2.504 2.504 0 0 1-1.768 1.768c-1.594.418-7.814.418-7.814.418s-6.22 0-7.814-.418a2.505 2.505 0 0 1-1.768-1.768C2 15.22 2 12 2 12s0-3.22.418-4.814a2.505 2.505 0 0 1 1.768-1.768C5.78 5 12 5 12 5s6.22 0 7.812.418zM9.999 15.199l4.94-3.2L9.999 8.798v6.4z" clip-rule="evenodd" /></svg>
            </a>
          </div>

@@ -33,7 +33,7 @@ function getCategoryBadgeClasses(category) {
 // --- Date Formatting Helper ---
 // Exported function to get display and hover strings for dates
 export function getConditionalTimestampStrings(dateObj) {
-  console.log("--- getConditionalTimestampStrings called ---");
+  // console.log("--- getConditionalTimestampStrings called ---"); // Reduced logging noise
   let displayString = "Unknown date";
   let hoverString = "";
   const now = new Date();
@@ -128,53 +128,66 @@ export function renderArticle(article, container) {
 export function renderArticleList(articles, container) {
   console.log("--- renderArticleList called ---");
   if (!articles || articles.length === 0) {
-    container.innerHTML = `<p class="text-center py-10">${t("noArticlesFound")}</p>`;
+    // Ensure this message spans the grid correctly if no articles
+    container.innerHTML = `<p class="col-span-full text-center py-10">${t("noArticlesFound")}</p>`;
     return;
   }
 
-  const articlesHTML = articles
-    .map((article, index) => {
-      if (!article) {
-        console.warn(
-          `[renderArticleList] Skipping invalid article at index ${index}`,
-        );
-        return "";
+  // Clear the container BEFORE appending. We assume the loading indicator was handled by the calling function.
+  container.innerHTML = "";
+
+  articles.forEach((article, index) => {
+    if (!article) {
+      console.warn(
+        `[renderArticleList] Skipping invalid article at index ${index}`,
+      );
+      return; // Skip this iteration
+    }
+
+    let dateObj;
+    try {
+      dateObj = new Date(article.createdAt);
+      if (isNaN(dateObj.getTime())) {
+        throw new Error("Invalid createdAt date format from API");
       }
+    } catch (dateError) {
+      console.warn(
+        `[renderArticleList] Invalid date for article ID ${article.id}:`,
+        article.createdAt,
+        dateError,
+      );
+      dateObj = null;
+    }
 
-      let dateObj;
-      try {
-        dateObj = new Date(article.createdAt);
-        if (isNaN(dateObj.getTime())) {
-          throw new Error("Invalid createdAt date format from API");
-        }
-      } catch (dateError) {
-        console.warn(
-          `[renderArticleList] Invalid date for article ID ${article.id}:`,
-          article.createdAt,
-          dateError,
-        );
-        dateObj = null;
-      }
+    const { displayString, hoverString } = dateObj
+      ? getConditionalTimestampStrings(dateObj)
+      : { displayString: "Invalid Date", hoverString: "" };
 
-      const { displayString, hoverString } = dateObj
-        ? getConditionalTimestampStrings(dateObj)
-        : { displayString: "Invalid Date", hoverString: "" };
+    const excerptToDisplay = article.excerpt || "";
+    const title = article.title || t("untitledArticle");
+    const imageUrl = article.imageUrl;
 
-      const excerptToDisplay = article.excerpt || "";
-      const title = article.title || t("untitledArticle");
-      const imageUrl = article.imageUrl;
+    // =================== CARD STRUCTURE CORRECTION ===================
+    // Card structure MUST be flex-col for consistent height. Grid handles layout.
+    // Fixed image height, removed responsive width/height classes tied to sm:flex-row.
+    const articleElement = document.createElement("article");
+    articleElement.className = "article-card flex flex-col"; // Changed: Always flex-col, removed mb-6 (handled by grid gap)
 
-      // Card structure with refined typography and spacing classes
-      return `
-        <article class="article-card mb-6 flex flex-col sm:flex-row">
-          ${imageUrl ? `<a href="/article.html?id=${article.id}" class="block sm:w-1/3 flex-shrink-0 group"> <img src="${imageUrl}" alt="${title}" class="w-full h-48 sm:h-full object-cover group-hover:opacity-85 transition-opacity"> </a>` : '<div class="w-full sm:w-1/3 h-48 sm:h-auto bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-400 dark:text-gray-300 flex-shrink-0">No Image</div>'}
-          <div class="p-6 flex flex-col flex-grow">
-            <h2 class="text-xl font-semibold leading-snug text-gray-900 dark:text-white mb-2">
+    articleElement.innerHTML = `
+          ${
+            imageUrl
+              ? `<a href="/article.html?id=${article.id}" class="block flex-shrink-0 group">
+              <img src="${imageUrl}" alt="${title}" class="w-full h-48 object-cover group-hover:opacity-85 transition-opacity">  <!-- Changed: Fixed h-48, removed sm:* classes -->
+             </a>`
+              : `<div class="w-full h-48 bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-400 dark:text-gray-300 flex-shrink-0">No Image</div>` // Changed: Fixed h-48
+          }
+          <div class="p-4 md:p-5 lg:p-6 flex flex-col flex-grow"> <!-- Adjusted padding slightly -->
+            <h2 class="text-lg md:text-xl font-semibold leading-snug text-gray-900 dark:text-white mb-2"> <!-- Adjusted text size -->
               <a href="/article.html?id=${article.id}" class="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                 ${title}
               </a>
             </h2>
-            <div class="flex flex-wrap items-center text-gray-500 dark:text-gray-400 text-sm mb-4 space-x-3">
+            <div class="flex flex-wrap items-center text-gray-500 dark:text-gray-400 text-sm mb-3 space-x-3"> <!-- Adjusted mb -->
               <span title="${hoverString}" class="whitespace-nowrap">${displayString}</span>
               <span>•</span>
               <span class="${getCategoryBadgeClasses(article.category)}">${article.category || "Unknown"}</span>
@@ -184,22 +197,25 @@ export function renderArticleList(articles, container) {
                   ${article.views ?? 0}
               </span>
             </div>
-            <p class="text-gray-600 dark:text-gray-300 leading-relaxed line-clamp-3 flex-grow mb-3">
+            <p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed line-clamp-3 flex-grow mb-4"> <!-- Changed: text-sm, adjusted mb -->
               ${excerptToDisplay}
             </p>
-            <div class="mt-auto pt-2 self-start">
+            <div class="mt-auto pt-2 self-start"> <!-- mt-auto is key here -->
                 <a href="/article.html?id=${article.id}"
-                   class="btn btn-blue py-2 px-3 text-sm">
+                   class="btn btn-blue py-1.5 px-3 text-sm"> <!-- Adjusted padding slightly -->
                    ${t("readMore")}
                    <svg class="ms-2 h-3.5 w-3.5 rtl:rotate-180" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 10"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 5h12m0 0L9 1m4 4L9 9"/></svg>
                 </a>
             </div>
           </div>
-        </article>
       `;
-    })
-    .join("");
-  container.innerHTML = articlesHTML;
+    // ================= END CARD STRUCTURE CORRECTION =================
+
+    container.appendChild(articleElement); // Append each article
+  }); // End forEach loop
+
+  // Optional: Translate any static text WITHIN the newly added cards if needed
+  // translateStaticElements(); // Usually not needed if content is from API, but uncomment if labels inside cards need translation
 }
 
 // --- Single Article Page Initialization ---
@@ -280,13 +296,10 @@ async function initArticlePage() {
       t("errorLoadingArticleContent") || "Failed to load article content.";
     let displayMessage = error.message || generalError;
 
+    // Simplify error message handling
     if (error.message && error.message.includes("404")) {
       displayMessage = t("articleNotFound") || "Article not found.";
-    } else if (
-      error.message &&
-      (error.message.includes("No valid article ID") ||
-        error.message.includes("No article ID specified"))
-    ) {
+    } else if (error.message && error.message.includes("No valid article ID")) {
       displayMessage =
         t("noArticleIdUrl") || "No valid article ID specified in the URL.";
     }
@@ -322,6 +335,8 @@ document.addEventListener("DOMContentLoaded", () => {
     console.log(
       "--- article-container not found (likely not single article page) ---",
     );
+    // If it's not a single article page, articles-list.js should handle fetching the list.
+    // This file (articles.js) primarily provides the rendering functions and logic for the single article page.
   }
   console.log("--- Event listener setup complete (articles.js) ---");
 });

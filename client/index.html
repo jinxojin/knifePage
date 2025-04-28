@@ -21,7 +21,7 @@
     </div>
 
     <main class="flex flex-col items-center">
-      <!-- Hero Section (Updated with Tailwind Background/Overlay) -->
+      <!-- Hero Section (Unchanged) -->
       <section
         class="relative mx-auto flex min-h-screen w-full max-w-full flex-col justify-center overflow-hidden text-left"
       >
@@ -32,13 +32,12 @@
             class="h-full w-full object-cover blur-md"
           />
         </div>
-
         <div
           class="bg-primary-800/70 dark:bg-primary-900/80 absolute inset-0 -z-10"
         ></div>
         <div class="relative z-10 mx-auto w-full max-w-4xl px-4 py-16 md:py-24">
           <h1
-            class="mb-6 text-3xl leading-tight font-bold text-white sm:text-4xl md:text-5xl"
+            class="mb-6 text-3xl leading-tight font-bold text-white sm:text-4xl md:text-5xl lg:text-6xl"
             data-i18n="federationName"
           >
             Mongolian Sports Knife Throwing Federation
@@ -50,7 +49,6 @@
             Preserving Tradition,<br class="sm:hidden" />
             Empowering Future
           </p>
-
           <div class="mt-8 flex flex-row gap-4">
             <a
               href="/competitions.html"
@@ -71,40 +69,60 @@
       </section>
       <!-- End Hero Section -->
 
-      <!-- Featured Articles -->
-      <section id="featured-articles" class="mt-4 w-full max-w-[90%]">
-        <!-- Latest Competition -->
-        <div class="mb-8">
-          <h3 class="text-2xl" data-i18n="latestCompetition">
-            Latest Competition
-          </h3>
-          <div class="comp-divider"></div>
-          <div
-            id="highlight-competition"
-            class="dark:bg-primary-800 dark:border-primary-400 rounded-lg border border-gray-200 bg-white shadow-sm"
-          >
+      <!-- Featured Articles Section - NOW USING GRID for desktop -->
+      <section
+        id="featured-articles"
+        class="mx-auto mt-8 w-full max-w-screen-xl px-4 pb-12 sm:px-6 lg:mt-12 lg:px-8"
+      >
+        <div class="grid grid-cols-1 gap-8 lg:grid-cols-3 lg:gap-10">
+          <!-- Latest Competition -->
+          <div class="flex flex-col">
+            <!-- Use flex col to contain title and card -->
+            <h3
+              class="mb-3 text-2xl font-semibold"
+              data-i18n="latestCompetition"
+            >
+              Latest Competition
+            </h3>
+            <hr class="mb-4 border-gray-300 dark:border-gray-600" />
+            <!-- Replaces comp-divider -->
+            <div
+              id="highlight-competition"
+              class="article-card flex flex-grow flex-col"
+            >
+              <!-- MOVED comment from inside tag attributes to after the tag -->
+              <!-- Added article-card styling, flex-grow -->
+              <!-- Content will be dynamically updated by main.js -->
+              <!-- JS should ensure inner content has flex-grow and button mt-auto -->
+            </div>
           </div>
-        </div>
-        <!-- Latest News -->
-        <div class="mb-8">
-          <h3 class="text-2xl" data-i18n="latestNews">Latest News</h3>
-          <div class="comp-divider"></div>
-          <div
-            id="highlight-news"
-            class="dark:bg-primary-800 dark:border-primary-400 rounded-lg border border-gray-200 bg-white shadow-sm"
-          >
-            <!-- Content will be dynamically updated -->
+
+          <!-- Latest News -->
+          <div class="flex flex-col">
+            <h3 class="mb-3 text-2xl font-semibold" data-i18n="latestNews">
+              Latest News
+            </h3>
+            <hr class="mb-4 border-gray-300 dark:border-gray-600" />
+            <div
+              id="highlight-news"
+              class="article-card flex flex-grow flex-col"
+            >
+              <!-- Content will be dynamically updated by main.js -->
+            </div>
           </div>
-        </div>
-        <!-- Latest Blog -->
-        <div class="mb-8">
-          <h3 class="text-2xl" data-i18n="latestBlog">Latest Blog Post</h3>
-          <div class="comp-divider"></div>
-          <div
-            id="highlight-blog"
-            class="dark:bg-primary-800 dark:border-primary-400 rounded-lg border border-gray-200 bg-white shadow-sm"
-          >
-            <!-- Content will be dynamically updated -->
+
+          <!-- Latest Blog -->
+          <div class="flex flex-col">
+            <h3 class="mb-3 text-2xl font-semibold" data-i18n="latestBlog">
+              Latest Blog Post
+            </h3>
+            <hr class="mb-4 border-gray-300 dark:border-gray-600" />
+            <div
+              id="highlight-blog"
+              class="article-card flex flex-grow flex-col"
+            >
+              <!-- Content will be dynamically updated by main.js -->
+            </div>
           </div>
         </div>
       </section>
