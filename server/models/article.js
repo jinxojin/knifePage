@@ -76,9 +76,40 @@ const Article = sequelize.define(
     // ------------------------
   },
   {
-    // Optional: Add table options here if needed
-    // timestamps: true, // Sequelize adds createdAt and updatedAt by default
-    // paranoid: true, // If you want soft deletes (adds deletedAt column)
+    hooks: {
+      beforeCreate: (article) => {
+        const { sanitize } = require("../utils/sanitizer");
+        const fields = [
+          "content_en",
+          "content_rus",
+          "content_mng",
+          "excerpt_en",
+          "excerpt_rus",
+          "excerpt_mng",
+        ];
+        fields.forEach((field) => {
+          if (article[field]) {
+            article[field] = sanitize(article[field]);
+          }
+        });
+      },
+      beforeUpdate: (article) => {
+        const { sanitize } = require("../utils/sanitizer");
+        const fields = [
+          "content_en",
+          "content_rus",
+          "content_mng",
+          "excerpt_en",
+          "excerpt_rus",
+          "excerpt_mng",
+        ];
+        fields.forEach((field) => {
+          if (article.changed(field)) {
+            article[field] = sanitize(article[field]);
+          }
+        });
+      },
+    },
   }
 );
 
