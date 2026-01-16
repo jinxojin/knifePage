@@ -14,67 +14,85 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Our Mission - MSKTF</title>
     <link rel="stylesheet" href="./src/style.css" />
-    <!-- Add Google Fonts Link -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap"
-      rel="stylesheet"
-    />
   </head>
-  <body
-    class="dark:bg-primary-800 bg-gray-100 font-sans text-gray-900 dark:text-gray-100"
-  >
-    <div id="header-placeholder">
-      <!-- Header loaded by uiUtils.js -->
-    </div>
+  <body class="bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100">
+    <div id="header-placeholder"></div>
 
-    <main class="container mx-auto px-4 pt-20 pb-12">
-      <h1
-        class="mb-10 text-center text-3xl font-bold md:text-4xl"
-        data-i18n="missionTitle"
-      >
-        Our Mission
-      </h1>
+    <main class="mx-auto max-w-5xl px-6 pt-24 pb-16">
+      <!-- Standard Header -->
+      <section class="bg-blue-600 dark:bg-blue-900/40 py-16 md:py-24 mb-12 text-white relative overflow-hidden text-center rounded-2xl">
+        <div class="absolute right-0 top-0 opacity-10 translate-x-1/4 -translate-y-1/4">
+            <i class="fi fi-br-target text-[300px]"></i>
+        </div>
+        <div class="relative z-10 px-6">
+          <h1 class="text-4xl md:text-6xl font-black tracking-tighter uppercase" data-i18n="missionTitle">
+            Our Mission
+          </h1>
+        </div>
+      </section>
 
-      <div class="prose dark:prose-invert mx-auto max-w-3xl">
-        <section class="mb-8">
-          <h2 data-i18n="missionSectionTitle">Mission</h2>
-          <p data-i18n="missionSectionText">
+      <!-- Standard Breadcrumbs -->
+      <nav class="mb-12 flex text-sm text-gray-500 dark:text-gray-400" aria-label="Breadcrumb">
+        <ol class="inline-flex items-center space-x-1 md:space-x-3 text-[10px] font-bold uppercase tracking-widest">
+          <li class="inline-flex items-center">
+            <a href="index.html" class="hover:text-blue-600 dark:hover:text-white transition-colors" data-i18n="navHome">Home</a>
+          </li>
+          <li>
+            <div class="flex items-center text-gray-400 dark:text-gray-600">
+              <svg class="w-3 h-3 mx-1 opacity-20" fill="currentColor" viewBox="0 0 20 20"><path d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 0 010 1.414l-4 4a1 0 01-1.414 0z"></path></svg>
+              <span data-i18n="navMission">Mission</span>
+            </div>
+          </li>
+        </ol>
+      </nav>
+
+      <!-- Mission Content Area -->
+      <div class="prose prose-lg dark:prose-invert max-w-none bg-white dark:bg-gray-800 p-8 md:p-12 rounded-2xl shadow-xl shadow-gray-200/50 dark:shadow-none border border-gray-100 dark:border-gray-700">
+        <section class="mb-12">
+          <h2 data-i18n="missionSectionTitle" class="text-3xl font-black mb-6">Mission</h2>
+          <p data-i18n="missionSectionText" class="leading-relaxed text-gray-600 dark:text-gray-300">
             Placeholder text for the mission statement. We aim to promote and
             preserve the art of sports knife throwing...
           </p>
         </section>
 
-        <hr class="my-8 border-gray-300 dark:border-gray-600" />
+        <div class="border-t border-gray-100 dark:border-gray-700 my-12"></div>
 
-        <section class="mb-8">
-          <h2 data-i18n="visionSectionTitle">Vision</h2>
-          <p data-i18n="visionSectionText">
+        <section class="mb-12">
+          <h2 data-i18n="visionSectionTitle" class="text-3xl font-black mb-6">Vision</h2>
+          <p data-i18n="visionSectionText" class="leading-relaxed text-gray-600 dark:text-gray-300">
             Placeholder text for the vision statement. To be the leading
             federation...
           </p>
         </section>
 
-        <hr class="my-8 border-gray-300 dark:border-gray-600" />
+        <div class="border-t border-gray-100 dark:border-gray-700 my-12"></div>
 
         <section>
-          <h2 data-i18n="valuesSectionTitle">Values</h2>
-          <ul class="list-disc space-y-1 pl-6">
-            <li data-i18n="valueRespect">Respect</li>
-            <li data-i18n="valueDiscipline">Discipline</li>
-            <li data-i18n="valueCommunity">Community</li>
-            <li data-i18n="valueSafety">Safety</li>
+          <h2 data-i18n="valuesSectionTitle" class="text-3xl font-black mb-6">Values</h2>
+          <ul class="grid grid-cols-1 md:grid-cols-2 gap-4 list-none pl-0">
+            <li class="flex items-center space-x-3 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl">
+                <i class="fi fi-rr-star text-blue-600"></i>
+                <span data-i18n="valueRespect" class="font-bold">Respect</span>
+            </li>
+            <li class="flex items-center space-x-3 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl">
+                <i class="fi fi-rr-shield-check text-blue-600"></i>
+                <span data-i18n="valueDiscipline" class="font-bold">Discipline</span>
+            </li>
+            <li class="flex items-center space-x-3 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl">
+                <i class="fi fi-rr-users text-blue-600"></i>
+                <span data-i18n="valueCommunity" class="font-bold">Community</span>
+            </li>
+            <li class="fi fi-rr-lock flex items-center space-x-3 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl">
+                <i class="fi fi-rr-lock text-blue-600"></i>
+                <span data-i18n="valueSafety" class="font-bold">Safety</span>
+            </li>
           </ul>
-          <p></p>
         </section>
       </div>
     </main>
 
-    <div id="footer-placeholder">
-      <!-- Footer loaded by uiUtils.js -->
-    </div>
-
+    <div id="footer-placeholder"></div>
     <script type="module" src="./src/mission.js"></script>
   </body>
 </html>

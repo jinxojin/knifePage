@@ -21,7 +21,7 @@
     </div>
 
     <main class="flex flex-col items-center">
-      <!-- Hero Section (Unchanged) -->
+      <!-- Hero Section -->
       <section
         class="relative mx-auto flex min-h-screen w-full max-w-full flex-col justify-center overflow-hidden text-left"
       >
@@ -29,42 +29,58 @@
           <img
             src="/assets/hero-background.jpg"
             alt=""
-            class="h-full w-full object-cover blur-md"
+            class="h-full w-full object-cover blur-md grayscale-[20%] brightness-75 transition-all duration-700"
           />
         </div>
-        <div
-          class="bg-primary-800/70 dark:bg-primary-900/80 absolute inset-0 -z-10"
-        ></div>
-        <div class="relative z-10 mx-auto w-full max-w-4xl px-4 py-16 md:py-24">
-          <h1
-            class="mb-6 text-3xl leading-tight font-bold text-white sm:text-4xl md:text-5xl lg:text-6xl"
-            data-i18n="federationName"
-          >
-            Mongolian Sports Knife Throwing Federation
-          </h1>
-          <p
-            class="mb-8 text-lg font-normal text-gray-200 italic md:text-xl"
-            data-i18n="federationSlogan"
-          >
-            Preserving Tradition,<br class="sm:hidden" />
-            Empowering Future
-          </p>
-          <div class="mt-8 flex flex-row gap-4">
+        <div class="hero-gradient absolute inset-0 -z-10"></div>
+
+        <div class="relative z-10 mx-auto w-full max-w-5xl px-6 py-16 md:py-24">
+          <div class="animate-fade-in-up opacity-0" style="animation-delay: 0.2s;">
+            <h1
+              class="mb-6 text-4xl leading-tight font-extrabold text-white sm:text-5xl md:text-6xl lg:text-7xl tracking-tight"
+              data-i18n="federationName"
+            >
+              Mongolian Sports <br class="hidden md:block"/>
+              Knife Throwing Federation
+            </h1>
+          </div>
+          
+          <div class="animate-fade-in-up opacity-0" style="animation-delay: 0.4s;">
+            <p
+              class="mb-10 max-w-2xl text-xl font-light text-gray-200 md:text-2xl"
+              data-i18n="federationSlogan"
+            >
+              <span class="border-l-4 border-yellow-500 pl-4">
+                Preserving Tradition, Empowering Future
+              </span>
+            </p>
+          </div>
+
+          <div class="mt-10 flex flex-row gap-4 animate-fade-in-up opacity-0" style="animation-delay: 0.6s;">
             <a
               href="/competitions.html"
-              class="btn btn-blue flex-1 text-center sm:flex-initial"
+              class="btn btn-blue px-8 py-3 text-lg font-bold shadow-lg shadow-blue-900/20 transition-transform hover:scale-105"
               data-i18n="heroViewEvents"
             >
               View Events
             </a>
             <a
-              href="#site-footer"
-              class="btn btn-gray flex-1 text-center sm:flex-initial"
+              href="#featured-articles"
+              class="btn btn-gray bg-white/10 px-8 py-3 text-lg font-bold text-white backdrop-blur-md transition-transform hover:bg-white/20 hover:scale-105"
               data-i18n="heroContactUs"
             >
-              Contact Us
+              Explore
             </a>
           </div>
+        </div>
+
+        <!-- Scroll Indicator -->
+        <div class="absolute bottom-10 left-1/2 -translate-x-1/2 animate-bounce-slow text-white/50 transition-colors hover:text-white">
+          <a href="#featured-articles" aria-label="Scroll down">
+            <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+            </svg>
+          </a>
         </div>
       </section>
       <!-- End Hero Section -->
@@ -90,10 +106,19 @@
               id="highlight-competition"
               class="article-card flex flex-grow flex-col"
             >
-              <!-- MOVED comment from inside tag attributes to after the tag -->
-              <!-- Added article-card styling, flex-grow -->
-              <!-- Content will be dynamically updated by main.js -->
-              <!-- JS should ensure inner content has flex-grow and button mt-auto -->
+              <div class="skeleton h-48 w-full rounded-t-lg"></div>
+              <div class="flex flex-grow flex-col p-5">
+                <div class="mb-3 flex items-center justify-between">
+                  <div class="skeleton h-4 w-16 rounded"></div>
+                  <div class="skeleton h-4 w-24 rounded"></div>
+                </div>
+                <div class="skeleton mb-3 h-6 w-3/4 rounded"></div>
+                <div class="skeleton mb-2 h-4 w-full rounded"></div>
+                <div class="skeleton mb-4 h-4 w-5/6 rounded"></div>
+                <div class="mt-auto self-start">
+                  <div class="skeleton h-10 w-28 rounded-md"></div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -107,7 +132,19 @@
               id="highlight-news"
               class="article-card flex flex-grow flex-col"
             >
-              <!-- Content will be dynamically updated by main.js -->
+              <div class="skeleton h-48 w-full rounded-t-lg"></div>
+              <div class="flex flex-grow flex-col p-5">
+                <div class="mb-3 flex items-center justify-between">
+                  <div class="skeleton h-4 w-16 rounded"></div>
+                  <div class="skeleton h-4 w-24 rounded"></div>
+                </div>
+                <div class="skeleton mb-3 h-6 w-3/4 rounded"></div>
+                <div class="skeleton mb-2 h-4 w-full rounded"></div>
+                <div class="skeleton mb-4 h-4 w-5/6 rounded"></div>
+                <div class="mt-auto self-start">
+                  <div class="skeleton h-10 w-28 rounded-md"></div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -121,7 +158,19 @@
               id="highlight-blog"
               class="article-card flex flex-grow flex-col"
             >
-              <!-- Content will be dynamically updated by main.js -->
+              <div class="skeleton h-48 w-full rounded-t-lg"></div>
+              <div class="flex flex-grow flex-col p-5">
+                <div class="mb-3 flex items-center justify-between">
+                  <div class="skeleton h-4 w-16 rounded"></div>
+                  <div class="skeleton h-4 w-24 rounded"></div>
+                </div>
+                <div class="skeleton mb-3 h-6 w-3/4 rounded"></div>
+                <div class="skeleton mb-2 h-4 w-full rounded"></div>
+                <div class="skeleton mb-4 h-4 w-5/6 rounded"></div>
+                <div class="mt-auto self-start">
+                  <div class="skeleton h-10 w-28 rounded-md"></div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

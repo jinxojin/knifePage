@@ -6,38 +6,46 @@ console.log("--- uiUtils.js STARTING TO EXECUTE ---");
 const headerHTML = `
 <header>
   <nav
-    class="fixed z-50 flex w-screen items-center justify-between bg-white/80 px-4 backdrop-blur-sm dark:bg-primary-800/80 h-16"
+    class="fixed z-50 flex w-screen items-center justify-between bg-white/80 px-6 backdrop-blur-md dark:bg-primary-900/80 h-16 border-b border-gray-200/50 dark:border-gray-700/50 transition-all duration-300"
   >
-    <a href="index.html" class="flex-shrink-0 text-xl font-semibold text-black transition-colors duration-200 hover:text-blue-500 dark:text-white dark:hover:text-blue-400">
-        MSKTF
+    <a href="index.html" class="flex items-center text-2xl font-black tracking-tighter text-white transition-transform duration-200 hover:scale-105">
+        <span class="bg-blue-600 px-3 py-1 rounded-lg shadow-sm shadow-blue-600/20">MSKTF</span>
     </a>
 
-    <ul class="hidden md:flex md:items-center md:justify-center flex-grow">
-      <li class="comp-navlink"><a href="index.html" data-i18n="navHome" class="text-black hover:text-blue-500 dark:text-white dark:hover:text-blue-400">Home</a></li>
-      <li class="comp-navlink"><a href="competitions.html" data-i18n="navCompetitions" class="text-black hover:text-blue-500 dark:text-white dark:hover:text-blue-400">Competitions</a></li>
-      <li class="comp-navlink"><a href="articles.html" data-i18n="navNewsBlog" class="text-black hover:text-blue-500 dark:text-white dark:hover:text-blue-400">News & Blog</a></li>
-      <li class="comp-navlink"><a href="mission.html" data-i18n="navMission" class="text-black hover:text-blue-500 dark:text-white dark:hover:text-blue-400">Mission</a></li>
+    <ul class="hidden md:flex md:items-center md:justify-center space-x-10 flex-grow text-[10px] font-bold uppercase tracking-widest">
+      <li><a href="index.html" data-i18n="navHome" class="nav-link text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white transition-colors">Home</a></li>
+      <li><a href="competitions.html" data-i18n="navCompetitions" class="nav-link text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white transition-colors">Competitions</a></li>
+      <li><a href="articles.html" data-i18n="navNewsBlog" class="nav-link text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white transition-colors">News & Blog</a></li>
+      <li><a href="mission.html" data-i18n="navMission" class="nav-link text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white transition-colors">Mission</a></li>
     </ul>
 
     <div class="flex items-center flex-shrink-0 space-x-4">
         <div class="relative hidden md:block">
             <button
-              class="flex items-center rounded p-1 text-black transition-colors duration-200 hover:text-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:text-white dark:hover:text-blue-400"
+              class="flex items-center justify-center px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white transition-all duration-200"
               id="language-btn"
               aria-label="Select Language"
             >
-               <i class="fi fi-rr-globe text-base"></i>
+               <i class="fi fi-rr-globe mr-2 text-base"></i>
+               <span data-i18n="navLanguage">Language</span>
+               <i class="fi fi-rr-angle-small-down ml-1"></i>
             </button>
-            <div id="language-dropdown" class="absolute right-0 top-full mt-1 hidden w-32 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 dark:bg-gray-700 z-50">
+            <div id="language-dropdown" class="absolute right-0 top-full mt-2 hidden w-40 rounded-xl bg-white/90 backdrop-blur-xl shadow-2xl ring-1 ring-black/5 dark:bg-gray-800/90 z-50 overflow-hidden border border-gray-200 dark:border-gray-700">
                <div class="py-1" role="menu" aria-orientation="vertical" aria-labelledby="language-btn">
-                 <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600" role="menuitem" data-lang="en">English</a>
-                 <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600" role="menuitem" data-lang="rus">Русский</a>
-                 <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600" role="menuitem" data-lang="mng">Монгол</a>
+                 <a href="#" class="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 dark:text-gray-200 dark:hover:bg-blue-900/30 transition-colors" role="menuitem" data-lang="en">
+                    <span class="mr-3">🇺🇸</span> English
+                 </a>
+                 <a href="#" class="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 dark:text-gray-200 dark:hover:bg-blue-900/30 transition-colors" role="menuitem" data-lang="rus">
+                    <span class="mr-3">🇷🇺</span> Русский
+                 </a>
+                 <a href="#" class="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 dark:text-gray-200 dark:hover:bg-blue-900/30 transition-colors" role="menuitem" data-lang="mng">
+                    <span class="mr-3">🇲🇳</span> Монгол
+                 </a>
                </div>
              </div>
         </div>
-        <button id="burger-btn" class="md:hidden p-1" aria-label="Toggle Menu">
-          <i class="fi fi-br-menu-burger text-xl leading-none text-black transition-colors duration-200 hover:text-blue-500 dark:text-white dark:hover:text-blue-400"></i>
+        <button id="burger-btn" class="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" aria-label="Toggle Menu">
+          <i class="fi fi-br-menu-burger text-xl leading-none text-gray-900 dark:text-white"></i>
         </button>
     </div>
   </nav>
@@ -46,67 +54,76 @@ const headerHTML = `
 
 // --- Footer HTML Template ---
 const footerHTML = `
-<footer id="site-footer" class="mt-12 border-t border-gray-300 bg-primary-700 px-4 pt-10 pb-6 text-primary-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
-  <div class="mx-auto max-w-screen-xl">
-    <div class="grid gap-10 md:grid-cols-3 mb-8">
+<footer id="site-footer" class="mt-24 bg-gray-900 text-gray-300 dark:bg-black py-16 px-6 border-t border-white/5">
+  <div class="container mx-auto max-w-5xl text-center">
+    <!-- Footer Brand (Logo) -->
+    <div class="mb-16 border-b border-white/5 pb-8 flex justify-center">
+      <a href="index.html" class="inline-block text-2xl font-black tracking-tighter text-white transition-transform duration-200 hover:scale-105">
+          <span class="bg-blue-600 px-3 py-1 rounded-lg shadow-sm shadow-blue-600/20">MSKTF</span>
+      </a>
+    </div>
 
-      <div>
-        <h4 class="mb-4 text-lg font-semibold uppercase tracking-wider text-white dark:text-gray-200" data-i18n="footerLinks">Quick Links</h4>
-        <ul class="space-y-2 text-sm">
-          <li><a href="index.html" data-i18n="navHome" class="hover:text-white dark:hover:text-gray-100">Home</a></li>
-          <li><a href="competitions.html" data-i18n="navCompetitions" class="hover:text-white dark:hover:text-gray-100">Competitions</a></li>
-          <li><a href="articles.html" data-i18n="navNewsBlog" class="hover:text-white dark:hover:text-gray-100">News & Blog</a></li>
-          <li><a href="mission.html" data-i18n="navMission" class="hover:text-white dark:hover:text-gray-100">Mission</a></li>
+    <div class="grid gap-16 md:grid-cols-3 mb-16 text-center items-start">
+      
+      <!-- Column 1: Quick Links -->
+      <div class="flex flex-col items-center space-y-8">
+        <h4 class="text-[10px] font-bold uppercase tracking-widest text-white/50" data-i18n="footerLinks">Quick Links</h4>
+        <ul class="space-y-4 text-sm font-semibold text-center">
+          <li><a href="index.html" class="hover:text-blue-500 transition-colors">Home</a></li>
+          <li><a href="competitions.html" class="hover:text-blue-500 transition-colors">Competitions</a></li>
+          <li><a href="articles.html" class="hover:text-blue-500 transition-colors">News & Blog</a></li>
+          <li><a href="mission.html" class="hover:text-blue-500 transition-colors">Mission</a></li>
         </ul>
       </div>
 
-      <div>
-        <h4 class="mb-4 text-lg font-semibold uppercase tracking-wider text-white dark:text-gray-200" data-i18n="footerContact">Contact Us</h4>
-        <div class="space-y-2 text-sm">
-          <p>
-            <span class="font-medium text-white dark:text-gray-200"><i class="fi fi-rr-envelope"></i></span>
-            <a href="mailto:monknifethrowing@gmail.com" class="hover:text-white dark:hover:text-gray-100 ml-1">
-              monknifethrowing@gmail.com
-            </a>
-          </p>
-          <p>
-            <span class="font-medium text-white dark:text-gray-200"><i class="fi fi-rr-phone-call"></i></span>
-            <a href="tel:+97699371250" class="hover:text-white dark:hover:text-gray-100 ml-1">
-              +976 9937 1250
-            </a>
-            <a href="tel:+97699101102" class="hover:text-white dark:hover:text-gray-100 ml-1">
-              +976 9910 1102
-            </a>
-          </p>
-          <p>
-            <span class="font-medium text-white dark:text-gray-200"><i class="fi fi-rr-marker"></i></span>
-            <span class="ml-1">
-              <a data-i18n="footerAddressText" href="https://www.google.com/maps/place/%D0%A2%D2%AF%D1%88%D0%B8%D0%B3+%D1%82%D3%A9%D0%B2/@47.9137041,106.9023233,17z/data=!3m1!4b1!4m6!3m5!1s0x5d969251a5016c17:0xa0c9111c2b427dab!8m2!3d47.9137005!4d106.9048982!16s%2Fg%2F11c5h2zn95?entry=ttu&g_ep=EgoyMDI1MDQyMS4wIKXMDSoJLDEwMjExNjQwSAFQAw%3D%3D" class="hover:text-white dark:hover:text-gray-100">
+      <!-- Column 2: Contact -->
+      <div class="flex flex-col items-center space-y-8">
+        <h4 class="text-[10px] font-bold uppercase tracking-widest text-white/50" data-i18n="footerContact">Contact Us</h4>
+        <div class="space-y-4 text-sm font-semibold flex flex-col items-center">
+          <div class="flex flex-col items-center group">
+            <i class="fi fi-rr-envelope mb-2 text-blue-500 text-lg"></i>
+            <a href="mailto:monknifethrowing@gmail.com" class="hover:text-white transition-colors">monknifethrowing@gmail.com</a>
+          </div>
+          <div class="flex flex-col items-center group">
+            <i class="fi fi-rr-phone-call mb-2 text-blue-500 text-lg"></i>
+            <div class="flex flex-col items-center space-y-1">
+              <a href="tel:+97699371250" class="hover:text-white transition-colors">+976 9937 1250</a>
+              <a href="tel:+97699101102" class="hover:text-white transition-colors">+976 9910 1102</a>
+            </div>
+          </div>
+          <div class="flex flex-col items-center group">
+            <i class="fi fi-rr-marker mb-2 text-blue-500 text-lg"></i>
+            <a data-i18n="footerAddressText" href="https://www.google.com/maps/place/%D0%A2%D2%AF%D1%88%D0%B8%D0%B3+%D1%82%D3%A9%D0%B2/@47.9137041,106.9023233,17z/data=!3m1!4b1!4m6!3m5!1s0x5d969251a5016c17:0xa0c9111c2b427dab!8m2!3d47.9137005!4d106.9048982!16s%2Fg%2F11c5h2zn95?entry=ttu&g_ep=EgoyMDI1MDQyMS4wIKXMDSoJLDEwMjExNjQwSAFQAw%3D%3D" target="_blank" rel="noopener noreferrer" class="leading-relaxed hover:text-white transition-colors max-w-xs block">
               #501, 5th floor, Tushig center, Seoul street-23, Sukhbaatar district, Ulaanbaatar, Mongolia
-              </a>
-            </span>
-          </p>
+            </a>
+          </div>
         </div>
       </div>
 
-      <div>
-         <h4 class="mb-4 text-lg font-semibold uppercase tracking-wider text-white dark:text-gray-200">Follow Us</h4>
-         <div class="flex justify-center space-x-4">
-           <a href="https://www.facebook.com/profile.php?id=61567718350379" target="_blank" rel="noopener noreferrer" aria-label="Facebook" class="text-primary-100 hover:text-white dark:text-gray-400 dark:hover:text-gray-100">
-             <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" clip-rule="evenodd" /></svg>
+      <!-- Column 3: Socials & Mission -->
+      <div class="flex flex-col items-center space-y-8">
+        <h4 class="text-[10px] font-bold uppercase tracking-widest text-white/50">Our Mission</h4>
+        <p class="text-sm leading-relaxed text-gray-400 max-w-xs mx-auto">
+          Promoting precision, traditional Mongolian values, and competitive excellence in the sport of knife throwing.
+        </p>
+        <div class="flex justify-center space-x-6 pt-2">
+           <a href="https://www.facebook.com/profile.php?id=61567718350379" target="_blank" rel="noopener noreferrer" class="text-gray-500 hover:text-blue-500 transition-all duration-300 transform hover:scale-110">
+             <svg class="h-7 w-7" fill="currentColor" viewBox="0 0 24 24"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/></svg>
            </a>
-           <a href="https://www.youtube.com/@ErdenebilegGanbold-u7m" target="_blank" rel="noopener noreferrer" aria-label="YouTube" class="text-primary-100 hover:text-white dark:text-gray-400 dark:hover:text-gray-100">
-             <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M19.812 5.418c.861.23 1.538.907 1.768 1.768C21.998 8.78 22 12 22 12s0 3.22-.418 4.814a2.504 2.504 0 0 1-1.768 1.768c-1.594.418-7.814.418-7.814.418s-6.22 0-7.814-.418a2.505 2.505 0 0 1-1.768-1.768C2 15.22 2 12 2 12s0-3.22.418-4.814a2.505 2.505 0 0 1 1.768-1.768C5.78 5 12 5 12 5s6.22 0 7.812.418zM9.999 15.199l4.94-3.2L9.999 8.798v6.4z" clip-rule="evenodd" /></svg>
+           <a href="https://www.youtube.com/@ErdenebilegGanbold-u7m" target="_blank" rel="noopener noreferrer" class="text-gray-500 hover:text-red-600 transition-all duration-300 transform hover:scale-110">
+             <svg class="h-7 w-7" fill="currentColor" viewBox="0 0 24 24"><path d="M19.812 5.418c.861.23 1.538.907 1.768 1.768C21.998 8.78 22 12 22 12s0 3.22-.418 4.814a2.504 2.504 0 0 1-1.768 1.768c-1.594.418-7.814.418-7.814.418s-6.22 0-7.814-.418a2.505 2.505 0 0 1-1.768-1.768C2 15.22 2 12 2 12s0-3.22.418-4.814a2.505 2.505 0 0 1 1.768-1.768C5.78 5 12 5 12 5s6.22 0 7.812.418zM9.999 15.199l4.94-3.2L9.999 8.798v6.4z"/></svg>
            </a>
-         </div>
+        </div>
       </div>
 
     </div>
 
-    <div class="mt-8 border-t border-primary-600 pt-6 text-center dark:border-gray-700">
-      <p data-i18n="footerCopyright">
-        Copyrights © {year} Mongolian Sports Knife Throwing Federation
-      </p>
+    <div class="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0 text-[10px] font-bold uppercase tracking-widest text-gray-600">
+      <p data-i18n="footerCopyright">© {year} MSKTF Federation</p>
+      <div class="flex space-x-8">
+        <a href="#" class="hover:text-gray-400 transition-colors">Privacy</a>
+        <a href="#" class="hover:text-gray-400 transition-colors">Terms</a>
+      </div>
     </div>
   </div>
 </footer>
@@ -155,7 +172,7 @@ function createMobileMenu() {
     dropdown.style.maxHeight = "0";
 
     const nav = navUl.cloneNode(true); // Clone the main nav links
-    nav.className = "flex flex-col py-3 space-y-1";
+    nav.className = "flex flex-col py-3 space-y-1 text-center";
     nav
       .querySelectorAll("a")
       .forEach((a) =>
@@ -174,7 +191,6 @@ function createMobileMenu() {
           "dark:focus:ring-blue-400",
           "focus:bg-gray-100",
           "dark:focus:bg-gray-700",
-          "text-left",
         ),
       );
     dropdown.appendChild(nav);
@@ -183,8 +199,8 @@ function createMobileMenu() {
     const desktopLangContainer =
       navContainer?.querySelector("#language-btn")?.parentElement;
     if (desktopLangContainer) {
-      const mobileLangContainer = document.createElement("div"); // Create a simple div container
-      mobileLangContainer.className = "relative px-4"; // Add horizontal padding like nav links, relative for dropdown positioning
+      const mobileLangContainer = document.createElement("div");
+      mobileLangContainer.className = "relative px-4 pb-4";
 
       const mobileLangButton = desktopLangContainer
         .querySelector("button")
@@ -201,23 +217,20 @@ function createMobileMenu() {
           "language-btn-mobile",
         );
 
-        // Style button to look like a nav link
         mobileLangButton.className =
-          "flex items-center w-full py-3 text-left text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:bg-gray-100 dark:focus:bg-gray-700 rounded-md";
+          "flex items-center justify-center w-full py-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:bg-gray-100 dark:focus:bg-gray-700 rounded-md";
         mobileLangButton.innerHTML = `
-          <i class="fi fi-rr-globe text-base mr-2 inline-block align-middle"></i>
-          <span class="inline-block align-middle">Language</span>
-          <span id="current-lang-display-mobile" class="ml-auto pl-2 text-xs uppercase text-gray-500 dark:text-gray-400 inline-block align-middle">${currentLang.toUpperCase()}</span>
+          <i class="fi fi-rr-globe text-base mr-2"></i>
+          <span>Language</span>
+          <span id="current-lang-display-mobile" class="ml-2 text-[10px] uppercase font-bold text-gray-400">${currentLang.toUpperCase()}</span>
         `;
 
-        // Style dropdown - relative to mobile container
         mobileLangDropdown.className =
           "relative hidden w-full mt-1 rounded-md bg-gray-50 dark:bg-gray-700 z-10";
 
-        // Style dropdown links for better padding inside mobile menu
         mobileLangDropdown.querySelectorAll("a").forEach((a) => {
           a.classList.remove("px-4");
-          a.classList.add("py-3", "pl-8", "pr-4");
+          a.classList.add("py-3", "text-center");
         });
 
         mobileLangContainer.appendChild(mobileLangButton);
@@ -244,17 +257,12 @@ function createMobileMenu() {
     burgerBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       const currentDropdown = document.getElementById("mobile-menu");
-      const mobileLangDropdown = document.getElementById(
-        "language-dropdown-mobile",
-      );
       if (!currentDropdown) return;
       const isOpen = currentDropdown.style.maxHeight !== "0px";
 
       if (isOpen) {
-        if (mobileLangDropdown) mobileLangDropdown.classList.add("hidden");
         currentDropdown.style.maxHeight = "0";
       } else {
-        if (mobileLangDropdown) mobileLangDropdown.classList.add("hidden");
         currentDropdown.style.display = "block";
         currentDropdown.style.maxHeight = `${currentDropdown.scrollHeight}px`;
         currentDropdown.style.removeProperty("display");
@@ -264,16 +272,12 @@ function createMobileMenu() {
   // Close main menu if clicking outside
   document.addEventListener("click", (e) => {
     const mobileMenu = document.getElementById("mobile-menu");
-    const mobileLangDropdown = document.getElementById(
-      "language-dropdown-mobile",
-    );
     if (
       mobileMenu &&
       !mobileMenu.contains(e.target) &&
       !burgerBtn.contains(e.target) &&
       mobileMenu.style.maxHeight !== "0px"
     ) {
-      if (mobileLangDropdown) mobileLangDropdown.classList.add("hidden");
       mobileMenu.style.maxHeight = "0";
     }
   });
@@ -281,19 +285,14 @@ function createMobileMenu() {
 
 /** Sets up the language selector dropdown behavior. */
 function setupLanguageSelectorListeners() {
-  // Function to setup listeners for a specific switcher instance
   const setupSwitcher = (buttonId, dropdownId, displayId) => {
     const languageBtn = document.getElementById(buttonId);
     const languageDropdown = document.getElementById(dropdownId);
     const currentLangDisplay = document.getElementById(displayId);
-    const mobileMenu = document.getElementById("mobile-menu"); // Get main mobile menu
+    const mobileMenu = document.getElementById("mobile-menu");
 
-    if (!languageBtn || !languageDropdown) {
-      return;
-    }
-    if (currentLangDisplay) {
-      currentLangDisplay.textContent = currentLang.toUpperCase();
-    }
+    if (!languageBtn || !languageDropdown) return;
+    if (currentLangDisplay) currentLangDisplay.textContent = currentLang.toUpperCase();
 
     const listenerAttribute = `data-${buttonId}-listener`;
     if (!languageBtn.hasAttribute(listenerAttribute)) {
@@ -301,17 +300,9 @@ function setupLanguageSelectorListeners() {
 
       languageBtn.addEventListener("click", (e) => {
         e.stopPropagation();
-        const isHidden = languageDropdown.classList.toggle("hidden");
-
-        // Recalculate mobile menu height IF this is the mobile button
-        if (
-          buttonId === "language-btn-mobile" &&
-          mobileMenu &&
-          mobileMenu.style.maxHeight !== "0px"
-        ) {
-          setTimeout(() => {
-            mobileMenu.style.maxHeight = `${mobileMenu.scrollHeight}px`;
-          }, 50); // Small delay
+        languageDropdown.classList.toggle("hidden");
+        if (buttonId === "language-btn-mobile" && mobileMenu && mobileMenu.style.maxHeight !== "0px") {
+          setTimeout(() => { mobileMenu.style.maxHeight = `${mobileMenu.scrollHeight}px`; }, 50);
         }
       });
 
@@ -319,63 +310,20 @@ function setupLanguageSelectorListeners() {
         if (e.target.tagName === "A" && e.target.dataset.lang) {
           e.preventDefault();
           const selectedLang = e.target.dataset.lang;
-          if (currentLangDisplay) {
-            currentLangDisplay.textContent = selectedLang.toUpperCase();
-          }
-          if (selectedLang !== currentLang) {
-            setLanguage(selectedLang);
-          }
-          // Page reload handles closing
+          if (selectedLang !== currentLang) setLanguage(selectedLang);
         }
       });
     }
   };
 
-  // Setup for Desktop
   setupSwitcher("language-btn", "language-dropdown", null);
+  setupSwitcher("language-btn-mobile", "language-dropdown-mobile", "current-lang-display-mobile");
 
-  // Setup for Mobile
-  setupSwitcher(
-    "language-btn-mobile",
-    "language-dropdown-mobile",
-    "current-lang-display-mobile",
-  );
-
-  // Global listener to close dropdowns
-  document.addEventListener("click", (e) => {
-    const desktopBtn = document.getElementById("language-btn");
+  document.addEventListener("click", () => {
     const desktopDropdown = document.getElementById("language-dropdown");
-    const mobileBtn = document.getElementById("language-btn-mobile");
     const mobileDropdown = document.getElementById("language-dropdown-mobile");
-    const mobileMenu = document.getElementById("mobile-menu");
-
-    // Close desktop
-    if (
-      desktopBtn &&
-      desktopDropdown &&
-      !desktopBtn.contains(e.target) &&
-      !desktopDropdown.contains(e.target)
-    ) {
-      desktopDropdown.classList.add("hidden");
-    }
-    // Close mobile language dropdown
-    if (
-      mobileBtn &&
-      mobileDropdown &&
-      !mobileBtn.contains(e.target) &&
-      !mobileDropdown.contains(e.target)
-    ) {
-      if (!mobileDropdown.classList.contains("hidden")) {
-        mobileDropdown.classList.add("hidden");
-        // Recalculate main menu height when language dropdown closes
-        if (mobileMenu && mobileMenu.style.maxHeight !== "0px") {
-          setTimeout(() => {
-            mobileMenu.style.maxHeight = `${mobileMenu.scrollHeight}px`;
-          }, 50);
-        }
-      }
-    }
-    // Main mobile menu closing is handled by its own separate listener
+    if (desktopDropdown) desktopDropdown.classList.add("hidden");
+    if (mobileDropdown) mobileDropdown.classList.add("hidden");
   });
 }
 
@@ -387,47 +335,19 @@ function translateStaticElements() {
     const paramsAttr = element.getAttribute("data-i18n-params");
     let params = {};
     if (paramsAttr) {
-      try {
-        params = JSON.parse(paramsAttr);
-      } catch (e) {
-        console.error(
-          `[uiUtils] Error parsing i18n params for key "${key}":`,
-          e,
-        );
-      }
+      try { params = JSON.parse(paramsAttr); } catch (e) { console.error(`Error parsing i18n params:`, e); }
     }
-    if (key === "footerCopyright") {
-      params.year = new Date().getFullYear();
-    }
+    if (key === "footerCopyright") params.year = new Date().getFullYear();
     const translation = t(key, params);
-    const isInput =
-      element.tagName === "INPUT" || element.tagName === "TEXTAREA";
-    const isPlaceholder = element.hasAttribute("placeholder");
-    const isValue = element.hasAttribute("value") && isInput;
-
+    
     if (key === "federationSlogan") {
       element.innerHTML = translation;
-    } else if (isPlaceholder) {
-      element.placeholder = translation;
-    } else if (isValue) {
-      // Skip value
+    } else if (element.tagName === "INPUT" || element.tagName === "TEXTAREA") {
+      if (element.hasAttribute("placeholder")) element.placeholder = translation;
     } else if (element.tagName === "BUTTON" || element.closest("button")) {
       const textSpan = element.querySelector('span:not([id*="lang-display"])');
-      if (textSpan) {
-        textSpan.textContent = translation;
-      } else {
-        let textNode = Array.from(element.childNodes).find(
-          (node) =>
-            node.nodeType === Node.TEXT_NODE && node.textContent?.trim(),
-        );
-        if (textNode) {
-          textNode.textContent = translation;
-        } else {
-          element.textContent = translation;
-        }
-      }
-    } else if (element.closest("#pagination-controls")) {
-      element.innerHTML = translation;
+      if (textSpan) textSpan.textContent = translation;
+      else element.textContent = translation;
     } else {
       element.textContent = translation;
     }
@@ -443,11 +363,19 @@ function initializeUI() {
       createMobileMenu();
       setupLanguageSelectorListeners();
       translateStaticElements();
+
+      const currentPath = window.location.pathname.split("/").pop() || "index.html";
+      document.querySelectorAll(".nav-link").forEach((link) => {
+        const linkPath = link.getAttribute("href").split("/").pop();
+        if (linkPath === currentPath) {
+          link.classList.add("text-blue-600", "dark:text-blue-400", "font-bold");
+          link.classList.remove("text-gray-600", "dark:text-gray-400");
+        }
+      });
     } catch (error) {
       console.error("Error during deferred UI listener setup:", error);
     }
   }, 0);
 }
 
-// Keep only the single named export block at the end
 export { initializeUI, translateStaticElements };

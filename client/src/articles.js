@@ -99,27 +99,60 @@ export function renderArticle(article, container) {
   const content = article.content || `<p>${t("noContentAvailable")}</p>`;
 
   const articleHTML = `
-    <article class="bg-white dark:bg-gray-700 rounded-lg shadow-md overflow-hidden border border-gray-200 dark:border-gray-600">
-      ${article.imageUrl ? `<img src="${article.imageUrl}" alt="${title}" class="w-full h-auto max-h-96 object-cover">` : ""}
-      <div class="p-4 md:p-6">
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-3 leading-tight">${title}</h1>
-        <div class="flex flex-wrap items-center text-gray-500 dark:text-gray-400 text-sm mb-6 space-x-3">
-            <span title="${hoverString}" class="whitespace-nowrap">${displayString}</span>
-            <span class="hidden sm:inline">•</span>
-            <span class="capitalize whitespace-nowrap">${article.category || "Unknown"}</span>
-            <span class="hidden sm:inline">•</span>
-            <span class="flex items-center whitespace-nowrap">
-              <svg class="w-4 h-4 mr-1.5 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 14"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.2" d="M10 10.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.2" d="M20 7a9.99 9.99 0 0 1-1.774 5.318A9.956 9.956 0 0 1 10 13.5a9.956 9.956 0 0 1-8.226-1.182A9.99 9.99 0 0 1 0 7a9.99 9.99 0 0 1 1.774-5.318A9.956 9.956 0 0 1 10 0.5a9.956 9.956 0 0 1 8.226 1.182A9.99 9.99 0 0 1 20 7Z"/></svg>
-              ${article.views ?? 0} views
-            </span>
+    <article class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl shadow-gray-200/50 dark:shadow-none overflow-hidden border border-gray-100 dark:border-gray-700 transition-all duration-300">
+      ${article.imageUrl ? `<div class="w-full h-[300px] md:h-[450px] overflow-hidden"><img src="${article.imageUrl}" alt="${title}" class="w-full h-full object-cover hover:scale-105 transition-transform duration-700"></div>` : ""}
+      
+      <div class="p-6 md:p-10 lg:p-12">
+        <div class="flex items-center space-x-2 mb-6">
+            <span class="px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-bold uppercase tracking-wider">${article.category || "General"}</span>
+            <span class="text-gray-300 dark:text-gray-600">•</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400 font-medium">${displayString}</span>
         </div>
-        <div class="prose dark:prose-invert max-w-none mt-6">
+
+        <h1 class="text-3xl md:text-4xl lg:text-5xl font-black text-gray-900 dark:text-white mb-8 leading-tight tracking-tight">${title}</h1>
+        
+        <div class="flex items-center justify-between border-y border-gray-100 dark:border-gray-700 py-6 mb-10">
+            <div class="flex items-center space-x-3 text-left">
+                <div class="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400">
+                    <i class="fi fi-rr-user text-lg"></i>
+                </div>
+                <div>
+                    <p class="text-sm font-bold text-gray-900 dark:text-white leading-none mb-1">${article.author || "Federation Member"}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Official Author</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4 text-gray-500 dark:text-gray-400">
+                <span class="flex items-center text-sm" title="Views">
+                    <i class="fi fi-rr-eye mr-2"></i>
+                    ${article.views ?? 0}
+                </span>
+                <button class="hover:text-blue-600 transition-colors" title="Share">
+                    <i class="fi fi-rr-share"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="prose prose-lg dark:prose-invert max-w-none">
             ${content}
         </div>
       </div>
     </article>
   `;
   container.innerHTML = articleHTML;
+
+  // Update Breadcrumb Title
+  const breadcrumbTitle = document.getElementById("breadcrumb-title");
+  if (breadcrumbTitle) breadcrumbTitle.textContent = title;
+
+  // Reading progress logic
+  window.onscroll = function() {
+    const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+    const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+    const scrolled = (winScroll / height) * 100;
+    const progressBar = document.getElementById("reading-progress");
+    if (progressBar) progressBar.style.width = scrolled + "%";
+  };
+  
   console.log("--- renderArticle END ---");
 }
 
@@ -181,7 +214,7 @@ export function renderArticleList(articles, container) {
              </a>`
               : `<div class="w-full h-48 bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-400 dark:text-gray-300 flex-shrink-0">No Image</div>` // Changed: Fixed h-48
           }
-          <div class="p-4 md:p-5 lg:p-6 flex flex-col flex-grow"> <!-- Adjusted padding slightly -->
+          <div class="p-4 md:p-5 lg:p-6 flex flex-col flex-grow text-left"> <!-- Adjusted padding slightly -->
             <h2 class="text-lg md:text-xl font-semibold leading-snug text-gray-900 dark:text-white mb-2"> <!-- Adjusted text size -->
               <a href="/article.html?id=${article.id}" class="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                 ${title}
