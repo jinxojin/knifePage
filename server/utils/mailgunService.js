@@ -37,13 +37,25 @@ async function sendPasswordResetEmail(toEmail, resetToken) {
     console.log(`To: ${toEmail}`);
     console.log(`Token: ${resetToken}`);
     console.log(
-      `Reset Link: ${FRONTEND_URL}/reset-password.html?token=${resetToken}`
+      `Reset Link: ${FRONTEND_URL}/reset-password.html?token=${resetToken}&email=${encodeURIComponent(
+        toEmail
+      )}`
     );
     console.log(`-----------------------------`);
     return null; // Indicate email wasn't sent
   }
 
-  const resetLink = `${FRONTEND_URL}/reset-password.html?token=${resetToken}`;
+  const resetLink = `${FRONTEND_URL}/reset-password.html?token=${resetToken}&email=${encodeURIComponent(
+    toEmail
+  )}`;
+
+  // Always log the link in development/test environments for easy access
+  if (process.env.NODE_ENV !== "production") {
+    console.log(`--- [DEV/TEST] Password Reset Link ---`);
+    console.log(`To: ${toEmail}`);
+    console.log(`Link: ${resetLink}`);
+    console.log(`--------------------------------------`);
+  }
 
   const messageData = {
     from: FROM_EMAIL,

@@ -54,7 +54,7 @@ const { invalidCsrfTokenError, generateToken, doubleCsrfProtection } =
     // FIX: Simplified getSecret function signature (removed unused 'req')
     getSecret: () => process.env.CSRF_SECRET,
     // -------------------------------------------------
-    cookieName: "__Host-x-csrf-token", // Using recommended secure prefix
+    cookieName: nodeEnv === "production" ? "__Host-x-csrf-token" : "x-csrf-token", // Conditional name
     cookieOptions: cookieOpts, // Pass the pre-determined options object
     size: 64, // Token size (bytes)
     ignoredMethods: ["GET", "HEAD", "OPTIONS"], // Methods that don't need CSRF protection

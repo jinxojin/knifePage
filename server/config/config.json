@@ -3,7 +3,7 @@
     "username": "knife_app_user",
     "password": "_4nhniM44n1W3bs1t3!",
     "database": "knife_app_dev",
-    "host": "127.0.0.1",
+    "host": "localhost",
     "port": 5432,
     "dialect": "postgres",
     "dialectOptions": {

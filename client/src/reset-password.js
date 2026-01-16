@@ -10,9 +10,10 @@ const confirmPasswordInput = document.getElementById("confirm-password");
 const messageElement = document.getElementById("reset-password-message");
 const submitButton = form?.querySelector('button[type="submit"]');
 
-// --- Get Token from URL ---
+// --- Get Token and Email from URL ---
 const urlParams = new URLSearchParams(window.location.search);
 const resetToken = urlParams.get("token");
+const email = urlParams.get("email");
 // -------------------------
 
 let csrfToken = null; // Variable to store the CSRF token
@@ -46,8 +47,8 @@ async function fetchCsrfToken() {
     csrfToken = data.csrfToken; // Store the fetched token
     console.log("CSRF Token fetched successfully.");
     // Enable form only after token is fetched
-    if (submitButton && resetToken) submitButton.disabled = false; // Enable only if URL token also exists
-    if (form && resetToken) {
+    if (submitButton && resetToken && email) submitButton.disabled = false; // Enable only if URL token and email exist
+    if (form && resetToken && email) {
       form
         .querySelectorAll("input")
         .forEach((input) => (input.disabled = false)); // Enable inputs
@@ -82,9 +83,9 @@ form?.addEventListener("submit", async (event) => {
   }
   // ---------------------------------------
 
-  if (!resetToken) {
-    // Double check URL token is present
-    displayMessage("Error: Missing reset token.", true);
+  if (!resetToken || !email) {
+    // Double check URL token/email is present
+    displayMessage("Error: Missing reset token or email.", true);
     return;
   }
 
@@ -115,6 +116,7 @@ form?.addEventListener("submit", async (event) => {
       },
       body: JSON.stringify({
         token: resetToken,
+        email: email, // Include email in request
         newPassword: newPassword,
         confirmPassword: confirmPassword,
       }),
@@ -168,9 +170,9 @@ document.addEventListener("DOMContentLoaded", () => {
     form.querySelectorAll("input").forEach((input) => (input.disabled = true));
   }
 
-  if (!resetToken) {
+  if (!resetToken || !email) {
     displayMessage(
-      "Error: No password reset token found in URL. Please use the link from your email.",
+      "Error: Invalid password reset link (missing token or email). Please use the link from your email.",
       true,
     );
     // Keep form disabled

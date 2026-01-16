@@ -53,6 +53,7 @@ const validateForgotPassword = [
     .normalizeEmail(),
 ];
 const validateResetPassword = [
+  body("email").trim().isEmail().withMessage("Valid email is required."),
   body("token").notEmpty().withMessage("Reset token is required."),
   body("newPassword")
     .isLength({ min: 8 })
@@ -153,57 +154,25 @@ router.post(
     }
 
     try {
-      const { token: plaintextToken, newPassword } = req.body;
-      console.log(`[${timestamp}] POST /api/auth/reset-password attempt.`);
-
-      const potentialUsers = await User.findAll({
-        where: { passwordResetToken: { [Op.ne]: null } },
-      });
+      const { email, token: plaintextToken, newPassword } = req.body;
       console.log(
-        `[${timestamp}] Found ${potentialUsers.length} potential users with non-null tokens.`
+        `[${timestamp}] POST /api/auth/reset-password attempt for email: ${email}`
       );
 
-      if (potentialUsers.length === 0) {
-        console.warn(
-          `[${timestamp}] No users found with non-null reset tokens.`
-        );
-        return next(
-          new ErrorHandler(
-            "Password reset token is invalid or has expired.",
-            400
-          )
-        );
-      }
-
-      let user = null;
-      for (const potentialUser of potentialUsers) {
-        // Ensure passwordResetToken is not null before comparing
-        if (potentialUser.passwordResetToken) {
-          const isMatch = await bcrypt.compare(
-            plaintextToken,
-            potentialUser.passwordResetToken
-          );
-          if (isMatch) {
-            if (
-              potentialUser.passwordResetExpires &&
-              potentialUser.passwordResetExpires > new Date()
-            ) {
-              user = potentialUser;
-              console.log(
-                `[${timestamp}] Token match found for user ID: ${user.id}`
-              );
-              break;
-            } else {
-              console.warn(
-                `[${timestamp}] Token matched user ${potentialUser.id}, but expired.`
-              );
-            }
-          }
-        }
-      }
+      // 1. Find the user by email FIRST (O(1) lookup)
+      const user = await User.findOne({
+        where: {
+          email: email,
+          passwordResetToken: { [Op.ne]: null }, // Token must exist
+        },
+      });
 
       if (!user) {
-        console.warn(`[${timestamp}] No matching non-expired token found.`);
+        console.warn(
+          `[${timestamp}] No user found with email ${email} having a reset token.`
+        );
+        // Generic error message for security (user enumeration prevention)
+        // Or specific if you prefer UX over strict security in this context
         return next(
           new ErrorHandler(
             "Password reset token is invalid or has expired.",
@@ -212,6 +181,37 @@ router.post(
         );
       }
 
+      // 2. Check Expiration
+      if (
+        !user.passwordResetExpires ||
+        user.passwordResetExpires < new Date()
+      ) {
+        console.warn(`[${timestamp}] Token for user ${user.id} has expired.`);
+        return next(
+          new ErrorHandler(
+            "Password reset token is invalid or has expired.",
+            400
+          )
+        );
+      }
+
+      // 3. Verify Token Hash (O(1) comparison)
+      const isMatch = await bcrypt.compare(
+        plaintextToken,
+        user.passwordResetToken
+      );
+
+      if (!isMatch) {
+        console.warn(`[${timestamp}] Token hash mismatch for user ${user.id}.`);
+        return next(
+          new ErrorHandler(
+            "Password reset token is invalid or has expired.",
+            400
+          )
+        );
+      }
+
+      // 4. Update Password
       user.password = newPassword;
       user.needsPasswordChange = false;
       user.passwordResetToken = null;
