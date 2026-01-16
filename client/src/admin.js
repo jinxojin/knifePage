@@ -147,6 +147,7 @@ const ApiService = {
       } else {
         // ... (Handle non-JSON success remains the same) ...
         const text = await response.text();
+        console.log(
           `Received non-JSON OK response for ${method} ${fetchPath}:`,
           text.substring(0, 100) + "...",
         );

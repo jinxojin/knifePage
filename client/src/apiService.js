@@ -31,6 +31,7 @@ async function makePublicRequest(path, queryParams = {}) {
 
   try {
     // <<< Log 16 >>>
+    console.log(
       `[apiService.js] makePublicRequest - About to execute fetch for: ${fetchUrl}`,
     );
     const response = await fetch(fetchUrl, {
@@ -40,6 +41,7 @@ async function makePublicRequest(path, queryParams = {}) {
       },
     });
     // <<< Log 17 (After fetch attempt) >>>
+    console.log(
       `[apiService.js] makePublicRequest - Fetch executed for: ${fetchUrl}, Status: ${response.status}`,
     );
 
@@ -149,6 +151,7 @@ export async function getPublicArticleById(id, { lang } = {}) {
     throw new Error(t("Article ID is required for getPublicArticleById.")); // Use t() if available
   const queryParams = { lang };
   // <<< Log 19 >>>
+  console.log(
     `[apiService.js] getPublicArticleById - Calling makePublicRequest for ID: ${id}`,
   );
   return makePublicRequest(`/articles/${id}`, queryParams);
