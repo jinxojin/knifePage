@@ -1,7 +1,6 @@
 // client/src/admin.js
 import "./style.css";
 
-console.log("--- admin.js executing ---");
 
 // --- API Service ---
 const ApiService = {
@@ -26,7 +25,6 @@ const ApiService = {
       }
       const data = await response.json();
       this.csrfToken = data.csrfToken;
-      console.log("CSRF Token fetched.");
       return this.csrfToken;
     } catch (error) {
       console.error("Error fetching CSRF token:", error);
@@ -68,7 +66,6 @@ const ApiService = {
       !isRetry
     ) {
       try {
-        console.log("Attempting pre-fetch CSRF token...");
         await this.fetchCsrfToken();
       } catch (csrfError) {
         console.error("Failed pre-fetch CSRF token:", csrfError);
@@ -99,7 +96,6 @@ const ApiService = {
 
     try {
       // Use the fetchPath directly (should be like /api/admin/login)
-      console.log(`Making API request: ${method} ${fetchPath}`);
       const response = await fetch(fetchPath, options); // Fetch relative path
 
       // --- CSRF Retry Logic --- (Keep this logic)
@@ -151,7 +147,6 @@ const ApiService = {
       } else {
         // ... (Handle non-JSON success remains the same) ...
         const text = await response.text();
-        console.log(
           `Received non-JSON OK response for ${method} ${fetchPath}:`,
           text.substring(0, 100) + "...",
         );
@@ -180,7 +175,6 @@ const ApiService = {
   async refreshToken() {
     const currentRefreshToken = localStorage.getItem("refreshToken");
     if (!currentRefreshToken) {
-      console.log("No refresh token found in localStorage.");
       return null;
     }
     try {
@@ -189,7 +183,6 @@ const ApiService = {
         "POST",
         { refreshToken: currentRefreshToken },
       );
-      console.log("Refresh token successful.");
       return data.accessToken;
     } catch (error) {
       console.error("Refresh token failed:", error);
@@ -211,7 +204,6 @@ const ApiService = {
           const newAccessToken = await this.refreshToken();
           if (newAccessToken) {
             localStorage.setItem("accessToken", newAccessToken);
-            console.log(`Retrying ${method} ${url} with new token.`);
             return await this.makeRequest(url, method, data); // Retry with original full URL
           } else {
             console.error("Refresh failed. Redirecting to login.");
@@ -364,7 +356,6 @@ const AuthService = {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
     ApiService.csrfToken = null;
-    console.log("Tokens cleared from localStorage.");
   },
 };
 
@@ -426,7 +417,6 @@ const AdminUI = {
   quillInstances: { en: null, rus: null, mng: null },
 
   initialize() {
-    console.log("AdminUI initialize START");
     if (typeof Quill === "undefined") {
       console.error("Quill.js not loaded.");
       this.displayMessage(
@@ -438,7 +428,6 @@ const AdminUI = {
       this.initQuillEditor();
     }
     this.setupEventListeners();
-    console.log("Fetching CSRF token in initialize...");
     this.updateUI();
   },
 
@@ -557,14 +546,12 @@ const AdminUI = {
   },
 
   async updateUI() {
-    console.log("Checking login status...");
     const loggedIn = AuthService.isLoggedIn();
     this.currentUserRole = null;
     this.elements.loginPanel?.classList.toggle("hidden", loggedIn);
     this.elements.adminPanel?.classList.toggle("hidden", !loggedIn);
 
     if (loggedIn) {
-      console.log("Attempting ApiService.getMe()...");
       try {
         const userInfo = await ApiService.getMe();
         this.currentUserRole = userInfo?.role;
@@ -573,7 +560,6 @@ const AdminUI = {
           !["admin", "moderator"].includes(this.currentUserRole)
         )
           throw new Error("Invalid user role");
-        console.log("[Admin UI] User Role:", this.currentUserRole);
         this.renderUIForRole();
         this.loadArticles();
         if (this.currentUserRole === "moderator") this.loadMySuggestions();
@@ -650,7 +636,6 @@ const AdminUI = {
   },
 
   async loadArticles() {
-    console.log("Attempting ApiService.getArticles()...");
     const container = this.elements.articlesContainer;
     if (!container) return;
     container.innerHTML =
@@ -1238,6 +1223,5 @@ const AdminUI = {
 
 // --- Initialization ---
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("Admin page DOM fully loaded and parsed");
   AdminUI.initialize();
 });

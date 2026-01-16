@@ -1,5 +1,5 @@
 const { sequelize } = require("./database");
-const logger = require("winston");
+const logger = require("../utils/logger");
 
 async function initializeDatabase() {
   try {

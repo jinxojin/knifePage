@@ -1,24 +1,25 @@
 {
   "name": "knife-page",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "format": "prettier --write ."
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.17",
     "@tailwindcss/typography": "^0.5.16",
+    "@tailwindcss/vite": "^4.0.14",
     "prettier": "^3.5.3",
     "prettier-plugin-tailwindcss": "^0.6.11",
+    "tailwindcss": "^4.0.14",
     "terser": "^5.39.0",
-    "vite": "^6.2.5"
+    "vite": "^6.4.1"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.0.14",
-    "date-fns": "^4.1.0",
-    "tailwindcss": "^4.0.14"
+    "date-fns": "^4.1.0"
   }
 }

@@ -1,6 +1,5 @@
 // client/src/uiUtils.js
 import { t, currentLang, setLanguage } from "./i18n.js";
-console.log("--- uiUtils.js STARTING TO EXECUTE ---");
 
 // --- Header HTML Template ---
 const headerHTML = `

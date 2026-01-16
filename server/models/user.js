@@ -1,128 +1,96 @@
-// server/models/user.js
-const { DataTypes, Model } = require("sequelize"); // Import Model if using class syntax
-const { sequelize } = require("../config/database");
+const { Model, DataTypes } = require("sequelize");
 const bcrypt = require("bcrypt");
+const logger = require("../utils/logger");
 
-// Using class syntax for consistency if other models use it
-class User extends Model {
-  // Helper method to check password (optional but convenient)
-  async validPassword(password) {
-    // Ensure comparison happens against the correct instance property 'this.password'
-    return bcrypt.compare(password, this.password);
-  }
-}
+module.exports = (sequelize) => {
+  class User extends Model {}
 
-User.init(
-  {
-    username: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      unique: true,
-    },
-    email: {
-      // Ensure email field is present
-      type: DataTypes.STRING,
-      allowNull: false,
-      unique: true,
-      validate: {
-        isEmail: true, // Model-level validation
+  User.init(
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+      },
+      username: {
+        type: DataTypes.STRING,
+        unique: true,
+        allowNull: false,
+      },
+      password: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+      role: {
+        type: DataTypes.ENUM("admin", "moderator"),
+        defaultValue: "moderator",
+      },
+      email: {
+        type: DataTypes.STRING,
+        unique: true,
+        allowNull: false,
+        validate: {
+          isEmail: true,
+        },
+      },
+      needsPasswordChange: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+      },
+      // Fields for password reset
+      resetPasswordToken: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      resetPasswordExpires: {
+        type: DataTypes.DATE,
+        allowNull: true,
       },
     },
-    password: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    refreshToken: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    role: {
-      type: DataTypes.STRING,
-      allowNull: false, // Roles should generally be required
-      defaultValue: "moderator",
-      validate: {
-        isIn: [["admin", "moderator"]], // Restrict roles
-      },
-    },
-    needsPasswordChange: {
-      // Ensure flag is present
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: true,
-    },
-    // +++ Password Reset Fields (From Migration) +++
-    passwordResetToken: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    passwordResetExpires: {
-      type: DataTypes.DATE, // Match migration type
-      allowNull: true,
-    },
-    // ++++++++++++++++++++++++++++++++++++++++++++++++++
-    // id, createdAt, updatedAt are automatic
-  },
-  {
-    sequelize,
-    modelName: "User",
-    hooks: {
-      // Use hooks for password hashing
-      beforeCreate: async (user) => {
-        if (user.password) {
-          console.log("beforeCreate hook: Hashing password...");
-          const salt = await bcrypt.genSalt(10);
-          user.password = await bcrypt.hash(user.password, salt);
-          console.log("beforeCreate hook: Hashing DONE."); // Added confirmation log
-        }
-      },
-      beforeUpdate: async (user) => {
-        // === START DEBUG LOGGING ===
-        const changedFields = user.changed(); // Get list of changed fields
-        console.log("beforeUpdate hook: User ID:", user.id);
-        console.log("beforeUpdate hook: Changed fields:", changedFields);
-        console.log(
-          "beforeUpdate hook: Password field changed?",
-          user.changed("password")
-        );
-        if (user.changed("password")) {
-          // Log the value BEFORE it potentially gets hashed
-          console.log(
-            "beforeUpdate hook: user.password value BEFORE hashing/assignment:",
-            user.password
+    {
+      sequelize,
+      modelName: "User",
+      hooks: {
+        beforeCreate: async (user) => {
+          logger.debug("beforeCreate hook: Hashing password...");
+          user.password = await bcrypt.hash(user.password, 10);
+          logger.debug("beforeCreate hook: Hashing DONE.");
+        },
+        beforeUpdate: async (user) => {
+          const changedFields = user.changed();
+          logger.debug("beforeUpdate hook: User ID:", user.id);
+          logger.debug("beforeUpdate hook: Changed fields:", changedFields);
+          logger.debug(
+            "beforeUpdate hook: user.password value exists:",
+            !!user.password
           );
-        }
-        // === END DEBUG LOGGING ===
-
-        // Check if 'password' is among the changed fields AND if the new value is not null/undefined
-        if (user.changed("password") && user.password) {
-          console.log("beforeUpdate hook: Hashing password change...");
-          const salt = await bcrypt.genSalt(10);
-          // Store the hash result temporarily
-          const hashedPassword = await bcrypt.hash(user.password, salt);
-          console.log(
-            "beforeUpdate hook: Generated hash:",
-            hashedPassword.substring(0, 15) + "..."
-          ); // Log part of hash
-          // Assign the hashed password back to the user instance's data value for password
-          // This ensures the correct value is saved to the DB
-          user.set("password", hashedPassword); // Use set() to ensure it's marked for update
-          console.log(
-            "beforeUpdate hook: Hashing assignment DONE via user.set()."
-          ); // Add confirmation log
-        } else if (user.changed("password")) {
-          // This case handles if password was explicitly set to null or empty string
-          console.log(
-            "beforeUpdate hook: Password changed but is null/empty, skipping hash."
+          if (user.changed("password")) {
+            logger.debug(
+              "beforeUpdate hook: password field IS in user.changed()"
+            );
+            logger.debug("beforeUpdate hook: Hashing password change...");
+            user.password = await bcrypt.hash(user.password, 10);
+            logger.debug(
+              "beforeUpdate hook: Password hashed. New hash starts with:",
+              user.password.substring(0, 10)
+            );
+          } else {
+            logger.debug(
+              "beforeUpdate hook: password field NOT in user.changed()"
+            );
+          }
+          logger.debug(
+            "beforeUpdate hook: needsPasswordChange:",
+            user.needsPasswordChange
           );
-        } else {
-          // This case handles updates to other fields (like refreshToken, passwordResetToken)
-          console.log(
-            "beforeUpdate hook: Password not changed, skipping hash."
+          logger.debug(
+            "beforeUpdate hook: needsPasswordChange changed:",
+            user.changed("needsPasswordChange")
           );
-        }
+        },
       },
-    },
-  }
-);
+    }
+  );
 
-module.exports = User;
+  return User;
+};

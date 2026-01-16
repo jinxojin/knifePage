@@ -11,12 +11,8 @@
     }
   },
   "test": {
-    "username": "knife_test_user",
-    "password": "_4nhniM44n1W3bs1t3!",
-    "database": "knife_app_test",
-    "host": "127.0.0.1",
-    "port": 5432,
-    "dialect": "postgres",
+    "dialect": "sqlite",
+    "storage": "./test_db.sqlite",
     "logging": false
   },
   "production": {

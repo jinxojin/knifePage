@@ -1,7 +1,6 @@
 // client/src/apiService.js
 // Service for public-facing API calls
 import { t, currentLang } from "./i18n.js"; // Import i18n if using t() in errors
-console.log("--- apiService.js STARTING TO EXECUTE ---");
 
 const BASE_URL = "/api"; // Keep this relative path for proxies
 
@@ -29,11 +28,9 @@ async function makePublicRequest(path, queryParams = {}) {
   }
 
   // <<< Log 15 >>>
-  console.log(`[apiService.js] makePublicRequest - Fetching URL: ${fetchUrl}`);
 
   try {
     // <<< Log 16 >>>
-    console.log(
       `[apiService.js] makePublicRequest - About to execute fetch for: ${fetchUrl}`,
     );
     const response = await fetch(fetchUrl, {
@@ -43,7 +40,6 @@ async function makePublicRequest(path, queryParams = {}) {
       },
     });
     // <<< Log 17 (After fetch attempt) >>>
-    console.log(
       `[apiService.js] makePublicRequest - Fetch executed for: ${fetchUrl}, Status: ${response.status}`,
     );
 
@@ -153,7 +149,6 @@ export async function getPublicArticleById(id, { lang } = {}) {
     throw new Error(t("Article ID is required for getPublicArticleById.")); // Use t() if available
   const queryParams = { lang };
   // <<< Log 19 >>>
-  console.log(
     `[apiService.js] getPublicArticleById - Calling makePublicRequest for ID: ${id}`,
   );
   return makePublicRequest(`/articles/${id}`, queryParams);

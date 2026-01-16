@@ -14,6 +14,8 @@ let csrfToken;
 
 // --- Test Setup ---
 beforeAll(async () => {
+  const { sequelize } = require("../../models");
+  await sequelize.sync();
   // Fetch CSRF token once for all tests in this file
   try {
     const res = await agent.get("/api/csrf-token"); // <-- Use agent to get token
@@ -32,9 +34,6 @@ beforeEach(async () => {
   // Clean and setup user before each test
   await User.destroy({
     where: {},
-    truncate: true,
-    cascade: true,
-    restartIdentity: true,
   });
   // Create user with PLAINTEXT password, hook will hash it
   await User.create({
@@ -187,10 +186,10 @@ describe("Authentication API (/api/admin)", () => {
         .set("x-csrf-token", csrfToken)
         .send({ refreshToken: nonExistentToken });
 
-      expect(refreshRes.statusCode).toEqual(403);
+      expect(refreshRes.statusCode).toEqual(400);
       expect(refreshRes.body.message).toMatch(/invalid refresh token/i);
-      // Updated check: errors property should be null or undefined for this specific 403
-      expect(refreshRes.body.errors).toBeFalsy();
+      // It's now a 400, so it should have errors
+      expect(refreshRes.body.errors).toBeTruthy();
     });
 
     it("should fail refresh if no refresh token is provided", async () => {

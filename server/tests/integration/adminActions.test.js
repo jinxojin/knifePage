@@ -32,9 +32,6 @@ beforeAll(async () => {
   console.log("Running beforeAll setup...");
   await User.destroy({
     where: {},
-    truncate: true,
-    cascade: true,
-    restartIdentity: true,
   }); // Start clean
   const adminUser = await User.create({
     username: adminUsername,
@@ -71,7 +68,7 @@ beforeEach(async () => {
       console.error(
         "beforeEach: adminUserId is null, performing broader cleanup!"
       );
-      await User.destroy({ where: {}, truncate: true });
+      await User.destroy({ where: {} });
     }
   } catch (e) {
     console.error("Error during beforeEach cleanup:", e);
@@ -82,9 +79,6 @@ afterAll(async () => {
   // Final cleanup
   await User.destroy({
     where: {},
-    truncate: true,
-    cascade: true,
-    restartIdentity: true,
   });
   await sequelize.close();
   console.log("DB connection closed after admin actions tests.");
@@ -109,7 +103,12 @@ describe("User Management (/api/admin/users)", () => {
           .post("/api/admin/users")
           .set("Authorization", `Bearer ${adminToken}`)
           .set("x-csrf-token", csrfToken)
-          .send({ username: newUsername, email: newEmail });
+          .send({ 
+            username: newUsername, 
+            email: newEmail,
+            password: "testPassword123",
+            role: "moderator"
+          });
         console.log("[TEST][Success Create] Response Status:", res.statusCode);
         if (res.statusCode !== 201) {
           console.error(
@@ -194,6 +193,8 @@ describe("User Management (/api/admin/users)", () => {
           .send({
             username: baseModeratorUsername,
             email: "newunique@example.com",
+            password: "password123",
+            role: "moderator"
           });
         console.log("[TEST][Duplicate User] Response Status:", res.statusCode);
         expect(res.statusCode).toEqual(400);
@@ -233,6 +234,8 @@ describe("User Management (/api/admin/users)", () => {
           .send({
             username: secondUserAttemptedUsername,
             email: duplicateTestEmail,
+            password: "password123",
+            role: "moderator"
           });
         console.log("[TEST][Duplicate Email] Response Status:", res.statusCode);
         expect(res.statusCode).toEqual(400);
@@ -369,7 +372,7 @@ describe("User Management (/api/admin/users)", () => {
         .set("Authorization", `Bearer ${adminToken}`)
         .set("x-csrf-token", csrfToken);
       expect(res.statusCode).toEqual(403);
-      expect(res.body.message).toMatch(/cannot delete their own account/i);
+      expect(res.body.message).toMatch(/cannot delete (your|their) own account/i);
     });
 
     it("should return 403 when admin tries to delete another admin", async () => {

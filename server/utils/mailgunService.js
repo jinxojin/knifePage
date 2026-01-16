@@ -1,96 +1,63 @@
 // server/utils/mailgunService.js
 const formData = require("form-data");
 const Mailgun = require("mailgun.js");
-const winston = require("winston"); // For logging
-
-// --- Configuration ---
-const API_KEY = process.env.MAILGUN_API_KEY;
-const DOMAIN = process.env.MAILGUN_DOMAIN;
-const FROM_EMAIL = process.env.MAILGUN_FROM_EMAIL || `no-reply@${DOMAIN}`; // Fallback 'from'
-const FRONTEND_URL = process.env.FRONTEND_URL || "https://localhost:5173"; // Base URL for links
-
-if (!API_KEY || !DOMAIN) {
-  winston.error(
-    "Mailgun API Key or Domain not configured in environment variables. Email sending disabled."
-  );
-  // Optionally throw an error if email is critical
-  // throw new Error('Mailgun configuration missing.');
-}
+const logger = require("./logger");
 
 const mailgun = new Mailgun(formData);
-const mg =
-  API_KEY && DOMAIN ? mailgun.client({ username: "api", key: API_KEY }) : null;
+
+const MAILGUN_API_KEY = process.env.MAILGUN_API_KEY;
+const MAILGUN_DOMAIN = process.env.MAILGUN_DOMAIN;
+
+// Only initialize MG if keys are present (allow fallback for dev)
+let mg;
+if (MAILGUN_API_KEY && MAILGUN_DOMAIN) {
+  mg = mailgun.client({
+    username: "api",
+    key: MAILGUN_API_KEY,
+  });
+}
 
 /**
- * Sends a password reset email.
- * @param {string} toEmail - The recipient's email address.
- * @param {string} resetToken - The PLAINTEXT password reset token.
- * @returns {Promise<object|null>} Mailgun API response or null if disabled/error.
+ * Sends a password reset email using Mailgun.
+ * In development/test mode without API keys, it logs the link to console.
  */
 async function sendPasswordResetEmail(toEmail, resetToken) {
-  if (!mg) {
-    winston.warn(
-      `Mailgun service is not configured. Skipping password reset email to ${toEmail}.`
-    );
-    // In development, log the token and link to console for testing without email
-    console.log(`--- DEV MODE: Password Reset ---`);
-    console.log(`To: ${toEmail}`);
-    console.log(`Token: ${resetToken}`);
-    console.log(
-      `Reset Link: ${FRONTEND_URL}/reset-password.html?token=${resetToken}&email=${encodeURIComponent(
-        toEmail
-      )}`
-    );
-    console.log(`-----------------------------`);
-    return null; // Indicate email wasn't sent
-  }
-
-  const resetLink = `${FRONTEND_URL}/reset-password.html?token=${resetToken}&email=${encodeURIComponent(
+  const resetLink = `https://msktf.com/reset-password.html?token=${resetToken}&email=${encodeURIComponent(
     toEmail
   )}`;
 
-  // Always log the link in development/test environments for easy access
-  if (process.env.NODE_ENV !== "production") {
-    console.log(`--- [DEV/TEST] Password Reset Link ---`);
-    console.log(`To: ${toEmail}`);
-    console.log(`Link: ${resetLink}`);
-    console.log(`--------------------------------------`);
+  // FALLBACK for Dev/Test environments without configured Mailgun
+  if (!mg) {
+    logger.info(`--- [DEV/TEST] Password Reset Link ---`);
+    logger.info(`To: ${toEmail}`);
+    logger.info(`Link: ${resetLink}`);
+    logger.info(`--------------------------------------`);
+    return;
   }
 
   const messageData = {
-    from: FROM_EMAIL,
-    to: [toEmail], // Mailgun expects an array of recipients
-    subject: "MSKTF Password Reset Request",
-    text: `You requested a password reset for your MSKTF account.\n\nPlease click the following link to reset your password:\n${resetLink}\n\nThis link will expire in 1 hour.\n\nIf you did not request this, please ignore this email.`,
-    // Optional: HTML version
-    html: `<p>You requested a password reset for your MSKTF account.</p>
-               <p>Please click the following link to reset your password:</p>
-               <p><a href="${resetLink}" target="_blank">${resetLink}</a></p>
-               <p>This link will expire in <strong>1 hour</strong>.</p>
-               <p>If you did not request this, please ignore this email.</p>`,
+    from: "MSKTF Support <noreply@msktf.com>",
+    to: toEmail,
+    subject: "Reset Your MSKTF Password",
+    text: `You are receiving this because you (or someone else) have requested the reset of the password for your account.\n\nPlease click on the following link, or paste this into your browser to complete the process:\n\n${resetLink}\n\nIf you did not request this, please ignore this email and your password will remain unchanged.\n`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2>Reset Your Password</h2>
+        <p>You requested a password reset for your MSKTF account.</p>
+        <p>Please click the button below to set a new password:</p>
+        <a href="${resetLink}" style="display: inline-block; padding: 12px 24px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">Reset Password</a>
+        <p style="margin-top: 24px; font-size: 14px; color: #666;">If the button doesn't work, copy and paste this link into your browser:</p>
+        <p style="font-size: 14px; color: #666;">${resetLink}</p>
+      </div>
+    `,
   };
 
   try {
-    winston.info(
-      `Attempting to send password reset email to ${toEmail} via Mailgun...`
-    );
-    const result = await mg.messages.create(DOMAIN, messageData);
-    winston.info(
-      `Password reset email sent successfully to ${toEmail}. Message ID: ${result.id}`
-    );
-    return result;
+    await mg.messages.create(MAILGUN_DOMAIN, messageData);
   } catch (error) {
-    winston.error(
-      `Failed to send password reset email to ${toEmail}:`,
-      error?.response?.body || error
-    );
-    console.error("Mailgun Send Error:", error?.response?.body || error); // Also log detailed error
-    // Decide whether to throw or just return null/error indicator
-    // throw new Error('Failed to send password reset email.'); // Or handle more gracefully
-    return null;
+    logger.error("Mailgun Send Error:", error?.response?.body || error);
+    throw new Error("Failed to send reset email");
   }
 }
 
-module.exports = {
-  sendPasswordResetEmail,
-};
+module.exports = { sendPasswordResetEmail };

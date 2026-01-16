@@ -1,31 +1,32 @@
 "use strict";
 
 const { sequelize } = require("../config/database");
-const Article = require("./article");
-const User = require("./user");
-// +++ Import the new model +++
-const SuggestedEdit = require("./suggestedEdit");
+
+// Correctly initialize models by passing the sequelize instance to the factory functions
+const Article = require("./article")(sequelize);
+const User = require("./user")(sequelize);
+const SuggestedEdit = require("./suggestedEdit")(sequelize);
 
 // --- Define ALL associations here ---
 
 // User <-> SuggestedEdit
 User.hasMany(SuggestedEdit, {
-  foreignKey: "moderatorId", // The foreign key column in SuggestedEdit table
-  as: "submittedSuggestions", // Alias to use when querying User.getSubmittedSuggestions()
+  foreignKey: "moderatorId",
+  as: "submittedSuggestions",
 });
 SuggestedEdit.belongsTo(User, {
-  foreignKey: "moderatorId", // The foreign key column in SuggestedEdit table
-  as: "moderator", // Alias to use when querying SuggestedEdit.getModerator()
+  foreignKey: "moderatorId",
+  as: "moderator",
 });
 
 // Article <-> SuggestedEdit
 Article.hasMany(SuggestedEdit, {
-  foreignKey: "articleId", // The foreign key column in SuggestedEdit table
-  as: "suggestions", // Alias to use when querying Article.getSuggestions()
+  foreignKey: "articleId",
+  as: "suggestions",
 });
 SuggestedEdit.belongsTo(Article, {
-  foreignKey: "articleId", // The foreign key column in SuggestedEdit table
-  as: "article", // Alias to use when querying SuggestedEdit.getArticle()
+  foreignKey: "articleId",
+  as: "article",
 });
 
 // --- Export models and sequelize instance ---
@@ -33,5 +34,5 @@ module.exports = {
   sequelize,
   Article,
   User,
-  SuggestedEdit, // +++ Export the new model +++
+  SuggestedEdit,
 };

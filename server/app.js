@@ -1,10 +1,11 @@
 // server/app.js
 // --- Load Environment Variables (FIRST!) ---
 const path = require("path");
+const logger = require("./utils/logger");
 
 // Load dotenv ONLY if NODE_ENV is NOT 'production'
 if (process.env.NODE_ENV !== "production") {
-  console.log(
+  logger.info(
     `NODE_ENV is '${
       process.env.NODE_ENV || "undefined"
     }', attempting to load .env file...`
@@ -15,15 +16,14 @@ if (process.env.NODE_ENV !== "production") {
 
   if (dotenvResult.error) {
     // Log a warning in dev/test if .env is missing, but don't crash
-    console.warn(
-      "Warning: Could not load .env file. Ensure environment variables are set.",
-      dotenvResult.error.message
+    logger.warn(
+      `Warning: Could not load .env file. Ensure environment variables are set. Error: ${dotenvResult.error.message}`
     );
   } else {
-    console.log(".env file processed.");
+    logger.info(".env file processed.");
   }
 } else {
-  console.log(
+  logger.info(
     "NODE_ENV is 'production', skipping .env file load. Using system environment variables."
   );
 }
@@ -32,7 +32,6 @@ const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
-const winston = require("winston");
 const cookieParser = require("cookie-parser");
 const helmet = require("helmet");
 const {
@@ -43,26 +42,6 @@ const {
 const articleRoutes = require("./routes/articles");
 const adminRoutes = require("./routes/admin");
 const authRoutes = require("./routes/auth");
-
-// --- Configure Winston Logger ---
-const logger = winston.createLogger({
-  level: process.env.NODE_ENV === "production" ? "info" : "debug",
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.json()
-  ),
-  transports: [
-    new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.simple()
-      ),
-    }),
-    // In production, you might configure file paths differently based on deployment summary
-    new winston.transports.File({ filename: "error.log", level: "error" }),
-    new winston.transports.File({ filename: "combined.log" }),
-  ],
-});
 
 // --- Centralized Configuration ---
 const config = require("./config");
@@ -113,8 +92,11 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-        "img-src": ["'self'", "data:", "i.imgur.com", "picsum.photos"], // Ensure allowed image sources are listed
-        // Add other directives as needed (e.g., script-src, style-src)
+        "img-src": ["'self'", "data:", "https://msktf.com", "https://picsum.photos", "https://i.imgur.com"],
+        "script-src": ["'self'", "https://msktf.com"],
+        "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdn.jsdelivr.net"],
+        "font-src": ["'self'", "https://fonts.gstatic.com", "https://cdn.jsdelivr.net"],
+        "connect-src": ["'self'", "https://msktf.com"],
       },
     },
   })

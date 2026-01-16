@@ -1,10 +1,11 @@
 // server/middleware/csrfMiddleware.js
 const { doubleCsrf } = require("csrf-csrf");
+const logger = require("../utils/logger");
 
 // Ensure the CSRF_SECRET environment variable is set.
 if (!process.env.CSRF_SECRET) {
   // Log error and exit if secret is missing during startup
-  console.error("FATAL ERROR: CSRF_SECRET environment variable must be set");
+  logger.error("FATAL ERROR: CSRF_SECRET environment variable must be set");
   process.exit(1); // Exit the process forcefully
 }
 
@@ -43,7 +44,7 @@ if (nodeEnv === "production") {
   cookieOpts = developmentCookieOptions;
 }
 
-console.log(
+logger.info(
   `[CSRF Middleware] Using static cookie options for ENV=${nodeEnv}:`,
   cookieOpts
 ); // Log the chosen options

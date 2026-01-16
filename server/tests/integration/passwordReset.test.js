@@ -58,9 +58,6 @@ beforeEach(async () => {
   // Clean database
   await User.destroy({
     where: {},
-    truncate: true,
-    cascade: true,
-    restartIdentity: true,
   });
 
   // Create a standard test user
@@ -119,14 +116,14 @@ describe("POST /api/auth/forgot-password", () => {
       .send({ email });
 
     expect(res.statusCode).toEqual(200);
-    expect(res.body.message).toMatch(/link has been sent/i);
+    expect(res.body.message).toMatch(/we have sent a reset link/i);
     expect(mailgunMockFn).toHaveBeenCalledTimes(1);
     expect(mailgunMockFn).toHaveBeenCalledWith(email, expect.any(String));
     const user = await User.findOne({ where: { email } });
     expect(user).not.toBeNull();
-    expect(user.passwordResetToken).not.toBeNull();
-    expect(user.passwordResetExpires).not.toBeNull();
-    const expires = user.passwordResetExpires.getTime();
+    expect(user.resetPasswordToken).not.toBeNull();
+    expect(user.resetPasswordExpires).not.toBeNull();
+    const expires = user.resetPasswordExpires.getTime();
     const now = Date.now();
     expect(expires).toBeGreaterThan(now + 59 * 60 * 1000);
     expect(expires).toBeLessThanOrEqual(now + 61 * 60 * 1000);
@@ -144,7 +141,7 @@ describe("POST /api/auth/forgot-password", () => {
       .send({ email });
 
     expect(res.statusCode).toEqual(200);
-    expect(res.body.message).toMatch(/link has been sent/i);
+    expect(res.body.message).toMatch(/we have sent a reset link/i);
     expect(mailgunMockFn).not.toHaveBeenCalled();
     const user = await User.findOne({ where: { email } });
     expect(user).toBeNull();
@@ -210,6 +207,7 @@ describe("POST /api/auth/reset-password", () => {
       .post("/api/auth/reset-password")
       .set("x-csrf-token", freshCsrf) // *** USE FRESH TOKEN ***
       .send({
+        email: "testuser@example.com",
         token: resetToken, // Send the captured plaintext reset token
         newPassword: newPassword,
         confirmPassword: newPassword,
@@ -232,8 +230,8 @@ describe("POST /api/auth/reset-password", () => {
       where: { email: "testuser@example.com" },
     });
     expect(user).not.toBeNull();
-    expect(user.passwordResetToken).toBeNull();
-    expect(user.passwordResetExpires).toBeNull();
+    expect(user.resetPasswordToken).toBeNull();
+    expect(user.resetPasswordExpires).toBeNull();
 
     // Verify login with old password fails
     const loginOldRes = await agent
@@ -273,6 +271,7 @@ describe("POST /api/auth/reset-password", () => {
       .post("/api/auth/reset-password")
       .set("x-csrf-token", freshCsrf) // *** USE FRESH TOKEN ***
       .send({
+        email: "testuser@example.com",
         token: "invalidOrNonExistentTokenValue1234567890abcdef",
         newPassword: newPassword,
         confirmPassword: newPassword,
@@ -290,7 +289,7 @@ describe("POST /api/auth/reset-password", () => {
 
     // Expire the token in the DB
     await User.update(
-      { passwordResetExpires: new Date(Date.now() - 2 * 60 * 60 * 1000) },
+      { resetPasswordExpires: new Date(Date.now() - 2 * 60 * 60 * 1000) },
       { where: { email: "testuser@example.com" } }
     );
 
@@ -303,6 +302,7 @@ describe("POST /api/auth/reset-password", () => {
       .post("/api/auth/reset-password")
       .set("x-csrf-token", freshCsrf) // *** USE FRESH TOKEN ***
       .send({
+        email: "testuser@example.com",
         token: token,
         newPassword: newPassword,
         confirmPassword: newPassword,
@@ -326,6 +326,7 @@ describe("POST /api/auth/reset-password", () => {
       .post("/api/auth/reset-password")
       .set("x-csrf-token", freshCsrf) // *** USE FRESH TOKEN ***
       .send({
+        email: "testuser@example.com",
         token: token,
         newPassword: newPassword,
         confirmPassword: "differentPassword",
@@ -349,7 +350,7 @@ describe("POST /api/auth/reset-password", () => {
     const resetRes = await agent
       .post("/api/auth/reset-password")
       .set("x-csrf-token", freshCsrf) // *** USE FRESH TOKEN ***
-      .send({ token: token, newPassword: "short", confirmPassword: "short" });
+      .send({ email: "testuser@example.com", token: token, newPassword: "short", confirmPassword: "short" });
 
     expect(resetRes.statusCode).toEqual(400);
     expect(resetRes.body.message).toMatch(/validation error/i);
@@ -369,7 +370,7 @@ describe("POST /api/auth/reset-password", () => {
     const resetRes = await agent
       .post("/api/auth/reset-password")
       .set("x-csrf-token", freshCsrf) // *** USE FRESH TOKEN ***
-      .send({ newPassword: newPassword, confirmPassword: newPassword }); // Missing token
+      .send({ email: "testuser@example.com", newPassword: newPassword, confirmPassword: newPassword }); // Missing token
 
     expect(resetRes.statusCode).toEqual(400);
     expect(resetRes.body.message).toMatch(/validation error/i);
@@ -383,6 +384,7 @@ describe("POST /api/auth/reset-password", () => {
       .post("/api/auth/reset-password")
       // No .set('x-csrf-token', ...)
       .send({
+        email: "testuser@example.com",
         token: token,
         newPassword: newPassword,
         confirmPassword: newPassword,
