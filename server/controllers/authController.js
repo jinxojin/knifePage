@@ -32,11 +32,11 @@ exports.forgotPassword = async (req, res, next) => {
 
     const resetToken = crypto.randomBytes(32).toString("hex");
     const hashedToken = await bcrypt.hash(resetToken, 10);
-    const passwordResetExpires = Date.now() + 3600000;
+    const resetPasswordExpires = Date.now() + 3600000;
 
     await user.update({
-      passwordResetToken: hashedToken,
-      passwordResetExpires: passwordResetExpires,
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: resetPasswordExpires,
     });
 
     logger.info(`[${timestamp}] Reset token saved for user ${user.id}.`);
@@ -71,17 +71,17 @@ exports.resetPassword = async (req, res, next) => {
     const { email, token, newPassword } = req.body;
     const user = await User.findOne({ where: { email } });
 
-    if (!user || !user.passwordResetToken || !user.passwordResetExpires) {
+    if (!user || !user.resetPasswordToken || !user.resetPasswordExpires) {
       logger.warn(`[${timestamp}] Reset attempt failed: Invalid user or no token set for ${email}.`);
       return next(new ErrorHandler("Password reset token is invalid or has expired.", 400));
     }
 
-    if (Date.now() > user.passwordResetExpires) {
+    if (Date.now() > user.resetPasswordExpires) {
       logger.warn(`[${timestamp}] Token for user ${user.id} has expired.`);
       return next(new ErrorHandler("Password reset token is invalid or has expired.", 400));
     }
 
-    const isMatch = await bcrypt.compare(token, user.passwordResetToken);
+    const isMatch = await bcrypt.compare(token, user.resetPasswordToken);
     if (!isMatch) {
       logger.warn(`[${timestamp}] Token hash mismatch for user ${user.id}.`);
       return next(new ErrorHandler("Password reset token is invalid or has expired.", 400));
@@ -90,8 +90,8 @@ exports.resetPassword = async (req, res, next) => {
     logger.info(`[${timestamp}] Token verified for user ${user.id}. Updating password...`);
     await user.update({
       password: newPassword,
-      passwordResetToken: null,
-      passwordResetExpires: null,
+      resetPasswordToken: null,
+      resetPasswordExpires: null,
       needsPasswordChange: false,
     });
 

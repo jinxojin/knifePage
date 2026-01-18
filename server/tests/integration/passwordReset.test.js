@@ -36,6 +36,7 @@ let initialCsrfToken = null; // Store initial CSRF token
 
 // --- Test Setup ---
 beforeAll(async () => {
+  await sequelize.sync({ force: true });
   // Fetch initial CSRF token once
   try {
     const res = await agent.get("/api/csrf-token");

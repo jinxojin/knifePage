@@ -19,31 +19,29 @@ async function createAdmin() {
 
     const adminPassword = "?hutg4Y4jSh1d3hW3"; // Define password once
     const adminEmail = "monknifethrowing@gmail.com"; // <-- DEFINE ADMIN EMAIL HERE
-    const hashedPassword = await bcrypt.hash(adminPassword, 10);
+    // const hashedPassword = await bcrypt.hash(adminPassword, 10); // REMOVED: Model hook handles hashing
 
     if (user) {
       console.log(
-        "Admin user already exists. Updating password and email (if needed)..."
+        "Admin user already exists. Updating password and email..."
       );
-      await User.update(
-        {
-          password: hashedPassword,
-          email: adminEmail, // Ensure email is set
-          needsPasswordChange: false, // Ensure admin doesn't need reset
-          passwordResetToken: null,
-          passwordResetExpires: null,
-        },
-        { where: { username: "admin" } }
-      );
+      // Update properties on the instance and save to trigger hooks
+      user.password = adminPassword;
+      user.email = adminEmail;
+      user.needsPasswordChange = false;
+      user.resetPasswordToken = null;
+      user.resetPasswordExpires = null;
+      
+      await user.save(); 
       console.log("Admin password/email updated.");
     } else {
       console.log("Creating admin user...");
       const newAdmin = await User.create({
         username: "admin",
-        email: adminEmail, // <-- ADD EMAIL HERE
-        password: hashedPassword,
-        role: "admin", // Explicitly set role
-        needsPasswordChange: false, // <-- Set initial state
+        email: adminEmail, 
+        password: adminPassword, // Pass plaintext
+        role: "admin", 
+        needsPasswordChange: false, 
       });
       console.log("Admin user created:", newAdmin.username);
     }

@@ -38,13 +38,15 @@ module.exports = (sequelize) => {
         defaultValue: false,
       },
       // Fields for password reset
-      passwordResetToken: {
+      resetPasswordToken: {
         type: DataTypes.STRING,
         allowNull: true,
+        field: "passwordResetToken",
       },
-      passwordResetExpires: {
+      resetPasswordExpires: {
         type: DataTypes.DATE,
         allowNull: true,
+        field: "passwordResetExpires",
       },
     },
     {

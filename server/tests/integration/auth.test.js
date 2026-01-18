@@ -15,7 +15,7 @@ let csrfToken;
 // --- Test Setup ---
 beforeAll(async () => {
   const { sequelize } = require("../../models");
-  await sequelize.sync();
+  await sequelize.sync({ force: true });
   // Fetch CSRF token once for all tests in this file
   try {
     const res = await agent.get("/api/csrf-token"); // <-- Use agent to get token

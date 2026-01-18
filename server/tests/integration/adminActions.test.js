@@ -20,6 +20,7 @@ const baseModeratorUsername = "modTargetForDupTest";
 
 // --- Test Setup ---
 beforeAll(async () => {
+  await sequelize.sync({ force: true });
   try {
     const res = await agent.get("/api/csrf-token");
     csrfToken = res.body.csrfToken;
