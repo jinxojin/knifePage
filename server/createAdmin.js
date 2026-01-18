@@ -6,8 +6,7 @@ if (process.env.NODE_ENV !== "production") {
   require("dotenv").config({ path: require("path").join(__dirname, ".env") });
 }
 
-const { sequelize } = require("./config/database");
-const User = require("./models/user");
+const { sequelize, User } = require("./models");
 const bcrypt = require("bcrypt");
 
 async function createAdmin() {
@@ -31,6 +30,8 @@ async function createAdmin() {
           password: hashedPassword,
           email: adminEmail, // Ensure email is set
           needsPasswordChange: false, // Ensure admin doesn't need reset
+          passwordResetToken: null,
+          passwordResetExpires: null,
         },
         { where: { username: "admin" } }
       );
