@@ -28,7 +28,7 @@
     "pg": "^8.14.1",
     "pg-hstore": "^2.3.4",
     "sanitize-html": "^2.15.0",
-    "sequelize": "^6.37.1",
+    "sequelize": "^6.37.8",
     "sqlite3": "^5.1.7",
     "winston": "^3.12.0"
   },
